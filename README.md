@@ -51,7 +51,7 @@ Using the terminal clone the data with a command:
 
     git clone https://github.com/Fryziu/Q2classic.git
 
-Get inside `Quake2classic` and use a command _make_ to compile it.
+Get inside `Q2classic` and use a command _make_ to compile it.
 Compiled files you may find in `Quake2classic/bin`.
 copy _quake2_ to your `~.quake2` folder,
 copy _game.so_ to your `~.quake2/baseq2` folder.
