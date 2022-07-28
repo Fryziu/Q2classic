@@ -1,6 +1,6 @@
 <!-- Name: Quake2 classic -->
 
-# Quake II classic for GNU Linux
+# Quake II classic client for GNU Linux
 
 ![Quake II classic for Linux](github-screenshot.jpg)
 
