@@ -49,7 +49,7 @@ that can be installed with this command:
 
 Using the terminal clone the data with a command:
 
-    git clone https://github.com/Fryziu/Quake2classic.git
+    git clone https://github.com/Fryziu/Q2classic.git
 
 Get inside `Quake2classic` and use a command _make_ to compile it.
 Compiled files you may find in `Quake2classic/bin`.
