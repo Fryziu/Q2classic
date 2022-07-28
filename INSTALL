@@ -1,0 +1,13 @@
+= INSTALL =
+
+Compiling and installing this version of _Quake II_ is pretty straightforward:
+
+    make
+    make install
+
+This will compile the game engine and game module, and install them to `~/.quake2`.
+To install the game to a different location, use:
+
+    make DESTDIR=/path/to/quake install
+
+To install the game data, run `./data/install-data.py` and follow the prompts.
