@@ -35,6 +35,7 @@ Here you can see a stripped version, where i intend to do all possible mistakes 
 ## Downloads
 
 To play the game you need at least a demo version of it, which should be available in your Linux distribution (at least if it's Ubuntu based)
+Full version you can find on Steam https://store.steampowered.com/app/2320/Quake_II/
 
 ## Compiling
 
