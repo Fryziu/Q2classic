@@ -30,7 +30,7 @@ Some of changes include:
 A full list of changes is available in the [CHANGELOG](CHANGELOG).
 
 Last available original code (does not compile properly nowadays) of AprQ2 you can find in one of my repositories, a fork of working jdolan code is in my repositories as well (as a starting point for comparisons).
-Here you can see a stripped version, where i intend to do all possible mistakes in my journey into the C and the first coherent Turing - complete creative enviroment given to us by John Carmack. You can feel invited to join it too :-)
+Here you can see a stripped version, where i intend to do all possible mistakes in my journey into the C and the first coherent Turing - complete open (GNU) creative enviroment given to us by John Carmack. You can feel invited to join it too :-)
 
 ## Downloads
 
