@@ -1,75 +1,94 @@
-<!-- Name: Quake2 classic -->
-
-# Quake II classic client for GNU Linux
+# Quake II Classic Client for GNU/Linux
 
 ![Quake II classic for Linux](github-screenshot.jpg)
 
+## Acknowledgement
+
+This repository is a streamlined fork of [jdolan/quake2](https://github.com/jdolan/quake2). It includes only the essential source code, excluding the large `.pack` data file for a more lightweight repository. Credit is due to jdolan for their work, which provided a modern, compilable Linux base that made these fixes and improvements possible.
+
 ## Overview
 
-John Carmack and id Software team in year 1997 have released a genre defining game - Quake II.
-They have crossed many boundaries before, but in this release for the first time everything was elegant and axiomatic.
-Fast-paced first person shooter (or backshooter) with a single player story that helps to get along with mechanics of the game, and build in server engine - so every player can easily start, oversee and invite others to play a multiplayer game in three fundamental ways 
-- Cooperative fight against ingame monsters
-- Deathmatch, each on his own against all other players
-- Capture the flag, teamplay with a flag that can be stolen and touchdown
+This is a 64-bit client for the classic *[Quake II](http://en.wikipedia.org/wiki/Quake_II)* on GNU/Linux, based on the abandoned AprQ2 project by _maniac_.
 
-Engine of the game allows for creating modifications, and there is plenty of those. If you can think about any way / mod / behavior of playing, it was done in Quake 2 (probably long before it was "discovered" in other games).
-Programming language here is C, so everything that can be lightning-fast, may be, if you (as a programmer) can optimize your code properly. 
-As for now this is one of the best for learning, developing, testing and creative enviroments ever, and it's open (Thank You John Carmack).
-Immediately after release of the game, modding community started to tinkering with it, and one of the most intresting "clients" (binary runtime file/files that allow to run the game with added functionalities)  was AprQ2 created by Maniac (pseudonym - it's all i got here)
-His work was saved, cleaned out and prepared for modern GNU/Linux systems by jdolan.
-Some of changes include:
+## Improvements in this Fork
 
- * R1Q2 Protocol 35 support
- * Anisotropic filtering for SDL video
- * Multisample (FSAA) for SDL video
- * Stencil shadows for SDL video
- * Numerous stability fixes around SDL audio
- * Numerous 64 bit compatibility fixes
+The primary focus of this fork has been a complete overhaul of the legacy sound system. The original AprQ2 client used an SDL 1.2 implementation prone to instability on modern multi-core systems, leading to frequent freezes, crashes, and sound glitches.
 
-A full list of changes is available in the [CHANGELOG](CHANGELOG).
-
-Last available original code (does not compile properly nowadays) of AprQ2 you can find in one of my repositories, a fork of working jdolan code is in my repositories as well (as a starting point for comparisons).
-Here you can see a stripped version, where i intend to do all possible mistakes in my journey into the C and the first coherent Turing - complete open (GNU) creative enviroment given to us by John Carmack. You can feel invited to join it too :-)
+This version introduces a robust, thread-safe sound mixer that resolves these critical issues:
+*   Fixed numerous race conditions and deadlocks that caused the game to freeze.
+*   Implemented an on-the-fly audio conversion system using SDL. This allows the engine to correctly play mixed 8-bit and 16-bit sound files, restoring previously silent weapon sounds and improving overall audio quality.
+*   Ensured stable operation on modern Linux distributions using PulseAudio and PipeWire.
 
 ## Downloads
 
-To play the game you need at least a demo version of it, which should be available in your Linux distribution (at least if it's Ubuntu based)
-Full version you can find on Steam https://store.steampowered.com/app/2320/Quake_II/
+If you do not own the full version of Quake II, you can download the shareware game data (v3.14), which includes the first single-player unit and several multiplayer maps. This is enough to get the game running.
 
-## Compiling
+*   [Quake II Shareware Data (from Quetoo.org)](http://quetoo.org/files/quake2-quetoo.org-x86_64.tar.gz)
 
-Tested with Xubuntu 20.04 LTS.
-Before compiling this client of _Quake II_ 
-be sure to prepare your system for compilation, you will need:
+## Compiling from Source
 
-_build-essential automake git_
+Successfully compiled on Ubuntu 20.04 LTS and similar distributions.
 
-that can be installed with this command:
+#### 1. Install Build Tools
 
-    sudo apt-get install build-essential automake git -y
+First, prepare your system with the essential build tools:
 
-Dependencies of the game itself are:
+```bash
+sudo apt-get install build-essential automake git -y
+```
 
-_liblz1 libjpeg-dev libcurl4-gnutls-dev mesa-common-dev libsdl1.2-dev_ 
+#### 2. Install Dependencies
 
-that can be installed with this command:
+Next, install the libraries required by the game:
 
-    sudo apt-get install liblz1 libjpeg-dev libcurl4-gnutls-dev mesa-common-dev libsdl1.2-dev -y
+```bash
+sudo apt-get install libjpeg-dev libcurl4-gnutls-dev mesa-common-dev libsdl1.2-dev -y
+```
+_Note: `liblz1` seems to be an incorrect package name and is not required for compilation. It has been removed from the list._
 
-## Installation
+#### 3. Compile the Game
 
-Using the terminal clone the data with a command:
+Clone this repository and use `make` to compile the client:
 
-    git clone https://github.com/Fryziu/Q2classic.git
+```bash
+git clone https://github.com/Fryziu/Q2classic.git
+cd Q2classic
+make
+```
 
-Get inside `Q2classic` and use a command _make_ to compile it.
-Compiled files you may find in `Q2classic/bin`.
-copy _quake2_ to your `~.quake2` folder,
-copy _game.so_ to your `~.quake2/baseq2` folder.
-Using the terminal get into your `.quake2` folder and type _./quake2_ to run
+The compiled files will be located in the `bin/` directory.
 
-If you want to play the full single-player game, you must provide the retail game data that came with your _Quake II_ .
-Locate the `pak0.pak` file in your _Quake II_ and copy it to your user-specific `.quake2/baseq2` folder:
-  
-    
+## Installation and Running
+
+#### 1. Prepare Game Directories
+
+Quake II expects its files to be in a specific location. Create the necessary directories in your home folder:
+
+```bash
+mkdir -p ~/.quake2/baseq2
+```
+
+#### 2. Copy Game Binaries
+
+Copy the compiled executable and game library to their respective locations:
+
+```bash
+cp bin/quake2 ~/.quake2/
+cp bin/game.so ~/.quake2/baseq2/
+```
+
+#### 3. Add Game Data
+
+To play, you need the game data files (`.pak` files).
+
+*   **For the full game:** Copy `pak0.pak` and any other `.pak` files from your retail _Quake II_ installation into your `~/.quake2/baseq2/` directory.
+*   **For the demo:** If you downloaded the shareware data, extract it and copy its `.pak` files into `~/.quake2/baseq2/`.
+
+#### 4. Run the Game
+
+Navigate to your `.quake2` directory and execute the game:
+
+```bash
+cd ~/.quake2
+./quake2
+```
