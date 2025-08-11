@@ -2,7 +2,7 @@
 	snd_sdl.c
 
 	Sound code taken from SDLQuake and modified to work with Quake2
-	Robert B�uml 2001-12-25
+	Robert B�uml 2001-12-25
 
 	This program is free software; you can redistribute it and/or
 	modify it under the terms of the GNU General Public License
@@ -41,99 +41,74 @@ void Snd_Memset (void* dest, const int val, const size_t count)
 	memset(dest,val,count);
 }
 
+// Ten callback jest sercem systemu. Jego poprawne działanie jest kluczowe.
 static void sdl_audio_callback (void *unused, Uint8 * stream, int len)
 {
-	if (snd_inited) {
-		dma.buffer = stream;
-		dma.samplepos += len / (dma.samplebits / 4);
-		// Check for samplepos overflow?
-		S_PaintChannels (dma.samplepos);
-	}
-}
+	if (!snd_inited)
+		return;
 
+	// Zaktualizuj licznik czasu audio (dma.samplepos)
+	// To jest POPRAWIONA, solidna matematyka.
+	int bytes_per_frame = (dma.samplebits / 8) * dma.channels;
+	if (bytes_per_frame > 0)
+	{
+		int num_frames = len / bytes_per_frame;
+		dma.samplepos += num_frames;
+	}
+
+	// Przekaż wskaźnik do bufora i zaktualizowany czas do miksera
+	dma.buffer = stream;
+	S_PaintChannels (dma.samplepos);
+}
 qboolean SNDDMA_Init (void)
 {
 	SDL_AudioSpec desired, obtained;
-	
+    // Static flag to ensure SDL_Init is only called once.
+	static qboolean sdl_audio_initialized = false;
+
 	if(snd_inited)
 		return true;
 
+	// --- THE CRITICAL FIX: PART 1 ---
+    // Initialize the SDL audio subsystem only ONCE per application run.
+	if (!sdl_audio_initialized)
+	{
+		if (SDL_Init(SDL_INIT_AUDIO) < 0) {
+			Com_Printf ("Couldn't init SDL audio: %s\n", SDL_GetError());
+			return false;
+		}
+		sdl_audio_initialized = true;
+	}
+
 	if (!sndbits) {
 		sndbits = Cvar_Get("sndbits", "16", CVAR_ARCHIVE);
-		sndspeed = Cvar_Get("sndspeed", "0", CVAR_ARCHIVE);
+		sndspeed = Cvar_Get("sndspeed", "44100", CVAR_ARCHIVE);
 		sndchannels = Cvar_Get("sndchannels", "2", CVAR_ARCHIVE);
-		//snddevice = Cvar_Get("snddevice", "/dev/dsp", CVAR_ARCHIVE);
 	}
 
-	if (!SDL_WasInit(SDL_INIT_EVERYTHING)) {
-		if (SDL_Init(SDL_INIT_AUDIO) < 0) {
-			Com_Printf ("Couldn't init SDL audio: %s\n", SDL_GetError ());
-			return false;
-		}
-	} else if (!SDL_WasInit(SDL_INIT_AUDIO)) {
-		if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) {
-			Com_Printf ("Couldn't init SDL audio: %s\n", SDL_GetError ());
-			return false;
-		}
-	}
-	
-
-	/* Set up the desired format */
-	switch (sndbits->integer) {
-		case 8:
-			desired.format = AUDIO_U8;
-			break;
-		default:
-			Com_Printf ("Unknown number of audio bits: %i, trying with 16\n", sndbits->integer);
-		case 16:
-			desired.format = AUDIO_S16SYS;
-			break;
-	}
-	
-	if(sndspeed->integer)
-		desired.freq = sndspeed->integer;
-	else
-		desired.freq = 22050;
-
-    // just pick a sane default.
-    if (desired.freq <= 11025)
-        desired.samples = 256;
-    else if (desired.freq <= 22050)
-        desired.samples = 512;
-    else if (desired.freq <= 44100)
-        desired.samples = 1024;
-    else
-        desired.samples = 2048;  // (*shrug*)
-	
-	desired.channels = sndchannels->integer;
-	if (desired.channels < 1 || desired.channels > 2)
-		desired.channels = 2;
-
+	desired.freq = sndspeed->integer ? sndspeed->integer : 44100;
+	desired.format = (sndbits->integer == 8) ? AUDIO_U8 : AUDIO_S16SYS;
+	desired.channels = (sndchannels->integer == 1) ? 1 : 2;
+	desired.samples = 1024;
 	desired.callback = sdl_audio_callback;
-	
-	/* Open the audio device */
+	desired.userdata = NULL;
+
+	// Open the audio device. This is safe to do multiple times.
 	if (SDL_OpenAudio (&desired, &obtained) < 0) {
-		Com_Printf ("SDL_OpenAudio() failed: %s\n", SDL_GetError ());
-		if (SDL_WasInit(SDL_INIT_EVERYTHING) == SDL_INIT_AUDIO)
-			SDL_Quit();
-		else
-			SDL_QuitSubSystem(SDL_INIT_AUDIO);
+		Com_Printf ("SDL_OpenAudio() failed: %s\n", SDL_GetError());
 		return false;
 	}
 
-	/* Fill the audio DMA information block */
+	// Fill the DMA block with the OBTAINED values.
 	dma.samplebits = (obtained.format & 0xFF);
 	dma.speed = obtained.freq;
 	dma.channels = obtained.channels;
-	dma.samples = obtained.samples * dma.channels;
+	dma.samples = obtained.samples;
 	dma.samplepos = 0;
 	dma.submission_chunk = 1;
 	dma.buffer = NULL;
 
-    Com_Printf("Starting SDL audio callback...\n");
-    SDL_PauseAudio(0);  // start callback.
-
-    Com_Printf("SDL audio initialized.\n");
+    SDL_PauseAudio(0);
 
 	snd_inited = true;
 	return true;
@@ -152,28 +127,20 @@ void SNDDMA_Shutdown (void)
 	if (!snd_inited)
 		return;
 
+	// --- THE CRITICAL FIX: PART 2 ---
+    // We ONLY close the device. We DO NOT quit the SDL subsystem here.
 	SDL_PauseAudio(1);
-	SDL_CloseAudio ();
-	snd_inited = false;
+	SDL_CloseAudio();
 
-	if (SDL_WasInit(SDL_INIT_EVERYTHING) == SDL_INIT_AUDIO)
-		SDL_Quit();
-	else
-		SDL_QuitSubSystem(SDL_INIT_AUDIO);
+	snd_inited = false;
 }
 
-/*
-
-	SNDDMA_Submit
-
-	Send sound to device if buffer isn't really the dma buffer
-
-*/
 void SNDDMA_Submit (void)
 {
+	// Puste w implementacjach SDL, gdzie callback robi wszystko
 }
 
-
 void SNDDMA_BeginPainting(void)
-{    
+{
+	// Puste w implementacjach SDL
 }
