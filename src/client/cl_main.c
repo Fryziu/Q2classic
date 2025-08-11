@@ -579,13 +579,6 @@ void CL_Disconnect (void)
 
 	cls.servername[0] = '\0';
 	cls.state = ca_disconnected;
-
-#ifdef AVI_EXPORT
-	AVI_StopExport();
-#endif
-#ifdef GL_QUAKE
-	Cvar_Set("cl_avidemo", "0");
-#endif
 }
 
 void CL_Disconnect_f (void)
@@ -686,8 +679,8 @@ static qboolean CL_ServerStatusResponse( const char *status, const netadr_t *fro
 		return false;
 
 	s++;
-    if( *s < 32 )
-        return true;
+		if( *s < 32 )
+			return true;
  
 	do {
 		player = &dest->players[dest->numPlayers];
@@ -1927,39 +1920,6 @@ static void OnChange_StereoSeparation (cvar_t *self, const char *oldValue)
 		Cvar_Set( self->name, "0" );
 }
 
-#ifdef GL_QUAKE
-void R_BeginAviDemo( int format );
-void R_WriteAviFrame( void );
-void R_StopAviDemo( void );
-
-cvar_t *cl_avidemo = &nullCvar;
-static cvar_t *cl_forceavidemo;
-static cvar_t *cl_avidemoformat;
-
-static void OnChange_AviDemo(cvar_t *self, const char *oldValue)
-{
-#ifdef AVI_EXPORT
-	if(CL_AviRecording()) {
-		if(self->integer)
-			Cvar_Set(self->name, "0");
-		return;
-	}
-#endif
-
-	if(self->integer > 0)
-	{
-		if(!atoi(oldValue))
-			R_BeginAviDemo(cl_avidemoformat->integer);
-	}
-	else
-	{
-		if(atoi(oldValue))
-			R_StopAviDemo();
-		if(self->integer < 0)
-			Cvar_Set(self->name, "0");
-	}
-}
-#endif
 
 char *CL_Mapname (void)
 {
@@ -2233,14 +2193,6 @@ void CL_InitLocal (void)
 	cl_http_max_connections = Cvar_Get ("cl_http_max_connections", "2", 0);
 	cl_http_max_connections->OnChange = OnChange_http_max_connections;
 	OnChange_http_max_connections(cl_http_max_connections, cl_http_max_connections->resetString);
-#endif
-
-#ifdef GL_QUAKE
-	cl_avidemo = Cvar_Get("cl_avidemo", "0", CVAR_CHEAT);
-	cl_avidemoformat = Cvar_Get("cl_avidemoformat", "0", 0);
-	cl_forceavidemo = Cvar_Get("cl_forceavidemo", "0", 0);
-	cl_avidemo->OnChange = OnChange_AviDemo;
-	OnChange_AviDemo(cl_avidemo, cl_avidemo->resetString);
 #endif
 
 	r_maxfps->OnChange = OnChange_MaxFps;
@@ -2535,18 +2487,7 @@ void CL_Frame (int msec)
 		misc_delta = 0;
 	}
 
-#ifdef GL_QUAKE
-#ifdef AVI_EXPORT
-	if (CL_AviRecording()) {
-		AVI_ProcessFrame (); //Avi export
-	}
-	else
-#endif
-	if(cl_avidemo->integer) {
-		if((cls.state == ca_active && cl.attractloop) || (cls.state != ca_active && cl_forceavidemo->integer))
-			R_WriteAviFrame();
-	}
-#endif
+
 	// advance local effects for next frame
 	CL_RunDLights();
 	CL_RunLightStyles();
