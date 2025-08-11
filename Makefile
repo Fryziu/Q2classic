@@ -50,7 +50,7 @@ release: bin
 	$(MAKE) targets CFLAGS="$(RELEASE_CFLAGS)"
 
 # Engine and game module targets.
-targets: bin/quake2 bin/game.so
+targets: bin/q2classic bin/q2game.so
 
 # Game module compilation target.
 src/game/%.o : src/game/%.c
@@ -156,7 +156,7 @@ QUAKE2_OBJS = \
 	src/ui/ui_video.o
 
 # The game executable.
-bin/quake2 : $(QUAKE2_OBJS)
+bin/q2classic : $(QUAKE2_OBJS)
 	@echo "[LD] quake2"
 	@$(CC) -o $@ $(QUAKE2_OBJS) $(LDFLAGS)
 
@@ -211,15 +211,15 @@ GAME_OBJS = \
 	src/game/q_shared.o
 	
 # The game shared library.
-bin/game.so : $(GAME_OBJS)
+bin/q2game.so : $(GAME_OBJS)
 	@echo "[LD] game.so"
 	@$(CC) $(CFLAGS) -shared -o $@ $(GAME_OBJS)
 
 # The install target
 install: targets
 	install -d "$(DESTDIR)/baseq2"
-	install bin/quake2 "$(DESTDIR)"
-	install bin/game.so "$(DESTDIR)/baseq2"
+	install bin/q2classic "$(DESTDIR)"
+	install bin/q2game.so "$(DESTDIR)/baseq2"
 	install data/install-data.py "$(DESTDIR)"
 
 # The clean target.
