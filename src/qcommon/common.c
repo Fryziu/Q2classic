@@ -1192,23 +1192,12 @@ void Qcommon_Init (int argc, char **argv)
 Qcommon_Frame
 =================
 */
-#ifdef GL_QUAKE
-cvar_t *cl_avidemo;
-#endif
-
 void Qcommon_Frame (int msec)
 {
 
 	if (setjmp (abortframe) )
 		return;			// an ERR_DROP was thrown
 
-#ifdef GL_QUAKE
-	if(cl_avidemo->integer)
-	{
-		msec = (int)(1000 / cl_avidemo->integer * timescale->value);
-	}
-	else
-#endif
 	{
 		if (fixedtime->integer)
 			msec = fixedtime->integer;
