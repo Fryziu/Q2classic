@@ -42,7 +42,7 @@ sudo apt-get install build-essential automake git -y
 Next, install the libraries required by the game:
 
 ```bash
-sudo apt-get install libjpeg-dev libcurl4-gnutls-dev mesa-common-dev libsdl1.2-dev -y
+sudo apt-get install libpng-dev libjpeg-dev libcurl4-gnutls-dev mesa-common-dev libsdl1.2-dev -y
 ```
 _Note: `liblz1` seems to be an incorrect package name and is not required for compilation. It has been removed from the list._
 
