@@ -219,7 +219,7 @@ void *Sys_GetGameAPI (void *parms)
 	char	*path;
 	char	*str_p;
 
-	const char *gamename = "game.so";
+	const char *gamename = "q2game.so";
 
 	setreuid(getuid(), getuid());
 	setegid(getgid());
@@ -235,13 +235,24 @@ void *Sys_GetGameAPI (void *parms)
 	{
 		path = FS_NextPath (path);
 		if (!path)
+        {
+            Com_Printf("Sys_GetGameAPI: FS_NextPath returned NULL. No more paths to search.\n");
 			return NULL;		// couldn't find one anywhere
+        }
+        
+        // DODAJ TĘ LINIĘ DEBUGUJĄCĄ
+        Com_Printf("Sys_GetGameAPI: Trying path: %s\n", path);
+
 		snprintf (name, MAX_OSPATH, "%s/%s", path, gamename);
 		
 		/* skip it if it just doesn't exist */
 		fp = fopen(name, "rb");
 		if (fp == NULL)
+        {
+            // I TĘ LINIĘ
+            Com_Printf("Sys_GetGameAPI: File not found at: %s\n", name);
 			continue;
+        }
 		fclose(fp);
 		
 		game_library = dlopen (name, RTLD_NOW);
@@ -252,7 +263,8 @@ void *Sys_GetGameAPI (void *parms)
 		} 
 		else 
 		{
-			Com_Printf ("LoadLibrary (%s):", name);
+            // I JESZCZE TĘ
+			Com_Printf ("dlopen failed for: %s\n", name);
 			
 			path = dlerror();
 			str_p = strchr(path, ':'); // skip the path (already shown)
