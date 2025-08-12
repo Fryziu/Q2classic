@@ -253,9 +253,19 @@ static void CL_StartHTTPDownload (dlqueue_t *entry, dlhandle_t *dl)
 	}
 	else
 	{
-		Com_sprintf (dl->filePath, sizeof(dl->filePath), "%s/%s", FS_Gamedir(), entry->quakePath);
+		 const char *gamedir_for_path;
 
-		Com_sprintf (tempFile, sizeof(tempFile), "%s/%s", cl.gamedir, entry->quakePath);
+		    // Sprawdź, czy gamedir jest pusty. Jeśli tak, użyj "baseq2".
+		    if (cl.gamedir[0]) {
+		        gamedir_for_path = cl.gamedir;
+		    } else {
+		        gamedir_for_path = "baseq2";
+		    }
+
+		    // Użyj nowej, bezpiecznej zmiennej do budowania ścieżek
+		    Com_sprintf (dl->filePath, sizeof(dl->filePath), "%s/%s", gamedir_for_path, entry->quakePath);
+
+		    Com_sprintf (tempFile, sizeof(tempFile), "%s/%s", gamedir_for_path, entry->quakePath); // Poprawiamy też tę linię dla spójności
 		CL_EscapeHTTPPath (dl->filePath, escapedFilePath);
 
 		strcat (dl->filePath, ".tmp");
@@ -283,7 +293,7 @@ static void CL_StartHTTPDownload (dlqueue_t *entry, dlhandle_t *dl)
 		dl->curl = curl_easy_init ();
 
 	Com_sprintf (dl->URL, sizeof(dl->URL), "%s%s", cls.downloadServer, escapedFilePath);
-
+	Com_Printf("Attempting to download from URL: %s\n", dl->URL);
 	curl_easy_setopt (dl->curl, CURLOPT_ENCODING, "");
 	//curl_easy_setopt (dl->curl, CURLOPT_DEBUGFUNCTION, CL_CURL_Debug);
 	//curl_easy_setopt (dl->curl, CURLOPT_VERBOSE, 1);

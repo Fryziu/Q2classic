@@ -572,6 +572,7 @@ void CL_Disconnect (void)
 #ifdef USE_CURL
 	CL_CancelHTTPDownloads (true);
 	cls.downloadReferer[0] = 0;
+	cls.downloadServer[0] = 0;
 #endif
 
 	cls.downloadname[0] = 0;
