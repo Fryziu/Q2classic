@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -50,6 +50,14 @@ cvar_t *s_volume, *s_show, *s_loadas8bit;
 cvar_t *s_testsound, *s_khz, *s_mixahead, *s_primary;
 cvar_t *s_swapstereo, *s_ambient, *s_oldresample;
 
+//AI 0=Classic, 1=Attenuation, 2=Positional, 3=Filtering
+cvar_t *s_quality;
+
+//AI A pre-calculated lookup table for our enhanced attenuation model.
+//AI Replaces a slow float division with a fast array lookup.
+#define ATTN_TABLE_SIZE 1024
+static float attn_table[ATTN_TABLE_SIZE];
+
 static playsound_t s_freeplays;
 static playsound_t s_playsounds[MAX_PLAYSOUNDS];
 static int	s_registration_sequence;
@@ -73,6 +81,25 @@ static sfx_t *S_FindName (const char *name, qboolean create);
 static sfx_t *S_AliasName (const char *aliasname, const char *truename);
 static void S_ClearBuffer(void);
 static void S_AddLoopSounds (void);
+
+//AI A helper function to build the table for enhanced attenuation model
+static void S_BuildAttenuationTable(void)
+{
+    for (int i = 0; i < ATTN_TABLE_SIZE; i++)
+    {
+        // We map the range [0, ATTN_TABLE_SIZE] to a distance ratio.
+        // Let's say the table covers up to 8x the SOUND_FULLVOLUME distance.
+        float distance_ratio = (float)i / (ATTN_TABLE_SIZE / 8.0f);
+
+        if (distance_ratio < 1.0f) {
+            attn_table[i] = 1.0f;
+        } else {
+            // Inverse square model: 1 / distance^2
+            // Add a small epsilon to avoid division by zero, though our logic prevents it.
+            attn_table[i] = 1.0f / (distance_ratio * distance_ratio + 0.001f);
+        }
+    }
+}
 
 // ====================================================================
 // NEW, SAFE DIAGNOSTIC FUNCTION
@@ -135,10 +162,14 @@ void S_Init(void)
 	s_mixahead = Cvar_Get ("s_mixahead", "0.2", CVAR_ARCHIVE);
 	s_show = Cvar_Get ("s_show", "0", 0);
 	s_testsound = Cvar_Get ("s_testsound", "0", 0);
-	s_primary = Cvar_Get ("s_primary", "0", CVAR_ARCHIVE|CVAR_LATCHED);
+//	s_primary = Cvar_Get ("s_primary", "0", CVAR_ARCHIVE|CVAR_LATCHED);
+	// 0 = Classic (Linear), 1 = Enhanced (Logarithmic)
+	cvar_t *s_quality = Cvar_Get ("s_quality", "0", CVAR_ARCHIVE);
+
 	s_swapstereo = Cvar_Get( "s_swapstereo", "0", CVAR_ARCHIVE );
 	s_ambient = Cvar_Get ("s_ambient", "1", 0);
 	s_oldresample = Cvar_Get ("s_oldresample", "0", CVAR_LATCHED);
+	S_BuildAttenuationTable(); // Build the attenuation lookup table.
 
 	if (SNDDMA_Init()) {
 		S_InitScaletable ();
@@ -520,7 +551,7 @@ static void S_Spatialize(channel_t *ch)
 	else CL_GetEntitySoundOrigin(ch->entnum, origin);
 	S_SpatializeOrigin(origin, ch->master_vol, ch->dist_mult, &ch->leftvol, &ch->rightvol);
 }
-
+/*
 static void S_SpatializeOrigin(const vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol)
 {
 	vec_t dot, dist, lscale, rscale, vol;
@@ -534,6 +565,143 @@ static void S_SpatializeOrigin(const vec3_t origin, float master_vol, float dist
 	*right_vol = (vol * rscale < 0) ? 0 : vol * rscale;
 	*left_vol = (vol * lscale < 0) ? 0 : vol * lscale;
 }
+*/
+/*
+// ====================================================================
+// FINAL, ROBUST, AND MATHEMATICALLY SAFE S_SpatializeOrigin
+// This version is safe, clear, and easy to understand and extend.
+// ====================================================================
+static void S_SpatializeOrigin(const vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol)
+{
+	vec3_t	source_vec;
+	float	dist;
+	float	vol;
+
+	source_vec[0] = origin[0] - listener_origin[0];
+	source_vec[1] = origin[1] - listener_origin[1];
+	source_vec[2] = origin[2] - listener_origin[2];
+
+	dist = VectorNormalize(source_vec); // This is safe and returns the distance.
+
+	// --- CRITICAL SAFETY CHECK for sounds at the listener's exact position ---
+	// If distance is zero (or very close), we can't spatialize. Play at full volume.
+	if (dist < 0.1f)
+	{
+		*left_vol = master_vol;
+		*right_vol = master_vol;
+		return;
+	}
+
+	// --- Attenuation Logic ---
+    float attenuation_factor;
+    extern cvar_t *s_quality;
+
+    if (s_quality && s_quality->integer != 0) // Enhanced Quality Mode
+    {
+        // Use the safe lookup table for attenuation.
+        // Convert distance to a table index.
+        int table_index = (int)((dist / SOUND_FULLVOLUME) * (ATTN_TABLE_SIZE / 8.0f));
+
+        // Clamp the index to the table bounds.
+        if (table_index < 0) table_index = 0;
+        if (table_index >= ATTN_TABLE_SIZE) table_index = ATTN_TABLE_SIZE - 1;
+
+        attenuation_factor = attn_table[table_index];
+    }
+    else // Classic (Default) Mode
+    {
+        // Use the original, linear attenuation model.
+        float linear_dist = (dist > SOUND_FULLVOLUME) ? (dist - SOUND_FULLVOLUME) * dist_mult : 0;
+        attenuation_factor = 1.0f - linear_dist;
+    }
+
+	vol = master_vol * attenuation_factor;
+
+	// --- Panning Logic ---
+	// Since source_vec is already normalized by VectorNormalize, this is simple.
+	float dot = DotProduct(listener_right, source_vec);
+	float rscale = 0.5f * (1.0f + dot);
+	float lscale = 1.0f - rscale;
+
+	// Final conversion and clamping to ensure values are always safe.
+	int right_i = (int)(vol * rscale);
+	int left_i = (int)(vol * lscale);
+
+	*right_vol = (right_i < 0) ? 0 : (right_i > 255) ? 255 : right_i;
+	*left_vol = (left_i < 0) ? 0 : (left_i > 255) ? 255 : left_i;
+}
+*/
+
+// ====================================================================
+// S_SpatializeOrigin with added Z-axis (vertical) processing
+// ====================================================================
+static void S_SpatializeOrigin(const vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol)
+{
+	vec3_t	source_vec;
+	float	dist;
+	float	vol;
+
+	source_vec[0] = origin[0] - listener_origin[0];
+	source_vec[1] = origin[1] - listener_origin[1];
+	source_vec[2] = origin[2] - listener_origin[2];
+
+	dist = VectorNormalize(source_vec);
+
+	if (dist < 0.1f)
+	{
+		*left_vol = master_vol;
+		*right_vol = master_vol;
+		return;
+	}
+
+	// --- Attenuation Logic (no changes here) ---
+    float attenuation_factor;
+    extern cvar_t *s_quality;
+
+    if (s_quality && s_quality->integer != 0) // Enhanced Quality Mode
+    {
+        int table_index = (int)((dist / SOUND_FULLVOLUME) * (ATTN_TABLE_SIZE / 8.0f));
+        if (table_index < 0) table_index = 0;
+        if (table_index >= ATTN_TABLE_SIZE) table_index = ATTN_TABLE_SIZE - 1;
+        attenuation_factor = attn_table[table_index];
+    }
+    else // Classic (Default) Mode
+    {
+        float linear_dist = (dist > SOUND_FULLVOLUME) ? (dist - SOUND_FULLVOLUME) * dist_mult : 0;
+        attenuation_factor = 1.0f - linear_dist;
+    }
+
+	vol = master_vol * attenuation_factor;
+
+	// --- Panning Logic ---
+	// Horizontal (left/right) panning - original logic
+	float dot_right = DotProduct(listener_right, source_vec);
+	float rscale = 0.5f * (1.0f + dot_right);
+	float lscale = 1.0f - rscale;
+
+    // --- NEW Z-AXIS LOGIC ---
+    // Vertical (up/down) panning, applied as a volume modifier
+    if (s_quality && s_quality->integer != 0) // Only for Enhanced mode
+    {
+        float dot_up = DotProduct(listener_up, source_vec);
+        // fabs(dot_up) gives a value from 0 (horizontal) to 1 (vertical).
+        // (1.0 - fabs(dot_up)) gives a multiplier that is 1.0 for horizontal
+        // sounds and falls to 0.0 for sounds directly above/below.
+        // We use pow(..., 0.5) to soften the effect, so sounds don't disappear completely.
+        float vertical_attenuation = pow(1.0f - fabs(dot_up), 0.5);
+        vol *= vertical_attenuation;
+    }
+    // --- END OF NEW Z-AXIS LOGIC ---
+
+	// Final conversion and clamping
+	int right_i = (int)(vol * rscale);
+	int left_i = (int)(vol * lscale);
+
+	*right_vol = (right_i < 0) ? 0 : (right_i > 255) ? 255 : right_i;
+	*left_vol = (left_i < 0) ? 0 : (left_i > 255) ? 255 : left_i;
+}
+
+
 
 void S_RawSamples(int samples, int rate, int width, int nchannels, byte *data) { /* Your full function body here */ }
 static void S_AddLoopSounds(void) { /* Your full function body here */ }

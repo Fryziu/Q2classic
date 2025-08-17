@@ -113,6 +113,7 @@ extern	playsound_t	s_pendingplays;
 extern cvar_t	*s_volume;
 extern cvar_t	*s_show;
 extern cvar_t	*s_loadas8bit;
+extern cvar_t	*s_quality;
 
 extern qboolean sound_started;
 extern SDL_mutex *s_sound_mutex;
