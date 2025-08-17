@@ -32,6 +32,7 @@ Internal defines and constants
 #define		SND_HASH_SIZE		32
 #define		MAX_PLAYSOUNDS		128
 #define		MAX_RAW_SAMPLES		8192
+#define 	MAX_HEARING_DISTANCE 2048.0f
 
 /*
 ====================================================================
@@ -48,10 +49,10 @@ SDL_mutex  *s_sound_mutex = NULL;
 
 cvar_t *s_volume, *s_show, *s_loadas8bit;
 cvar_t *s_testsound, *s_khz, *s_mixahead, *s_primary;
-cvar_t *s_swapstereo, *s_ambient, *s_oldresample;
+cvar_t *s_swapstereo, *s_ambient, *s_oldresample, *s_quality;
 
-//AI 0=Classic, 1=Attenuation, 2=Positional, 3=Filtering
-cvar_t *s_quality;
+//AI s_quality 0=Classic, 1=Attenuation, 2=Positional, 3=Filtering
+
 
 //AI A pre-calculated lookup table for our enhanced attenuation model.
 //AI Replaces a slow float division with a fast array lookup.
@@ -74,7 +75,8 @@ static void S_Play_f(void);
 static void S_SoundList_f(void);
 static void S_SoundInfo_f(void);
 static void S_Spatialize(channel_t *ch);
-static void S_SpatializeOrigin(const vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol);
+//static void S_SpatializeOrigin(const vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol);
+static void S_SpatializeOrigin(channel_t *ch, const vec3_t origin, float master_vol, float dist_mult);
 static struct sfx_s *S_RegisterSexedSound(int entnum, const char *base);
 static channel_t *S_PickChannel(int entnum, int entchannel);
 static sfx_t *S_FindName (const char *name, qboolean create);
@@ -162,13 +164,10 @@ void S_Init(void)
 	s_mixahead = Cvar_Get ("s_mixahead", "0.2", CVAR_ARCHIVE);
 	s_show = Cvar_Get ("s_show", "0", 0);
 	s_testsound = Cvar_Get ("s_testsound", "0", 0);
-//	s_primary = Cvar_Get ("s_primary", "0", CVAR_ARCHIVE|CVAR_LATCHED);
-	// 0 = Classic (Linear), 1 = Enhanced (Logarithmic)
-	cvar_t *s_quality = Cvar_Get ("s_quality", "0", CVAR_ARCHIVE);
-
 	s_swapstereo = Cvar_Get( "s_swapstereo", "0", CVAR_ARCHIVE );
 	s_ambient = Cvar_Get ("s_ambient", "1", 0);
 	s_oldresample = Cvar_Get ("s_oldresample", "0", CVAR_LATCHED);
+	s_quality = Cvar_Get ("s_quality", "3", CVAR_ARCHIVE);
 	S_BuildAttenuationTable(); // Build the attenuation lookup table.
 
 	if (SNDDMA_Init()) {
@@ -540,7 +539,7 @@ static channel_t *S_PickChannel(int entnum, int entchannel)
 	memset(&channels[first_to_die], 0, sizeof(channel_t));
 	return &channels[first_to_die];
 }
-
+/*
 static void S_Spatialize(channel_t *ch)
 {
 	vec3_t origin;
@@ -551,6 +550,31 @@ static void S_Spatialize(channel_t *ch)
 	else CL_GetEntitySoundOrigin(ch->entnum, origin);
 	S_SpatializeOrigin(origin, ch->master_vol, ch->dist_mult, &ch->leftvol, &ch->rightvol);
 }
+*/
+// This is the correct version of S_Spatialize
+static void S_Spatialize(channel_t *ch)
+{
+	vec3_t origin;
+
+	// Sounds attached to the player are always max volume, no occlusion.
+	if (ch->entnum == cl.playernum+1) {
+		ch->leftvol = ch->master_vol;
+		ch->rightvol = ch->master_vol;
+        ch->occlusion = 0;
+		return;
+	}
+
+	// Get the sound's origin in the world.
+	if (ch->fixed_origin)
+		VectorCopy(ch->origin, origin);
+	else
+		CL_GetEntitySoundOrigin(ch->entnum, origin);
+
+	// Call the new, correct SpatializeOrigin function.
+	// It will write leftvol, rightvol, and occlusion directly into 'ch'.
+	S_SpatializeOrigin(ch, origin, ch->master_vol, ch->dist_mult);
+}
+
 /*
 static void S_SpatializeOrigin(const vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol)
 {
@@ -635,6 +659,7 @@ static void S_SpatializeOrigin(const vec3_t origin, float master_vol, float dist
 // ====================================================================
 // S_SpatializeOrigin with added Z-axis (vertical) processing
 // ====================================================================
+/*
 static void S_SpatializeOrigin(const vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol)
 {
 	vec3_t	source_vec;
@@ -700,7 +725,78 @@ static void S_SpatializeOrigin(const vec3_t origin, float master_vol, float dist
 	*right_vol = (right_i < 0) ? 0 : (right_i > 255) ? 255 : right_i;
 	*left_vol = (left_i < 0) ? 0 : (left_i > 255) ? 255 : left_i;
 }
+*/
 
+
+// ====================================================================
+// S_SpatializeOrigin with a more gameplay-friendly attenuation model
+// ====================================================================
+static void S_SpatializeOrigin(channel_t *ch, const vec3_t origin, float master_vol, float dist_mult)
+{
+	vec3_t	source_vec;
+	float	dist;
+	float	vol;
+
+	VectorSubtract(origin, listener_origin, source_vec);
+	dist = VectorNormalize(source_vec);
+
+	if (dist < 0.1f) {
+		ch->leftvol = master_vol; ch->rightvol = master_vol;
+		ch->occlusion = 0;
+		return;
+	}
+
+    float attenuation_factor;
+    extern cvar_t *s_quality;
+
+    if (s_quality && s_quality->integer >= 1) // Enhanced Quality Mode
+    {
+        // Use a linear interpolation (Lerp) model for a gentle, controllable falloff.
+        const float MIN_ATTENUATION = 0.05f; // Sound at max distance will have 5% volume.
+
+        if (dist <= SOUND_FULLVOLUME) {
+            attenuation_factor = 1.0f;
+        } else {
+            // Calculate how far we are into the falloff range (0.0 to 1.0)
+            float falloff_range = MAX_HEARING_DISTANCE - SOUND_FULLVOLUME;
+            float dist_in_falloff = dist - SOUND_FULLVOLUME;
+            float falloff_percent = dist_in_falloff / falloff_range;
+
+            // Clamp the value to ensure it's between 0.0 and 1.0
+            if (falloff_percent > 1.0f) falloff_percent = 1.0f;
+            if (falloff_percent < 0.0f) falloff_percent = 0.0f;
+
+            // Linearly interpolate the volume
+            attenuation_factor = 1.0f - falloff_percent * (1.0f - MIN_ATTENUATION);
+        }
+    }
+    else // Classic (Default) Mode
+    {
+        // Use the original, linear attenuation model.
+        float linear_dist = (dist > SOUND_FULLVOLUME) ? (dist - SOUND_FULLVOLUME) * dist_mult : 0;
+        attenuation_factor = 1.0f - linear_dist;
+    }
+
+	vol = master_vol * attenuation_factor;
+
+	// --- Panning & Occlusion Logic (no changes here) ---
+	float dot_right = DotProduct(listener_right, source_vec);
+	float rscale = 0.5f * (1.0f + dot_right);
+	float lscale = 1.0f - rscale;
+
+    ch->occlusion = 0;
+    if (s_quality && s_quality->integer >= 2) {
+        float dot_up = DotProduct(listener_up, source_vec);
+        float vertical_attenuation = 1.0f - (fabs(dot_up) * 0.5f);
+        vol *= vertical_attenuation;
+        if (s_quality && s_quality->integer >= 3) {
+            ch->occlusion = (int)(fabs(dot_up) * 255.0f);
+        }
+    }
+
+	ch->leftvol = (int)(vol * lscale);
+	ch->rightvol = (int)(vol * rscale);
+}
 
 
 void S_RawSamples(int samples, int rate, int width, int nchannels, byte *data) { /* Your full function body here */ }

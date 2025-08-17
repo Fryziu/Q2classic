@@ -88,6 +88,10 @@ typedef struct
 	int			rightvol;
 	int			end;
 	int 		pos;
+	// --- THESE MUST EXIST for s_quality ---
+	int         occlusion;     // 0 = clear, 255 = fully muffled
+	int         last_sample_l; // State for the low-pass filter
+	int         last_sample_r; // State for the low-pass fi
 	int			entnum;
 	int			entchannel;
 	vec3_t		origin;
