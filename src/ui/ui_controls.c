@@ -219,7 +219,8 @@ void ConsoleFunc( void *unused )
 	M_ForceMenuOff ();
 	cls.key_dest = key_console;
 }
-
+// sound engine is rewritten, so this function can be erased
+/*
 static void UpdateSoundQualityFunc( void *unused )
 {
 	switch (s_options_quality_list.curvalue)
@@ -258,7 +259,7 @@ static void UpdateSoundQualityFunc( void *unused )
 
 	CL_Snd_Restart_f();
 }
-
+*/
 static void Options_MenuDraw ( menuframework_s *self )
 {
 	M_Banner( "m_banner_options" );

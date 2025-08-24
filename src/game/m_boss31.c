@@ -538,11 +538,6 @@ void jorg_firebullet (edict_t *self)
 
 void jorg_attack(edict_t *self)
 {
-	vec3_t	vec;
-	float	range;
-	
-	VectorSubtract (self->enemy->s.origin, self->s.origin, vec);
-	range = VectorLength (vec);
 
 	if (random() <= 0.75)
 	{
@@ -602,7 +597,6 @@ qboolean Jorg_CheckAttack (edict_t *self)
 	vec3_t	temp;
 	float	chance;
 	trace_t	tr;
-	qboolean	enemy_infront;
 	int			enemy_range;
 	float		enemy_yaw;
 
@@ -621,7 +615,7 @@ qboolean Jorg_CheckAttack (edict_t *self)
 			return false;
 	}
 	
-	enemy_infront = infront(self, self->enemy);
+	infront(self, self->enemy);
 	enemy_range = range(self, self->enemy);
 	VectorSubtract (self->enemy->s.origin, self->s.origin, temp);
 	enemy_yaw = vectoyaw(temp);

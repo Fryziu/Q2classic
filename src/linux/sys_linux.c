@@ -74,7 +74,9 @@ void Sys_Printf (const char *fmt, ...)
 	va_end (argptr);
 
     if (nostdout && nostdout->integer)
+    {
         return;
+    }
 
 	for (p = (unsigned char *)text; *p; p++) {
 		*p &= 0x7f;

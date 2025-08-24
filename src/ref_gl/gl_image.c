@@ -791,7 +791,6 @@ qboolean WriteTGA( const char *name, byte *buffer, int width, int height )
 {
 	FILE		*f;
 	int			i, c, temp;
-	size_t		size;
 
 	if( !(f = fopen( name, "wb" ) ) ) {
 		Com_Printf( "WriteTGA: Couldn't create a file: %s\n", name ); 
@@ -813,7 +812,7 @@ qboolean WriteTGA( const char *name, byte *buffer, int width, int height )
 		buffer[i] = buffer[i+2];
 		buffer[i+2] = temp;
 	}
-	size = fwrite( buffer, 1, c, f );
+	fwrite( buffer, 1, c, f );
 	fclose( f );
 
 	return true;

@@ -166,13 +166,22 @@ static qboolean CompareAttributes(const char *path, const char *name,
 {
 	struct stat st;
 	char fn[MAX_OSPATH];
+	int path_len;
+
+
 
 // . and .. never match
 	if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
 		return false;
 
 	//return true;
-	sprintf(fn, "%s/%s", path, name);
+	  path_len = snprintf(fn, sizeof(fn), "%s/%s", path, name);
+	    if (path_len < 0 || path_len >= sizeof(fn))
+	    {
+	        // Path is too long to stat, treat it as a non-match.
+	        Com_DPrintf("CompareAttributes: Path is too long to stat, skipping: %s/%s\n", path, name);
+	        return false;
+	    }
 	if (stat(fn, &st) == -1)
 		return false; // shouldn't happen
 
@@ -212,9 +221,22 @@ char *Sys_FindFirst (const char *path, unsigned musthave, unsigned canhave)
 		if (!*findpattern || glob_match(findpattern, d->d_name)) {
 //			if (*findpattern)
 //				printf("%s matched %s\n", findpattern, d->d_name);
-			if (CompareAttributes(findbase, d->d_name, musthave, canhave)) {
-				sprintf (findpath, "%s/%s", findbase, d->d_name);
-				return findpath;
+			if (CompareAttributes(findbase, d->d_name, musthave, canhave))
+			{
+			    int path_len;
+
+			    path_len = snprintf (findpath, sizeof(findpath), "%s/%s", findbase, d->d_name);
+
+			    // Check for snprintf errors or truncation.
+			    if (path_len < 0 || path_len >= sizeof(findpath))
+			    {
+			        // The path was too long and got truncated, or an error occurred.
+			        // Log a warning (optional but good practice) and skip this file.
+			        Com_DPrintf("Sys_FindFirst: Path is too long to process, skipping: %s/%s\n", findbase, d->d_name);
+			        continue; // Move to the next directory entry.
+			    }
+
+			    return findpath;
 			}
 		}
 	}
@@ -231,9 +253,20 @@ char *Sys_FindNext (unsigned musthave, unsigned canhave)
 		if (!*findpattern || glob_match(findpattern, d->d_name)) {
 //			if (*findpattern)
 //				printf("%s matched %s\n", findpattern, d->d_name);
-			if (CompareAttributes(findbase, d->d_name, musthave, canhave)) {
-				sprintf (findpath, "%s/%s", findbase, d->d_name);
-				return findpath;
+			if (CompareAttributes(findbase, d->d_name, musthave, canhave))
+			{
+			    int path_len;
+
+			    path_len = snprintf (findpath, sizeof(findpath), "%s/%s", findbase, d->d_name);
+
+			    // Check for snprintf errors or truncation.
+			    if (path_len < 0 || path_len >= sizeof(findpath))
+			    {
+			        Com_DPrintf("Sys_FindNext: Path is too long to process, skipping: %s/%s\n", findbase, d->d_name);
+			        continue;
+			    }
+
+			    return findpath;
 			}
 		}
 	}

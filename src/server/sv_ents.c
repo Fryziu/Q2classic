@@ -382,7 +382,6 @@ void SV_RecordDemoMessage (void)
 	sizebuf_t	buf;
 	byte		buf_data[32768];
 	int			len;
-	size_t		size;
 
 	if (!svs.demofile)
 		return;
@@ -418,6 +417,6 @@ void SV_RecordDemoMessage (void)
 
 	// now write the entire message to the file, prefixed by the length
 	len = LittleLong (buf.cursize);
-	size = fwrite (&len, 4, 1, svs.demofile);
-	size = fwrite (buf.data, buf.cursize, 1, svs.demofile);
+	fwrite (&len, 4, 1, svs.demofile);
+	fwrite (buf.data, buf.cursize, 1, svs.demofile);
 }

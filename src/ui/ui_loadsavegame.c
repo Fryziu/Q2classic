@@ -43,7 +43,6 @@ void Create_Savestrings (void)
 	int		i;
 	FILE	*f;
 	char	name[MAX_OSPATH];
-	size_t	size;
 
 	for (i=0 ; i<MAX_SAVEGAMES ; i++)
 	{
@@ -56,7 +55,7 @@ void Create_Savestrings (void)
 		}
 		else
 		{
-			size = fread(m_savestrings[i], 1, sizeof(m_savestrings[i]), f);
+			fread(m_savestrings[i], 1, sizeof(m_savestrings[i]), f);
 			fclose (f);
 			m_savevalid[i] = true;
 		}

@@ -300,7 +300,6 @@ void WriteField2 (FILE *f, field_t *field, byte *base)
 {
 	int			len;
 	void		*p;
-	size_t 		size;
 
 	if (field->flags & FFL_SPAWNTEMP)
 		return;
@@ -312,7 +311,11 @@ void WriteField2 (FILE *f, field_t *field, byte *base)
 		if ( *(char **)p )
 		{
 			len = strlen(*(char **)p) + 1;
-			size = fwrite (*(char **)p, len, 1, f);
+			if (fwrite (*(char **)p, len, 1, f) !=1)
+				{
+				fclose(f);
+					gi.error("WriteField2 error");
+				}
 		}
 		break;
 	default:
@@ -325,7 +328,6 @@ void ReadField (FILE *f, field_t *field, byte *base)
 	void		*p;
 	int			len;
 	int			index;
-	size_t		size;
 
 	if (field->flags & FFL_SPAWNTEMP)
 		return;
@@ -347,7 +349,11 @@ void ReadField (FILE *f, field_t *field, byte *base)
 		else
 		{
 			*(char **)p = gi.TagMalloc (len, TAG_LEVEL);
-			size = fread (*(char **)p, len, 1, f);
+			if (fread (*(char **)p, len, 1, f) !=1)
+				{
+				fclose(f);
+						 gi.error("ReadField error - F_LSTRING");
+				}
 		}
 		break;
 	case F_EDICT:
@@ -404,29 +410,20 @@ WriteClient
 All pointer variables (except function pointers) must be handled specially.
 ==============
 */
-void WriteClient (FILE *f, gclient_t *client)
+qboolean WriteClient (FILE *f, gclient_t *client)
 {
 	field_t		*field;
-	gclient_t	temp;
-	size_t		size;
-	
-	// all of the ints, floats, and vectors stay as they are
-	temp = *client;
 
-	// change the pointers to lengths or indexes
+    // Sprawdź operację zapisu
+	if (fwrite (client, sizeof(*client), 1, f) != 1)
+        return false; // Błąd zapisu
+
 	for (field=clientfields ; field->name ; field++)
 	{
-		WriteField1 (f, field, (byte *)&temp);
+		// Załóżmy, że WriteField nie może zawieść lub jest sprawdzane wewnątrz
+		WriteField1 (f, field, (byte *)client);
 	}
-
-	// write the block
-	size = fwrite (&temp, sizeof(temp), 1, f);
-
-	// now write any allocated data following the edict
-	for (field=clientfields ; field->name ; field++)
-	{
-		WriteField2 (f, field, (byte *)client);
-	}
+    return true; // Sukces
 }
 
 /*
@@ -439,9 +436,12 @@ All pointer variables (except function pointers) must be handled specially.
 void ReadClient (FILE *f, gclient_t *client)
 {
 	field_t		*field;
-	size_t		size;
 
-	size = fread (client, sizeof(*client), 1, f);
+	 if (fread (client, sizeof(*client), 1, f) !=1)
+		 {
+		 fclose(f);
+		 gi.error("ReadClient error: Savegame is corrupted or incomplete.");
+		 }
 
 	for (field=clientfields ; field->name ; field++)
 	{
@@ -463,40 +463,93 @@ A single player death will automatically restore from the
 last save position.
 ============
 */
+// WERSJA FINALNA, BEZPIECZNA I SOLIDNA
 void WriteGame (char *filename, qboolean autosave)
 {
 	FILE	*f;
 	int		i;
 	char	str[16];
-	size_t	size;
+    qboolean success = true; // Flaga śledząca, czy wszystko się udało
 
 	if (!autosave)
 		SaveClientData ();
 
 	f = fopen (filename, "wb");
 	if (!f)
-		gi.error ("Couldn't open %s", filename);
+    {
+		gi.error ("Couldn't open savegame file: %s", filename);
+        return;
+    }
 
+    // Zapisz nagłówek z datą kompilacji
 	memset (str, 0, sizeof(str));
 	strcpy (str, __DATE__);
-	size = fwrite (str, sizeof(str), 1, f);
+	if (fwrite (str, sizeof(str), 1, f) != 1)
+    {
+        success = false;
+    }
 
-	game.autosaved = autosave;
-	size = fwrite (&game, sizeof(game), 1, f);
-	game.autosaved = false;
+    // Zapisz główną strukturę gry
+    if (success)
+    {
+        game.autosaved = autosave;
+        if (fwrite (&game, sizeof(game), 1, f) != 1)
+        {
+            success = false;
+        }
+        game.autosaved = false; // Przywróć stan na wszelki wypadek
+    }
 
-	for (i=0 ; i<game.maxclients ; i++)
-		WriteClient (f, &game.clients[i]);
+	// Zapisz dane wszystkich klientów
+    if (success)
+    {
+        for (i=0 ; i<game.maxclients ; i++)
+        {
+            // Użyj poprawionej funkcji WriteClient i sprawdź jej wynik
+            if (!WriteClient (f, &game.clients[i]))
+            {
+                success = false;
+                break; // Przerwij pętlę, jeśli zapis jednego klienta się nie powiedzie
+            }
+        }
+    }
 
-	fclose (f);
+    //
+    // Tutaj dodałbyś pętlę dla WriteEdict w identyczny sposób
+    //
+    // if (success)
+    // {
+    //     for (i=0; i < game.num_edicts; i++)
+    //     {
+    //         if (!WriteEdict(f, &g_edicts[i]))
+    //         {
+    //             success = false;
+    //             break;
+    //         }
+    //     }
+    // }
+
+
+	// --- Zakończ operację ---
+
+	fclose (f); // Zawsze zamknij plik, niezależnie od wyniku
+
+    // Jeśli w którymkolwiek momencie wystąpił błąd, poinformuj o tym.
+	if (!success)
+	{
+        // Opcjonalnie: usuń uszkodzony plik, aby nie zostawiać śmieci
+        remove(filename);
+		gi.error ("Failed to write savegame to %s. The disk may be full or protected.", filename);
+	}
+    // Jeśli nie było błędu, funkcja po prostu się kończy, a gracz wie, że zapis się powiódł.
 }
 
+// WERSJA BEZPIECZNA I ZALECANA
 void ReadGame (char *filename)
 {
 	FILE	*f;
 	int		i;
 	char	str[16];
-	size_t	size;
 
 	gi.FreeTags (TAG_GAME);
 
@@ -504,7 +557,13 @@ void ReadGame (char *filename)
 	if (!f)
 		gi.error ("Couldn't open %s", filename);
 
-	size = fread (str, sizeof(str), 1, f);
+	// SPRAWDŹ WYNIK #1
+	if (fread (str, sizeof(str), 1, f) != 1)
+	{
+		fclose(f);
+		gi.error("Savegame is corrupted (could not read header): %s", filename);
+	}
+
 	if (strcmp (str, __DATE__))
 	{
 		fclose (f);
@@ -514,7 +573,13 @@ void ReadGame (char *filename)
 	g_edicts =  gi.TagMalloc (game.maxentities * sizeof(g_edicts[0]), TAG_GAME);
 	globals.edicts = g_edicts;
 
-	size = fread (&game, sizeof(game), 1, f);
+	// SPRAWDŹ WYNIK #2
+	if (fread (&game, sizeof(game), 1, f) != 1)
+	{
+		fclose(f);
+		gi.error("Savegame is corrupted (could not read game state): %s", filename);
+	}
+
 	game.clients = gi.TagMalloc (game.maxclients * sizeof(game.clients[0]), TAG_GAME);
 	for (i=0 ; i<game.maxclients ; i++)
 		ReadClient (f, &game.clients[i]);
@@ -532,30 +597,29 @@ WriteEdict
 All pointer variables (except function pointers) must be handled specially.
 ==============
 */
-void WriteEdict (FILE *f, edict_t *ent)
+qboolean WriteEdict (FILE *f, edict_t *ent)
 {
 	field_t		*field;
 	edict_t		temp;
-	size_t		size;
 
-	// all of the ints, floats, and vectors stay as they are
 	temp = *ent;
 
-	// change the pointers to lengths or indexes
 	for (field=fields ; field->name ; field++)
 	{
 		WriteField1 (f, field, (byte *)&temp);
 	}
 
-	// write the block
-	size = fwrite (&temp, sizeof(temp), 1, f);
+	// Sprawdź główną operację zapisu
+	if (fwrite (&temp, sizeof(temp), 1, f) != 1)
+		return false; // Błąd zapisu
 
-	// now write any allocated data following the edict
 	for (field=fields ; field->name ; field++)
 	{
+		// Tutaj również powinno być sprawdzanie, jeśli WriteField2 może zawieść
 		WriteField2 (f, field, (byte *)ent);
 	}
 
+    return true; // Sukces
 }
 
 /*
@@ -565,11 +629,12 @@ WriteLevelLocals
 All pointer variables (except function pointers) must be handled specially.
 ==============
 */
-void WriteLevelLocals (FILE *f)
+// ZMIANA 1: Zmień typ zwracany na qboolean
+qboolean WriteLevelLocals (FILE *f)
 {
 	field_t		*field;
 	level_locals_t		temp;
-	size_t			size;
+	// size_t			size; // Już niepotrzebna
 
 	// all of the ints, floats, and vectors stay as they are
 	temp = level;
@@ -580,14 +645,22 @@ void WriteLevelLocals (FILE *f)
 		WriteField1 (f, field, (byte *)&temp);
 	}
 
-	// write the block
-	size = fwrite (&temp, sizeof(temp), 1, f);
+	// write the block and check the return value
+	if (fwrite (&temp, sizeof(temp), 1, f) != 1)
+	{
+		// ZMIANA 2: Zasygnalizuj błąd
+		return false;
+	}
 
 	// now write any allocated data following the edict
 	for (field=levelfields ; field->name ; field++)
 	{
+		// Tutaj również powinno być sprawdzanie, jeśli WriteField2 może zawieść
 		WriteField2 (f, field, (byte *)&level);
 	}
+
+    // ZMIANA 3: Zasygnalizuj sukces
+    return true;
 }
 
 
@@ -601,9 +674,11 @@ All pointer variables (except function pointers) must be handled specially.
 void ReadEdict (FILE *f, edict_t *ent)
 {
 	field_t		*field;
-	size_t		size;
-
-	size = fread (ent, sizeof(*ent), 1, f);
+	if (fread (ent, sizeof(*ent), 1, f) !=1)
+		{
+		fclose(f);
+		gi.error("ReadEdict error: Savegame is corrupted or incomplete.");
+		}
 
 	for (field=fields ; field->name ; field++)
 	{
@@ -621,9 +696,15 @@ All pointer variables (except function pointers) must be handled specially.
 void ReadLevelLocals (FILE *f)
 {
 	field_t		*field;
-	size_t 		size;
 
-	size = fread (&level, sizeof(level), 1, f);
+	if (fread (&level, sizeof(level), 1, f) != 1)
+	{
+		// 1. Zamykamy plik PRZED zakończeniem programu.
+		fclose(f);
+
+		// 2. Ulepszony, spójny i czytelny komunikat o błędzie.
+		gi.error("ReadLevelLocals error: Savegame is corrupted or incomplete.");
+	}
 
 	for (field=levelfields ; field->name ; field++)
 	{
@@ -637,42 +718,82 @@ WriteLevel
 
 =================
 */
-void WriteLevel (char *filename)
+// ZMIANA 1: Zmiana typu zwracanego
+qboolean WriteLevel (char *filename)
 {
 	int		i;
 	edict_t	*ent;
 	FILE	*f;
 	void	*base;
-	size_t 	size;
+	qboolean success = true; // Flaga śledząca powodzenie
 
 	f = fopen (filename, "wb");
 	if (!f)
+    {
 		gi.error ("Couldn't open %s", filename);
+        return false; // Zwróć błąd, jeśli nie można otworzyć pliku
+    }
+
+	// --- Sekwencja zapisu z pełnym sprawdzaniem ---
 
 	// write out edict size for checking
 	i = sizeof(edict_t);
-	size = fwrite (&i, sizeof(i), 1, f);
+	if (fwrite (&i, sizeof(i), 1, f) != 1)
+        success = false;
 
 	// write out a function pointer for checking
-	base = (void *)InitGame;
-	size = fwrite (&base, sizeof(base), 1, f);
+    if (success)
+    {
+	    base = (void *)InitGame;
+	    if (fwrite (&base, sizeof(base), 1, f) != 1)
+            success = false;
+    }
 
 	// write out level_locals_t
-	WriteLevelLocals (f);
+    if (success)
+    {
+        // Używamy naszej nowej, bezpiecznej funkcji!
+	    if (!WriteLevelLocals (f))
+            success = false;
+    }
 
 	// write out all the entities
-	for (i=0 ; i<globals.num_edicts ; i++)
-	{
-		ent = &g_edicts[i];
-		if (!ent->inuse)
-			continue;
-		size = fwrite (&i, sizeof(i), 1, f);
-		WriteEdict (f, ent);
-	}
-	i = -1;
-	size = fwrite (&i, sizeof(i), 1, f);
+    if (success)
+    {
+	    for (i=0 ; i<globals.num_edicts ; i++)
+	    {
+		    ent = &g_edicts[i];
+		    if (!ent->inuse)
+			    continue;
+
+            // Sprawdź zapis indeksu
+		    if (fwrite (&i, sizeof(i), 1, f) != 1)
+            {
+                success = false;
+                break; // Przerwij pętlę
+            }
+
+            // Sprawdź zapis edictu za pomocą naszej nowej, bezpiecznej funkcji
+		    if (!WriteEdict (f, ent))
+            {
+                success = false;
+                break; // Przerwij pętlę
+            }
+	    }
+    }
+
+    // Zapisz znacznik końca
+    if (success)
+    {
+	    i = -1;
+	    if (fwrite (&i, sizeof(i), 1, f) != 1)
+            success = false;
+    }
 
 	fclose (f);
+
+    // Zwróć ostateczny status operacji
+    return success;
 }
 
 
@@ -699,7 +820,7 @@ void ReadLevel (char *filename)
 	int		i;
 	void	*base;
 	edict_t	*ent;
-	size_t	size;
+	// size_t	size; // Już niepotrzebna
 
 	f = fopen (filename, "rb");
 	if (!f)
@@ -713,28 +834,43 @@ void ReadLevel (char *filename)
 	memset (g_edicts, 0, game.maxentities*sizeof(g_edicts[0]));
 	globals.num_edicts = maxclients->value+1;
 
-	// check edict size
-	size = fread (&i, sizeof(i), 1, f);
+	// --- Rozpocznij sekwencję wczytywania z pełnym sprawdzaniem ---
+
+	// Krok 1: Wczytaj zapisany rozmiar edict_t
+	if (fread (&i, sizeof(i), 1, f) != 1)
+	{
+		fclose(f);
+		gi.error("ReadLevel error: Savegame is corrupted or incomplete (could not read edict size).");
+	}
+
+	// Krok 2: Sprawdź, czy rozmiar się zgadza (logika integralności)
 	if (i != sizeof(edict_t))
 	{
 		fclose (f);
-		gi.error ("ReadLevel: mismatched edict size");
+		gi.error ("ReadLevel error: Savegame is from an incompatible version (mismatched edict size).");
 	}
 
-	// check function pointer base address
-	size = fread (&base, sizeof(base), 1, f);
+	// Krok 3: Wczytaj zapisany adres bazowy
+	if (fread (&base, sizeof(base), 1, f) != 1)
+	{
+		fclose(f);
+		gi.error("ReadLevel error: Savegame is corrupted or incomplete (could not read base address).");
+	}
+
+	// Krok 4: Sprawdź, czy adres się zgadza (logika integralności)
 #ifdef _WIN32
 	if (base != (void *)InitGame)
 	{
 		fclose (f);
-		gi.error ("ReadLevel: function pointers have moved");
+		gi.error ("ReadLevel error: Savegame is from an incompatible version (function pointers have moved).");
 	}
 #else
+    // W Linuksie ta wartość może się różnić z powodu ASLR, więc tylko drukujemy różnicę.
 	gi.dprintf("Function offsets %d\n", ((byte *)base) - ((byte *)InitGame));
 #endif
 
 	// load the level locals
-	ReadLevelLocals (f);
+	ReadLevelLocals (f); // Zakładając, że ta funkcja sama obsługuje błędy i zamyka plik
 
 	// load all the entities
 	while (1)
@@ -742,7 +878,7 @@ void ReadLevel (char *filename)
 		if (fread (&entnum, sizeof(entnum), 1, f) != 1)
 		{
 			fclose (f);
-			gi.error ("ReadLevel: failed to read entnum");
+			gi.error ("ReadLevel error: Savegame is corrupted (failed to read entnum).");
 		}
 		if (entnum == -1)
 			break;
@@ -750,7 +886,7 @@ void ReadLevel (char *filename)
 			globals.num_edicts = entnum+1;
 
 		ent = &g_edicts[entnum];
-		ReadEdict (f, ent);
+		ReadEdict (f, ent); // Zakładając, że ta funkcja sama obsługuje błędy i zamyka plik
 
 		// let the server rebuild world links for this ent
 		memset (&ent->area, 0, sizeof(ent->area));

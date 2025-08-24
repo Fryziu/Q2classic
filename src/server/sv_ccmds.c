@@ -870,7 +870,6 @@ static void SV_ServerRecord_f (void)
 	sizebuf_t	buf;
 	int		len;
 	int		i;
-	size_t	size;
 
 	if (Cmd_Argc() != 2) {
 		Com_Printf ("serverrecord <demoname>\n");
@@ -935,8 +934,8 @@ static void SV_ServerRecord_f (void)
 	// write it to the demo file
 	Com_DPrintf ("signon message length: %i\n", buf.cursize);
 	len = LittleLong (buf.cursize);
-	size = fwrite (&len, 4, 1, svs.demofile);
-	size = fwrite (buf.data, buf.cursize, 1, svs.demofile);
+	fwrite (&len, 4, 1, svs.demofile);
+	fwrite (buf.data, buf.cursize, 1, svs.demofile);
 
 	// the rest of the demo file will be individual frames
 }

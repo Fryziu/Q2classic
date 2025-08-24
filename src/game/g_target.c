@@ -412,7 +412,6 @@ Fires a blaster bolt in the set direction when triggered.
 dmg		default is 15
 speed	default is 1000
 */
-
 void use_target_blaster (edict_t *self, edict_t *other, edict_t *activator)
 {
 	int effect;
@@ -424,7 +423,8 @@ void use_target_blaster (edict_t *self, edict_t *other, edict_t *activator)
 	else
 		effect = EF_BLASTER;
 
-	fire_blaster (self, self->s.origin, self->movedir, self->dmg, self->speed, EF_BLASTER, MOD_TARGET_BLASTER);
+    // Pass the 'effect' variable to the function.
+	fire_blaster (self, self->s.origin, self->movedir, self->dmg, self->speed, effect, MOD_TARGET_BLASTER);
 	gi.sound (self, CHAN_VOICE, self->noise_index, 1, ATTN_NORM, 0);
 }
 

@@ -330,7 +330,7 @@ typedef struct model_s
 
 void	Mod_Init (void);
 
-mleaf_t *Mod_PointInLeaf (const float *p, const bspModel_t *model);
+mleaf_t *Mod_PointInLeaf (const vec3_t p, const bspModel_t *model);
 byte	*Mod_ClusterPVS (int cluster, const bspModel_t *model);
 
 void	Mod_Modellist_f (void);

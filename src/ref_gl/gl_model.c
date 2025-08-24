@@ -1286,7 +1286,7 @@ static void Mod_LoadAliasMD3Model ( model_t *mod, byte *rawdata, int length )
 	aliasFrame_t		*poutframe;
 	aliasModel_t		*poutmodel;
 	byte				*buf, *rawend;
-	int					numFrames, numTags, numMeshes;
+	int					numFrames, numMeshes;
 	int					numTris[MD3_MAX_MESHES], numSkins[MD3_MAX_MESHES], numVerts[MD3_MAX_MESHES];
 	float				s[2], c[2];
 	vec3_t				normal;
@@ -1310,7 +1310,7 @@ static void Mod_LoadAliasMD3Model ( model_t *mod, byte *rawdata, int length )
 	else if ( numFrames > MD3_MAX_FRAMES )
 		Com_Error (ERR_DROP, "Mod_LoadAliasMD3Model: %s has too many frames: %d > %d\n", mod->name, numFrames, MD3_MAX_FRAMES );
 
-	numTags = LittleLong ( header->num_tags );
+//	LittleLong ( header->num_tags );
 	/*if ( numTags < 0 ) 
 		Com_Error (ERR_DROP, "Mod_LoadAliasMD3Model: %s has bad number of tags: %d\n", mod->name, numTags );
 	else if ( numTags > MD3_MAX_TAGS )
