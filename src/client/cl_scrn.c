@@ -849,7 +849,7 @@ static const char	*sb_nums[2][11] =
 
 #define	ICON_WIDTH	24
 #define	ICON_HEIGHT	24
-#define	CHAR_WIDTH	16
+#define	CON_CHAR_WIDTH	16
 #define	ICON_SPACE	8
 
 
@@ -940,13 +940,13 @@ void SCR_DrawField (int x, int y, int color, int width, int value)
 	color &= 1;
 
 	SCR_AddDirtyPoint (x, y);
-	SCR_AddDirtyPoint (x+width*CHAR_WIDTH+2, y+23);
+	SCR_AddDirtyPoint (x+width*CON_CHAR_WIDTH+2, y+23);
 
 	Com_sprintf (num, sizeof(num), "%i", value);
 	l = strlen(num);
 	if (l > width)
 		l = width;
-	x += 2 + CHAR_WIDTH*(width - l);
+	x += 2 + CON_CHAR_WIDTH*(width - l);
 
 	ptr = num;
 	while (*ptr && l)
@@ -957,7 +957,7 @@ void SCR_DrawField (int x, int y, int color, int width, int value)
 			frame = *ptr -'0';
 
 		Draw_Pic (x,y,sb_nums[color][frame], cl_hudalpha->value); //hud nums
-		x += CHAR_WIDTH;
+		x += CON_CHAR_WIDTH;
 		ptr++;
 		l--;
 	}

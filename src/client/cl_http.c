@@ -59,7 +59,7 @@ libcurl callback to update progress info. Mainly just used as
 a way to cancel the transfer if required.
 ===============
 */
-static int CL_HTTP_Progress (void *clientp, double dltotal, double dlnow, double ultotal, double ulnow)
+static int CL_HTTP_Progress (void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)
 {
 	dlhandle_t *dl;
 
@@ -297,7 +297,7 @@ static void CL_StartHTTPDownload (dlqueue_t *entry, dlhandle_t *dl)
 	curl_easy_setopt (dl->curl, CURLOPT_ENCODING, "");
 	//curl_easy_setopt (dl->curl, CURLOPT_DEBUGFUNCTION, CL_CURL_Debug);
 	//curl_easy_setopt (dl->curl, CURLOPT_VERBOSE, 1);
-	curl_easy_setopt (dl->curl, CURLOPT_NOPROGRESS, 0);
+	curl_easy_setopt (dl->curl, CURLOPT_NOPROGRESS, 0L);
 	if (dl->file)
 	{
 		curl_easy_setopt (dl->curl, CURLOPT_WRITEDATA, dl->file);
@@ -313,8 +313,8 @@ static void CL_StartHTTPDownload (dlqueue_t *entry, dlhandle_t *dl)
 	curl_easy_setopt (dl->curl, CURLOPT_MAXREDIRS, 5);
 	curl_easy_setopt (dl->curl, CURLOPT_WRITEHEADER, dl);
 	curl_easy_setopt (dl->curl, CURLOPT_HEADERFUNCTION, CL_HTTP_Header);
-	curl_easy_setopt (dl->curl, CURLOPT_PROGRESSFUNCTION, CL_HTTP_Progress);
-	curl_easy_setopt (dl->curl, CURLOPT_PROGRESSDATA, dl);
+	curl_easy_setopt (dl->curl, CURLOPT_XFERINFOFUNCTION, CL_HTTP_Progress);
+	curl_easy_setopt (dl->curl, CURLOPT_XFERINFODATA, dl);
 	curl_easy_setopt (dl->curl, CURLOPT_USERAGENT, Cvar_VariableString ("version"));
 	curl_easy_setopt (dl->curl, CURLOPT_REFERER, cls.downloadReferer);
 	curl_easy_setopt (dl->curl, CURLOPT_URL, dl->URL);
@@ -824,7 +824,7 @@ static void CL_FinishHTTPDownload (void)
 	CURL		*curl;
 	long		responseCode;
 	double		timeTaken;
-	double		fileSize;
+	curl_off_t	fileSize;
 	char		tempName[MAX_OSPATH];
 	qboolean	isFile;
 
@@ -903,7 +903,7 @@ static void CL_FinishHTTPDownload (void)
 					if (isFile)
 						remove (dl->filePath);
 					Com_Printf ("HTTP(%s): 404 File Not Found [%d remaining files]\n", dl->queueEntry->quakePath, pendingCount);
-					curl_easy_getinfo (curl, CURLINFO_SIZE_DOWNLOAD, &fileSize);
+					curl_easy_getinfo (curl, CURLINFO_SIZE_DOWNLOAD_T, &fileSize);
 					if (fileSize > 512)
 					{
 						//ick
@@ -969,7 +969,7 @@ static void CL_FinishHTTPDownload (void)
 
 		//show some stats
 		curl_easy_getinfo (curl, CURLINFO_TOTAL_TIME, &timeTaken);
-		curl_easy_getinfo (curl, CURLINFO_SIZE_DOWNLOAD, &fileSize);
+		curl_easy_getinfo (curl, CURLINFO_SIZE_DOWNLOAD_T, &fileSize);
 
 		//FIXME:
 		//technically i shouldn't need to do this as curl will auto reuse the
@@ -978,7 +978,7 @@ static void CL_FinishHTTPDownload (void)
 		//out why, please let me know.
 		curl_multi_remove_handle (multi, dl->curl);
 
-		Com_Printf ("HTTP(%s): %.f bytes, %.2fkB/sec [%d remaining files]\n", dl->queueEntry->quakePath, fileSize, (fileSize / 1024.0) / timeTaken, pendingCount);
+		Com_Printf ("HTTP(%s): %lld bytes, %.2fkB/sec [%d remaining files]\n", dl->queueEntry->quakePath, (long long)fileSize, (fileSize / 1024.0) / timeTaken, pendingCount);
 	} while (msgs_in_queue > 0);
 
 	//FS_FlushCache ();

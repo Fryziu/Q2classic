@@ -64,8 +64,6 @@ static playsound_t s_playsounds[MAX_PLAYSOUNDS];
 static int	s_registration_sequence;
 static vec3_t listener_origin, listener_forward, listener_right, listener_up;
 static qboolean	s_registering;
-static int s_rawend;
-static portable_samplepair_t s_rawsamples[MAX_RAW_SAMPLES];
 static sfx_t known_sfx[MAX_SFX];
 static int num_sfx;
 static sfx_t *sfx_hash[SND_HASH_SIZE];

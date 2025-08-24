@@ -491,14 +491,13 @@ void CL_ReadDemoMessage( void ) {
 CL_PlayDemo_f
 
 demo <demoname>
-====================
+====================-
 */
 qboolean skipFirst = false;
 
 void CL_PlayDemo_f( void ) {
 	char		name[MAX_OSPATH];
 	char		*arg;
-	int			len;
 	fileHandle_t demofile;
 
 	if (Cmd_Argc() != 2) {
@@ -512,7 +511,7 @@ void CL_PlayDemo_f( void ) {
 	Com_sprintf( name, sizeof( name ), "demos/%s", arg);
 	COM_DefaultExtension(name, sizeof(name), ".dm2");
 
-	len = FS_FOpenFile (name, &demofile, FS_MODE_READ);
+	FS_FOpenFile (name, &demofile, FS_MODE_READ);
 	if (!demofile) {
 		Com_Printf( "couldn't open %s\n", name);
 		return;

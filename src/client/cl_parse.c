@@ -281,7 +281,7 @@ void CL_ParseDownload (sizebuf_t *msg, qboolean dataIsCompressed)
 {
 	int		size, percent;
 	char	name[MAX_OSPATH];
-	size_t	sz;
+
 //	int		r;
 
 	// read the data
@@ -343,12 +343,12 @@ void CL_ParseDownload (sizebuf_t *msg, qboolean dataIsCompressed)
 			Com_Error (ERR_DROP, "uncompressedLen == 0");
 
 		ZLibDecompress (msg->data + msg->readcount, size, uncompressed, uncompressedLen, -15);
-		sz = fwrite (uncompressed, 1, uncompressedLen, cls.download);
+		fwrite (uncompressed, 1, uncompressedLen, cls.download);
 		Com_DPrintf ("svc_zdownload(%s): %d -> %d\n", cls.downloadname, size, uncompressedLen);
 	}
 	else
 	{
-		sz = fwrite (msg->data + msg->readcount, 1, size, cls.download);
+		fwrite (msg->data + msg->readcount, 1, size, cls.download);
 	}
 
 	//fwrite (net_message.data + net_message.readcount, 1, size, cls.download);

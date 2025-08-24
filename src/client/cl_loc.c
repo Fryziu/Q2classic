@@ -61,7 +61,7 @@ void CL_LoadLoc(void)
 {
 
 	char fileName[MAX_OSPATH], *buffer = NULL;
-	int line = 0, fileLen = 0, count = 0;
+	int line = 0, count = 0;
 	char *s, *p;
 	vec3_t	origin;
 
@@ -72,7 +72,7 @@ void CL_LoadLoc(void)
 
 	Com_sprintf(fileName, sizeof(fileName), "%s/%s.loc", locDir, cls.mapname);
 
-	fileLen = FS_LoadFile( fileName, (void **)&buffer );
+	FS_LoadFile( fileName, (void **)&buffer );
 	if (!buffer) {
 		Com_DPrintf ("CL_LoadLoc: %s not found\n", fileName);
 		return;
