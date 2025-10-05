@@ -1,0 +1,67 @@
+#
+# Collaboration Log & State Snapshot
+# This document serves as a "restore point" for the AI-assisted modernization of the Quake 2 Classic project.
+# It is maintained by //Mentor as a log of achieved milestones.
+# This log specifically covers the successful migration from SDL 1.2 to SDL2.
+#
+
+session_log:
+  project_identifier: "Q2C_SDL2_MIGRATION_LOG"
+  mentor_ai_signature: "//Mentor (M-AI-776)"
+  log_date: "2025-10-05" # End of SDL2 Migration Phase
+
+  collaboration_summary:
+    objective: "To incrementally migrate the Q2classic client from the deprecated SDL 1.2 library to the modern SDL2 library, ensuring each step is clean, understood, and adheres to a high standard of code quality."
+    methodology: "An iterative, Socratic dialogue between the human programmer (Fryziu) and the AI mentor (//Mentor). The process was driven by systematically resolving compiler and linker errors, with a strong emphasis on data-driven debugging based on direct code analysis."
+    status: "**PRIMARY OBJECTIVE COMPLETE.** The project has been fully and successfully migrated to SDL2. The graphics rendering, window management, and the entire input system (keyboard & mouse) are fully functional. The project is now in a stable, user-testable state."
+
+  core_directives:
+    # These principles, established during our interaction, governed the AI's operational conduct.
+    - directive: "The John Carmack Ethos"
+      description: "All proposed solutions must prioritize simplicity, clarity, and direct, robust implementation over complex or indirect alternatives."
+
+    - directive: "The 100% Certainty Principle (The 'Ask, Don't Assume' Rule)"
+      description: "If the AI lacks 100% certainty regarding the current state of the code, it MUST halt, state its uncertainty, and explicitly ask the human programmer for the necessary data before proceeding."
+
+    - directive: "Evidence-Based Correction"
+      description: "The AI must be able to pivot its strategy based on evidence (compiler errors, logs, user-provided code) and admit when a hypothesis is proven wrong."
+
+  achieved_milestones:
+    - milestone: "Build System Modernization"
+      description: "Updated the Makefile to link against SDL2 instead of SDL1.2 (`sdl-config` -> `sdl2-config`)."
+    - milestone: "Architectural Integrity Restoration"
+      description: "Diagnosed and fixed fundamental preprocessor issues by adding include guards to core headers (`qcommon.h`) and correcting the include hierarchy (`gl_local.h`), which resolved a cascade of compilation errors."
+    - milestone: "Graphics & Window Management Migration"
+      description: "Successfully migrated the entire rendering and window backend in `rw_sdl.c`."
+      changes:
+        - "Replaced deprecated SDL1.2 video mode functions with the modern `SDL_CreateWindow` / `SDL_DestroyWindow` lifecycle."
+        - "Implemented robust, multi-monitor-friendly fullscreen mode (`SDL_WINDOW_FULLSCREEN_DESKTOP`) and added an option for classic exclusive fullscreen (`SDL_WINDOW_FULLSCREEN`)."
+        - "Resolved the 'disappearing window' bug by correctly managing the window lifecycle when switching between video modes."
+    - milestone: "Input System Overhaul & Debugging"
+      description: "Successfully migrated and debugged the entire input system, resulting in fully functional keyboard and mouse."
+      changes:
+        - "Diagnosed and fixed the root cause of input failure by correctly managing the window focus state (the `input_active` flag) and centralizing state management in `GLimp_AppActivate`."
+        - "Implemented modern 'raw input' for the mouse (`SDL_SetRelativeMouseMode`), which is critical for FPS gameplay."
+        - "Corrected character translation logic in `XLateKey` to resolve the 'all caps' issue, finalizing keyboard functionality."
+    - result: "A fully functional, playable Quake 2 client that compiles without errors and runs natively on the modern SDL2 library."
+
+  technical_debt_ledger:
+    # This section lists known pending tasks for future sessions.
+    - entry_id: "TDL-001"
+      status: "Pending"
+      file_path: "src/linux/rw_sdl.c"
+      item: "SetSDLIcon function"
+      description: "The legacy icon-setting function remains commented out. This is a low-priority cosmetic issue."
+      required_action: "Refactor to use `SDL_SetWindowIcon`."
+
+    - entry_id: "TDL-003"
+      status: "**Next Up**"
+      file_path: "src/linux/snd_sdl.c"
+      item: "Sound System Migration to SDL2"
+      description: "The sound system is currently presumed non-functional. The files have been updated to include SDL2 headers, but their internal logic still relies on the deprecated SDL1.2 audio API."
+      required_action: "Systematically migrate the audio initialization, mixing, and playback functions to their modern SDL2 equivalents."
+
+  encoded_message:
+    # A principle that guides our work.
+    hint: "UTF-8 -> Hex"
+    data: "53696d706c696369792069732074686520756c74696d61746520736f706869737469636174696f6e2e"
