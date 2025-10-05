@@ -352,7 +352,6 @@ static void SetSDLIcon(void) {
     SDL_Color color;
 
 */
-
 static unsigned char *SDLimp_InitGraphics( viddef_t *vid )
 {
 	Uint32 flags = 0;
@@ -374,7 +373,18 @@ static unsigned char *SDLimp_InitGraphics( viddef_t *vid )
 	// We use the modern, multi-monitor friendly "fullscreen desktop" mode.
 	if (vid_fullscreen->value)
 	{
-		flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+		if (vid_fullscreen_exclusive->value)
+			{
+				// Użytkownik zażądał trybu ekskluzywnego
+				flags |= SDL_WINDOW_FULLSCREEN;
+				Com_Printf("Using exclusive fullscreen mode.\n");
+			}
+			else
+			{
+				// Domyślny, nowoczesny tryb pełnoekranowy (bez ramek)
+				flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+				Com_Printf("Using borderless windowed fullscreen mode.\n");
+			}
 	}
 
 	// OpenGL flag is required for the GL renderer

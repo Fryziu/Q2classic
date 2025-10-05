@@ -33,6 +33,7 @@ cvar_t		*vid_gamma;
 cvar_t		*vid_xpos;			// X coordinate of window position
 cvar_t		*vid_ypos;			// Y coordinate of window position
 cvar_t		*vid_fullscreen;
+cvar_t		*vid_fullscreen_exclusive;
 
 // Global variables used internally by this module
 viddef_t	viddef;				// global video state; used by other modules
@@ -125,7 +126,8 @@ void VID_Init (void)
 	// if DISPLAY is defined, try X
 	vid_xpos = Cvar_Get ("vid_xpos", "3", CVAR_ARCHIVE);
 	vid_ypos = Cvar_Get ("vid_ypos", "22", CVAR_ARCHIVE);
-	vid_fullscreen = Cvar_Get ("vid_fullscreen", "0", CVAR_ARCHIVE);
+	vid_fullscreen = Cvar_Get ("vid_fullscreen", "1", CVAR_ARCHIVE); // borderless windowed
+	vid_fullscreen_exclusive = Cvar_Get ("vid_fullscreen_exclusive", "0", CVAR_ARCHIVE); //classic fullscreen
 	vid_gamma = Cvar_Get( "vid_gamma", "1.0", CVAR_ARCHIVE );
 
 	/* Add some console commands that we want to handle */
