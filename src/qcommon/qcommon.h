@@ -19,6 +19,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 // qcommon.h -- definitions common between client and server, but not game.dll
+#ifndef QCOMMON_H
+#define QCOMMON_H
 
 #include "../game/q_shared.h"
 
@@ -1051,4 +1053,4 @@ char *CL_Mapname (void);
 #define S_COLOR_MAGENTA	"^6"
 #define S_COLOR_WHITE	"^7"
 
-
+#endif // QCOMMON_H

@@ -22,7 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef SND_LOC_H
 #define SND_LOC_H
 
-#include <SDL/SDL_mutex.h>
+#include <SDL2/SDL_mutex.h>
 
 /*
 ====================================================================
