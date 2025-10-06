@@ -24,6 +24,68 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 /*
 ====================================================================
+ZMIANA: Implementacja bezblokadowej kolejki pierścieniowej
+====================================================================
+*/
+
+// Globalna instancja naszej kolejki
+ring_buffer_t s_ringbuffer;
+
+// Inicjalizuje kolejkę (ustawia wskaźniki na zero)
+static void S_Audio_InitRingBuffer(void)
+{
+	atomic_init(&s_ringbuffer.head, 0);
+	atomic_init(&s_ringbuffer.tail, 0);
+	memset(s_ringbuffer.buffer, 0, AUDIO_RING_BUFFER_SIZE);
+}
+
+// Zwraca ilość bajtów, które można bezpiecznie odczytać z kolejki
+int S_Audio_AvailableToRead(void)
+{
+	int head = atomic_load(&s_ringbuffer.head);
+	int tail = atomic_load(&s_ringbuffer.tail);
+	return (tail - head) & (AUDIO_RING_BUFFER_SIZE - 1);
+}
+
+// Zwraca ilość wolnego miejsca do zapisu w kolejce
+int S_Audio_AvailableToWrite(void)
+{
+	int head = atomic_load(&s_ringbuffer.head);
+	int tail = atomic_load(&s_ringbuffer.tail);
+	// Zostawiamy 1 bajt wolnego, aby odróżnić kolejkę pełną od pustej
+	return (head - tail - 1) & (AUDIO_RING_BUFFER_SIZE - 1);
+}
+
+// Odczytuje 'count' bajtów z kolejki do 'dest'
+void S_Audio_Read(void* dest, int count)
+{
+	int head = atomic_load(&s_ringbuffer.head);
+	byte* p_dest = (byte*)dest;
+
+	for (int i = 0; i < count; i++)
+	{
+		p_dest[i] = s_ringbuffer.buffer[head];
+		head = (head + 1) & (AUDIO_RING_BUFFER_SIZE - 1);
+	}
+	atomic_store(&s_ringbuffer.head, head);
+}
+
+// Zapisuje 'count' bajtów z 'src' do kolejki
+void S_Audio_Write(const void* src, int count)
+{
+	int tail = atomic_load(&s_ringbuffer.tail);
+	const byte* p_src = (const byte*)src;
+
+	for (int i = 0; i < count; i++)
+	{
+		s_ringbuffer.buffer[tail] = p_src[i];
+		tail = (tail + 1) & (AUDIO_RING_BUFFER_SIZE - 1);
+	}
+	atomic_store(&s_ringbuffer.tail, tail);
+}
+
+/*
+====================================================================
 Internal defines and constants
 ====================================================================
 */
@@ -80,7 +142,80 @@ static channel_t *S_PickChannel(int entnum, int entchannel);
 static sfx_t *S_FindName (const char *name, qboolean create);
 static sfx_t *S_AliasName (const char *aliasname, const char *truename);
 static void S_ClearBuffer(void);
-static void S_AddLoopSounds (void);
+/*
+====================
+S_AddLoopSounds
+
+Znajduje wszystkie byty (entities) w świecie, które powinny emitować
+dźwięk pętli i upewnia się, że są one odtwarzane na kanale audio.
+====================
+*/
+
+static void S_AddLoopSounds (void)
+{
+	int			i, j;
+	channel_t	*ch;
+	sfx_t		*sfx;
+	sfxcache_t	*sc;
+	centity_t	*cent;
+	int			entnum;
+	const char *sound_name; // Zmienna do przechowywania nazwy dźwięku
+
+	for (i=0 ; i < cl.frame.num_entities ; i++)
+	{
+		entnum = cl_parse_entities[ (cl.frame.parse_entities + i) & PARSE_ENTITIES_MASK ].number;
+		cent = &cl_entities[entnum];
+
+		if (!cent->current.sound)
+			continue;
+
+		// --- KRYTYCZNA POPRAWKA BEZPIECZEŃSTWA ---
+		// Krok 1: Pobierz nazwę dźwięku ze stringów konfiguracyjnych.
+		sound_name = cl.configstrings[cent->current.sound];
+
+		// Krok 2: Sprawdź, czy pobrana nazwa nie jest pusta lub nieważna.
+		// To jest nasza siatka bezpieczeństwa, która łapie błąd, zanim on wystąpi.
+		if (!sound_name || !sound_name[0])
+			continue; // Jeśli nazwa jest pusta, zignoruj ten dźwięk w tej klatce.
+
+		// Krok 3: Dopiero teraz, z pewnością, że nazwa jest poprawna, jej użyj.
+		sfx = S_FindName(sound_name, false);
+
+		if (!sfx)
+			continue;
+
+		sc = S_LoadSound(sfx);
+		if (!sc)
+			continue;
+
+		for (j=0 ; j<MAX_CHANNELS ; j++)
+		{
+			if (channels[j].entnum == entnum && channels[j].sfx == sfx)
+			{
+				channels[j].autosound = true;
+				goto next_entity;
+			}
+		}
+
+		ch = S_PickChannel(entnum, 0);
+		if (!ch)
+			continue;
+
+		ch->entnum = entnum;
+		ch->sfx = sfx;
+		ch->master_vol = 255;
+		ch->dist_mult = 1.0f;
+		ch->fixed_origin = false;
+		ch->pos = 0;
+		ch->end = paintedtime + sc->length;
+		ch->autosound = true;
+
+		S_Spatialize(ch);
+
+next_entity:;
+	}
+}
+
 
 //AI A helper function to build the table for enhanced attenuation model
 static void S_BuildAttenuationTable(void)
@@ -148,6 +283,7 @@ Initialization and Shutdown
 
 void S_Init(void)
 {
+	S_Audio_InitRingBuffer(); // ZMIANA: Inicjalizujemy naszą nową kolejkę
 	S_PrintDebugInfo("Before S_Init"); // debug function
 	Com_Printf("\n------- sound initialization -------\n");
 	cvar_t *cv = Cvar_Get ("s_initsound", "1", CVAR_LATCHED);
@@ -201,7 +337,6 @@ void S_Shutdown(void)
 	memset(known_sfx, 0, sizeof(known_sfx));
 	memset(sfx_hash, 0, sizeof(sfx_hash));
 	num_sfx = 0;
-	SDL_Quit();
 	sound_started = false;
 	S_PrintDebugInfo("After S_Shutdown"); // debug function
 }
@@ -314,11 +449,15 @@ static void S_ClearBuffer(void)
 Main Update Loop
 ====================================================================
 */
-
 void S_Update(const vec3_t origin, const vec3_t v_forward, const vec3_t v_right, const vec3_t v_up)
 {
+	// Ta funkcja musi być ZAWSZE wywoływana, aby pchać dane do kolejki
+	// i zapobiegać trzaskom (buffer underrun).
+	S_MixAudio();
+
 	if (!sound_started) return;
-	if (cls.disable_screen) { S_ClearBuffer(); return; }
+
+	if (cls.disable_screen) { /*S_ClearBuffer();*/ return; } // S_ClearBuffer jest teraz niebezpieczne
 	if (s_volume->modified) { S_InitScaletable(); s_volume->modified = false; }
 
 	VectorCopy(origin, listener_origin);
@@ -326,11 +465,17 @@ void S_Update(const vec3_t origin, const vec3_t v_forward, const vec3_t v_right,
 	VectorCopy(v_right, listener_right);
 	VectorCopy(v_up, listener_up);
 
+	// Aktualizuj pozycję DYNAMICZNYCH dźwięków (wystrzały, kroki itp.)
 	for (int i=0; i<MAX_CHANNELS; i++) {
 		if (channels[i].autosound) memset(&channels[i], 0, sizeof(channels[i]));
 		else if (channels[i].sfx) S_Spatialize(&channels[i]);
 	}
-	if (s_ambient->integer) S_AddLoopSounds();
+
+	// ZMIANA: Dodajemy kluczowe sprawdzenie flagi `cl.sound_prepped`.
+	// Uruchamiamy logikę dźwięków pętli (ambient) TYLKO wtedy, gdy
+	// główny silnik klienta potwierdzi, że wszystko jest gotowe.
+	if (s_ambient->integer && cl.sound_prepped)
+		S_AddLoopSounds();
 
 	if (s_show->integer) {
 		int total = 0;
@@ -499,7 +644,7 @@ static struct sfx_s *S_RegisterSexedSound(int entnum, const char *base)
 Helper and Internal Functions (Full, correct versions)
 ====================================================================
 */
-
+/*
 void S_IssuePlaysound(playsound_t *ps)
 {
 	channel_t *ch = S_PickChannel(ps->entnum, ps->entchannel);
@@ -513,6 +658,51 @@ void S_IssuePlaysound(playsound_t *ps)
 	VectorCopy(ps->origin, ch->origin);
 	ch->fixed_origin = ps->fixed_origin;
 	ch->dist_mult = (ps->attenuation == ATTN_STATIC) ? ps->attenuation * 0.001f : ps->attenuation * 0.0005f;
+	S_Spatialize(ch);
+	ch->pos = 0;
+    ch->end = paintedtime + sc->length;
+	S_FreePlaysound(ps);
+}
+*/
+
+void S_IssuePlaysound(playsound_t *ps)
+{
+	channel_t *ch = S_PickChannel(ps->entnum, ps->entchannel);
+	if (!ch) { S_FreePlaysound(ps); return; }
+
+	sfxcache_t *sc = S_LoadSound(ps->sfx);
+	if (!sc || sc->length <= 0) { S_FreePlaysound(ps); return; }
+
+	ch->master_vol = ps->volume;
+	ch->entnum = ps->entnum;
+	ch->entchannel = ps->entchannel;
+	ch->sfx = ps->sfx;
+	VectorCopy(ps->origin, ch->origin);
+	ch->fixed_origin = ps->fixed_origin;
+
+	// --- KRYTYCZNA POPRAWKA LOGIKI TŁUMIENIA ---
+	// Zastępujemy wadliwą jednoliniową kalkulację jawną i poprawną logiką,
+	// która odzwierciedla intencje projektantów oryginalnej gry.
+	switch ((int)ps->attenuation)
+	{
+		case 1: // ATTN_NORM: Standardowe tłumienie dla większości dźwięków.
+			ch->dist_mult = 0.001f;
+			break;
+
+		case 2: // ATTN_IDLE: Szybkie tłumienie, słyszalne tylko z bliska.
+			ch->dist_mult = 0.002f;
+			break;
+
+		case 3: // ATTN_STATIC: Wolne tłumienie, słyszalne z dużej odległości.
+			ch->dist_mult = 0.0005f;
+			break;
+
+		case 0: // ATTN_NONE: Brak tłumienia.
+		default:
+			ch->dist_mult = 0.0f;
+			break;
+	}
+
 	S_Spatialize(ch);
 	ch->pos = 0;
     ch->end = paintedtime + sc->length;
@@ -798,7 +988,7 @@ static void S_SpatializeOrigin(channel_t *ch, const vec3_t origin, float master_
 
 
 void S_RawSamples(int samples, int rate, int width, int nchannels, byte *data) { /* Your full function body here */ }
-static void S_AddLoopSounds(void) { /* Your full function body here */ }
+
 
 /*
 ====================================================================

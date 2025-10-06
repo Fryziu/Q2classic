@@ -24,12 +24,13 @@
 
 	$Id: snd_sdl.c,v 1.2 2002/02/09 20:29:38 relnev Exp $
 */
-
 #include "SDL2/SDL.h"
 
 #include "../client/client.h"
 #include "../client/snd_loc.h"
 
+// ZMIANA: Dodajemy zmienną do przechowywania ID naszego urządzenia audio.
+static SDL_AudioDeviceID audio_device_id = 0;
 static qboolean snd_inited = false;
 
 cvar_t *sndbits;
@@ -42,24 +43,44 @@ void Snd_Memset (void* dest, const int val, const size_t count)
 }
 
 // Ten callback jest sercem systemu. Jego poprawne działanie jest kluczowe.
+// ZMIANA: Całkowicie nowa, uproszczona wersja callbacku audio.
+// Jego jedynym zadaniem jest pobieranie gotowych danych z naszej kolejki.
 static void sdl_audio_callback (void *unused, Uint8 * stream, int len)
 {
 	if (!snd_inited)
-		return;
-
-	// Zaktualizuj licznik czasu audio (dma.samplepos)
-	// To jest POPRAWIONA, solidna matematyka.
-	int bytes_per_frame = (dma.samplebits / 8) * dma.channels;
-	if (bytes_per_frame > 0)
 	{
-		int num_frames = len / bytes_per_frame;
-		dma.samplepos += num_frames;
+		// Na wszelki wypadek, wypełnij ciszą, jeśli callback zostanie wywołany za wcześnie
+		memset(stream, 0, len);
+		return;
 	}
 
-	// Przekaż wskaźnik do bufora i zaktualizowany czas do miksera
-	dma.buffer = stream;
-	S_PaintChannels (dma.samplepos);
+	int available = S_Audio_AvailableToRead();
+
+	if (available >= len)
+	{
+		// Mamy wystarczająco danych, po prostu je skopiuj
+		S_Audio_Read(stream, len);
+	}
+	else
+	{
+		// Buffer underrun! Nie mamy wystarczająco danych.
+		// To się zdarza, jeśli główny wątek gry ma "czkawkę" (np. ładowanie).
+		// Musimy uniknąć trzasków, dostarczając ciszę.
+
+		// 1. Skopiuj tyle danych, ile mamy.
+		if (available > 0)
+		{
+			S_Audio_Read(stream, available);
+		}
+
+		// 2. Wypełnij resztę bufora ciszą.
+		// Wartość "ciszy" zależy od formatu audio. Dla 16-bit (AUDIO_S16SYS) to 0.
+		int silence = (dma.samplebits == 8) ? 128 : 0;
+		memset(stream + available, silence, len - available);
+	}
 }
+
+////
 qboolean SNDDMA_Init (void)
 {
 	SDL_AudioSpec desired, obtained;
@@ -93,9 +114,12 @@ qboolean SNDDMA_Init (void)
 	desired.callback = sdl_audio_callback;
 	desired.userdata = NULL;
 
-	// Open the audio device. This is safe to do multiple times.
-	if (SDL_OpenAudio (&desired, &obtained) < 0) {
-		Com_Printf ("SDL_OpenAudio() failed: %s\n", SDL_GetError());
+	// ZMIANA: Używamy nowej funkcji SDL2 do otwarcia urządzenia.
+	// NULL oznacza domyślne urządzenie wyjściowe.
+	// 0 oznacza, że zmiany w formacie nie są dozwolone.
+	audio_device_id = SDL_OpenAudioDevice(NULL, 0, &desired, &obtained, 0);
+	if (audio_device_id == 0) {
+		Com_Printf ("SDL_OpenAudioDevice() failed: %s\n", SDL_GetError());
 		return false;
 	}
 
@@ -108,7 +132,8 @@ qboolean SNDDMA_Init (void)
 	dma.submission_chunk = 1;
 	dma.buffer = NULL;
 
-    SDL_PauseAudio(0);
+    // ZMIANA: Odpauzowujemy konkretne urządzenie, a nie globalny system.
+    SDL_PauseAudioDevice(audio_device_id, 0);
 
 	snd_inited = true;
 	return true;
@@ -127,10 +152,14 @@ void SNDDMA_Shutdown (void)
 	if (!snd_inited)
 		return;
 
-	// --- THE CRITICAL FIX: PART 2 ---
-    // We ONLY close the device. We DO NOT quit the SDL subsystem here.
-	SDL_PauseAudio(1);
-	SDL_CloseAudio();
+	// ZMIANA: Zamykamy konkretne urządzenie audio, które otworzyliśmy.
+    // Nie wywołujemy SDL_QuitSubSystem, aby inne części programu mogły dalej działać.
+	if (audio_device_id != 0)
+	{
+		SDL_PauseAudioDevice(audio_device_id, 1); // Jawne zatrzymanie urządzenia
+		SDL_CloseAudioDevice(audio_device_id);
+		audio_device_id = 0;
+	}
 
 	snd_inited = false;
 }

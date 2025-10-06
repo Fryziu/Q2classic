@@ -23,6 +23,24 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define SND_LOC_H
 
 #include <SDL2/SDL_mutex.h>
+#include <stdatomic.h> // ZMIANA: Dodajemy nagłówek dla operacji atomowych
+
+/*
+====================================================================
+ZMIANA: Definicja bezblokadowej kolejki pierścieniowej (Ring Buffer)
+====================================================================
+*/
+#define AUDIO_RING_BUFFER_SIZE 65536 // 64KB, musi być potęgą dwójki!
+
+typedef struct
+{
+	byte buffer[AUDIO_RING_BUFFER_SIZE];
+	_Atomic int head; // Indeks odczytu (konsument: wątek SDL)
+	_Atomic int tail; // Indeks zapisu (producent: wątek gry)
+} ring_buffer_t;
+
+// Deklaracja globalnej instancji naszej kolejki
+extern ring_buffer_t s_ringbuffer;
 
 /*
 ====================================================================
@@ -128,6 +146,13 @@ Shared Function Prototypes
 ====================================================================
 */
 
+// ZMIANA: Prototypy dla funkcji obsługi kolejki pierścieniowej
+int  S_Audio_AvailableToRead(void);
+void S_Audio_Read(void* dest, int count);
+// ZMIANA: Dodaj brakujące prototypy
+int  S_Audio_AvailableToWrite(void);
+void S_Audio_Write(const void* src, int count);
+
 // System specific functions
 qboolean SNDDMA_Init(void);
 int		SNDDMA_GetDMAPos(void);
@@ -143,6 +168,8 @@ void Snd_Memset (void* dest, const int val, const size_t count);
 
 // Mixer functions
 void S_InitScaletable (void);
+// ZMIANA: Dodajemy prototyp naszej nowej funkcji miksującej
+void S_MixAudio(void);
 sfxcache_t *S_LoadSound (sfx_t *s);
 void S_IssuePlaysound (playsound_t *ps);
 void S_PaintChannels(int endtime);

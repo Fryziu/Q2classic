@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // snd_mix.c -- portable code to mix sounds for snd_dma.c
 #include "client.h"
 #include "snd_loc.h"
+#include "SDL2/SDL.h"
 
 #define	PAINTBUFFER_SIZE	2048
 static portable_samplepair_t paintbuffer[PAINTBUFFER_SIZE];
@@ -30,37 +31,41 @@ static int		snd_scaletable[32][256];
 Mixing and Transfer Functions
 ====================================================================
 */
-
+// ZMIANA: Ta funkcja nie pisze już do dma.buffer, ale pcha dane do naszej kolejki.
 void S_TransferPaintBuffer(int endtime)
 {
     int count = endtime - paintedtime;
     if (count <= 0) return;
 
-    short *out = (short *)dma.buffer;
-    portable_samplepair_t *in = paintbuffer;
+	// Maksymalny rozmiar bufora malowania to PAINTBUFFER_SIZE.
+    if (count > PAINTBUFFER_SIZE)
+	{
+		Com_Printf("S_TransferPaintBuffer: count > PAINTBUFFER_SIZE\n");
+		return;
+	}
 
-    int samples_to_write = count;
-    int start_pos = paintedtime % dma.samples;
+	// Bufor `paintbuffer` zawiera teraz `count` zmiksowanych próbek (samples).
+	// Musimy je przekonwertować z powrotem do formatu docelowego (np. 16-bit)
+	// i zapisać do kolejki pierścieniowej.
 
-    while (samples_to_write > 0)
-    {
-        int pos_in_dma = start_pos % dma.samples;
-        int samples_this_run = dma.samples - pos_in_dma;
-        if (samples_this_run > samples_to_write)
-            samples_this_run = samples_to_write;
+	// Tworzymy tymczasowy bufor na dane do zapisu.
+	short pcm_buffer[PAINTBUFFER_SIZE * 2]; // *2 dla stereo
 
-        for (int i = 0; i < samples_this_run; i++)
-        {
-            out[(pos_in_dma + i) * 2]     = bound(-32768, in[i].left >> 8, 32767);
-            out[(pos_in_dma + i) * 2 + 1] = bound(-32768, in[i].right >> 8, 32767);
-        }
+	portable_samplepair_t *in = paintbuffer;
+	short *out = pcm_buffer;
 
-        in += samples_this_run;
-        samples_to_write -= samples_this_run;
-        start_pos += samples_this_run;
-    }
+	// Konwersja z formatu wewnętrznego (32-bit) na 16-bit PCM.
+	for (int i = 0; i < count; i++)
+	{
+		out[i * 2]     = bound(-32768, in[i].left >> 8, 32767);
+		out[i * 2 + 1] = bound(-32768, in[i].right >> 8, 32767);
+	}
+
+	// Oblicz, ile to bajtów i zapisz do kolejki.
+	int bytes_to_write = count * dma.channels * (dma.samplebits / 8);
+	S_Audio_Write(pcm_buffer, bytes_to_write);
 }
-
+///
 void S_InitScaletable (void)
 {
 	for (int i = 0; i < 32; i++)
@@ -201,4 +206,49 @@ void S_PaintChannels(int endtime)
         // Step 6: Advance time. This is the most crucial part.
         paintedtime = paint_end;
     }
+}
+
+/*
+====================================================================
+ZMIANA: Główna funkcja "Producenta" - miksuje audio i pcha do kolejki
+====================================================================
+*/
+void S_MixAudio(void)
+{
+	if (!sound_started)
+		return;
+
+	// Krok 1: Określ docelową ilość danych, jaką chcemy utrzymywać w buforze.
+	// Daje nam to margines bezpieczeństwa i kontrolę nad opóźnieniem.
+	// np. 2048 próbek * 4 bajty/próbkę (16-bit stereo) = 8192 bajtów (ok. 185ms @ 44.1kHz)
+	int bytes_per_sample = dma.channels * (dma.samplebits / 8);
+	int target_buffer_level_samples = 2048;
+	int target_buffer_level_bytes = target_buffer_level_samples * bytes_per_sample;
+
+	// Krok 2: Sprawdź, ile danych jest już w kolejce.
+	int available_to_read_bytes = (S_Audio_AvailableToRead() / bytes_per_sample) * bytes_per_sample;
+
+	// Jeśli mamy więcej niż nasz cel, nie robimy nic. Pozwalamy systemowi audio "nadrobić".
+	if (available_to_read_bytes >= target_buffer_level_bytes)
+		return;
+
+	// Krok 3: Oblicz, ile dokładnie próbek musimy wygenerować, aby osiągnąć nasz cel.
+	int samples_to_mix = target_buffer_level_samples - (available_to_read_bytes / bytes_per_sample);
+
+	// Sprawdź, czy mamy wystarczająco miejsca w buforze, aby tyle zapisać.
+	int available_to_write_samples = S_Audio_AvailableToWrite() / bytes_per_sample;
+	if (samples_to_mix > available_to_write_samples)
+		samples_to_mix = available_to_write_samples;
+
+	if (samples_to_mix <= 0)
+		return;
+
+	// Krok 4: Uruchom mikser, aby wygenerować dokładnie tyle próbek, ile potrzebujemy.
+	int endtime = paintedtime + samples_to_mix;
+
+	dma.buffer = NULL; // dma.buffer nie jest już używany
+	S_PaintChannels(endtime);
+
+	// Przesuń nasz globalny licznik czasu do przodu o tyle, ile faktycznie zmiksowaliśmy.
+	paintedtime = endtime;
 }
