@@ -1,0 +1,68 @@
+#
+# Collaboration Log & State Snapshot
+#
+# This document serves as a "restore point" for the AI-assisted modernization of the Quake 2 Classic project.
+# It is maintained by //Mentor as a log of achieved milestones and a roadmap for future work.
+# This log covers the final debugging of the SDL2 input system and the successful implementation
+# of a fully procedural, self-contained decal system.
+#
+
+session_log:
+  project_identifier: "Q2C_SDL2_FEATURE_ENHANCEMENT"
+  ai_signature: "//Mentor (M-AI-776)"
+  log_date: "2025-10-05" # End of Decal System v1.0 Implementation
+
+  collaboration_summary:
+    objective: "To resolve all remaining input system issues after the SDL2 migration and to implement a modern, self-contained system for rendering bullet decals ('ślady po kulach')."
+    methodology: "A highly iterative, mentor-protege model. The process involved deep analysis of existing code, data-driven debugging using custom loggers, and the integration of a third-party library (NanoSVG) to achieve a fully procedural solution."
+    status: "**OBJECTIVE COMPLETE AND EXCEEDED.** The SDL2 input system is now fully functional and stable. Furthermore, a sophisticated, self-contained decal system based on runtime SVG rasterization has been successfully designed and implemented, eliminating the need for external image files."
+
+  core_directives:
+    # These principles, established during our interaction, governed the AI's operational conduct.
+    - directive: "The John Carmack Ethos"
+      description: "All proposed solutions must prioritize simplicity, clarity, and direct, robust implementation over complex or indirect alternatives."
+
+    - directive: "The 100% Certainty Principle (The 'Ask, Don't Assume' Rule)"
+      description: "The AI must base its analysis on verified data from the user's codebase, halting and requesting information when access is uncertain."
+
+    - directive: "Evidence-Based Correction"
+      description: "The AI must pivot its strategy based on evidence (compiler errors, logs, user-provided code) and admit when a hypothesis is proven wrong."
+
+  achieved_milestones:
+    - milestone: "Input System Stabilization"
+      description: "Diagnosed and fixed the root cause of the non-functional input system. The problem was identified as a window focus timing issue, which was resolved by centralizing state management in `GLimp_AppActivate` and creating a robust, event-driven activation logic."
+      related_files: ["src/linux/rw_sdl.c"]
+
+    - milestone: "Window Management Finalization"
+      description: "Successfully implemented seamless switching between modern borderless fullscreen and traditional windowed mode by correcting the window lifecycle management (`SDL_DestroyWindow` before `SDL_CreateWindow`)."
+      related_files: ["src/linux/rw_sdl.c"]
+
+    - milestone: "Discovered and Revived Dormant Decal System"
+      description: "Through code analysis, a powerful but unused decal rendering system was discovered in `gl_decal.c`. Instead of building a new system from scratch, the existing, superior architecture was adopted."
+      related_files: ["src/client/cl_tent.c", "src/ref_gl/gl_decal.c"]
+
+    - milestone: "Procedural Decal Generation (SVG Integration)"
+      description: "The dependency on an external `bullethole.png` file was eliminated. A complete, self-contained system was implemented that uses the NanoSVG library to rasterize an in-code SVG string into an OpenGL texture at runtime."
+      related_files: ["src/ref_gl/gl_decal.c", "Makefile"]
+
+    - result: "A fully functional, playable Quake 2 client with a modern SDL2 backend and a sophisticated, entirely procedural decal system."
+
+  technical_debt_ledger:
+    # This section lists known pending tasks for future sessions.
+    - entry_id: "TDL-004"
+      status: "**Next Up / Designed**"
+      item: "Dynamic, Data-Driven Decal System (v2.0)"
+      description: "The current procedural decal system is a major success but is still hardcoded. The next evolution is to create a fully data-driven system."
+      required_action: "Implement a parser for an external `decals.def` file, load multiple `.svg` files from a dedicated directory, and enhance the rendering logic to support dynamic effects like color fading over time for different weapon types (e.g., energy weapons)."
+    
+    - entry_id: "TDL-003"
+      status: "Pending"
+      file_path: "src/linux/snd_sdl.c"
+      item: "Sound System Migration to SDL2"
+      description: "The sound system is still based on a fragile, legacy architecture and is the source of critical stability issues (SIGSEGV, SIGABRT). This remains a high-priority technical task."
+      required_action: "Refactor the entire sound driver (`snd_sdl.c`) to use the modern, callback-free 'push' model with `SDL_QueueAudio`, eliminating all manual thread and mutex management."
+
+  encoded_message:
+    # A principle that guides our work.
+    hint: "UTF-8 -> Hex"
+    data: "53696d706c696369792069732074686520756c74696d61746520736f706869737469636174696f6e2e"
