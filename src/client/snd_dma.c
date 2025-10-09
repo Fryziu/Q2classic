@@ -449,6 +449,73 @@ static void S_ClearBuffer(void)
 Main Update Loop
 ====================================================================
 */
+// ====================================================================
+// NOWA, ROZBUDOWANA FUNKCJA DEBUGUJĄCA / debug function 02
+// ====================================================================
+static void S_Debug_ShowChannelInfo(void)
+{
+    // Nagłówek tabeli, wyświetlany tylko raz, jeśli są aktywne dźwięki
+    qboolean header_printed = false;
+    vec3_t   sound_origin;
+    vec3_t   source_vec;
+    float    dist;
+    int      active_channels = 0;
+
+    for (int i = 0; i < MAX_CHANNELS; i++)
+    {
+        channel_t *ch = &channels[i];
+
+        // Interesują nas tylko aktywne kanały, które mają przypisany dźwięk
+        if (!ch->sfx || !ch->sfx->name[0])
+            continue;
+
+        // Jeśli to pierwszy aktywny dźwięk, drukuj nagłówek
+        if (!header_printed)
+        {
+            Com_Printf("\n--- Sound Debug Info (s_show 1) ---\n");
+            Com_Printf("CH | L/R Vol | Distance | Origin (X, Y, Z)      | Sound Name\n");
+            Com_Printf("--------------------------------------------------------------------------\n");
+            header_printed = true;
+        }
+
+        active_channels++;
+
+        // Pobierz pozycję dźwięku (tak samo jak w S_Spatialize)
+        if (ch->fixed_origin)
+        {
+            VectorCopy(ch->origin, sound_origin);
+        }
+        else
+        {
+            // Jeśli byt (entity) już nie istnieje, możemy dostać dziwne wartości, ale nie powinno to crashować
+            CL_GetEntitySoundOrigin(ch->entnum, sound_origin);
+        }
+
+        // Oblicz dystans - to jest kluczowa informacja
+        VectorSubtract(sound_origin, listener_origin, source_vec);
+        dist = VectorLength(source_vec); // Używamy VectorLength, bo nie potrzebujemy normalizacji
+
+        // Drukuj sformatowane informacje o kanale
+        Com_Printf("%2i | %3i/%3i | %8.1f | %7.1f, %7.1f, %7.1f | %s\n",
+                   i,
+                   ch->leftvol,
+                   ch->rightvol,
+                   dist,
+                   sound_origin[0],
+                   sound_origin[1],
+                   sound_origin[2],
+                   ch->sfx->name);
+    }
+
+    if (header_printed)
+    {
+        Com_Printf("--------------------------------------------------------------------------\n");
+        Com_Printf("Total active channels: %d\n\n", active_channels);
+    }
+}
+
+/// main functions
+
 void S_Update(const vec3_t origin, const vec3_t v_forward, const vec3_t v_right, const vec3_t v_up)
 {
 	// Ta funkcja musi być ZAWSZE wywoływana, aby pchać dane do kolejki
@@ -477,6 +544,14 @@ void S_Update(const vec3_t origin, const vec3_t v_forward, const vec3_t v_right,
 	if (s_ambient->integer && cl.sound_prepped)
 		S_AddLoopSounds();
 
+	// debug function 02
+	if (s_show->integer)
+	    {
+	        S_Debug_ShowChannelInfo();
+	    }
+
+	// debug function 01
+	/*
 	if (s_show->integer) {
 		int total = 0;
 		for (int i=0; i<MAX_CHANNELS; i++) {
@@ -487,6 +562,7 @@ void S_Update(const vec3_t origin, const vec3_t v_forward, const vec3_t v_right,
 		}
 		Com_Printf ("----(%i)---- painted: %i\n", total, paintedtime);
 	}
+*/
 }
 
 /*
@@ -644,26 +720,7 @@ static struct sfx_s *S_RegisterSexedSound(int entnum, const char *base)
 Helper and Internal Functions (Full, correct versions)
 ====================================================================
 */
-/*
-void S_IssuePlaysound(playsound_t *ps)
-{
-	channel_t *ch = S_PickChannel(ps->entnum, ps->entchannel);
-	if (!ch) { S_FreePlaysound(ps); return; }
-	sfxcache_t *sc = S_LoadSound(ps->sfx);
-	if (!sc || sc->length <= 0) { S_FreePlaysound(ps); return; }
-	ch->master_vol = ps->volume;
-	ch->entnum = ps->entnum;
-	ch->entchannel = ps->entchannel;
-	ch->sfx = ps->sfx;
-	VectorCopy(ps->origin, ch->origin);
-	ch->fixed_origin = ps->fixed_origin;
-	ch->dist_mult = (ps->attenuation == ATTN_STATIC) ? ps->attenuation * 0.001f : ps->attenuation * 0.0005f;
-	S_Spatialize(ch);
-	ch->pos = 0;
-    ch->end = paintedtime + sc->length;
-	S_FreePlaysound(ps);
-}
-*/
+
 
 void S_IssuePlaysound(playsound_t *ps)
 {
@@ -727,18 +784,7 @@ static channel_t *S_PickChannel(int entnum, int entchannel)
 	memset(&channels[first_to_die], 0, sizeof(channel_t));
 	return &channels[first_to_die];
 }
-/*
-static void S_Spatialize(channel_t *ch)
-{
-	vec3_t origin;
-	if (ch->entnum == cl.playernum+1) {
-		ch->leftvol = ch->master_vol; ch->rightvol = ch->master_vol; return;
-	}
-	if (ch->fixed_origin) VectorCopy(ch->origin, origin);
-	else CL_GetEntitySoundOrigin(ch->entnum, origin);
-	S_SpatializeOrigin(origin, ch->master_vol, ch->dist_mult, &ch->leftvol, &ch->rightvol);
-}
-*/
+
 // This is the correct version of S_Spatialize
 static void S_Spatialize(channel_t *ch)
 {
@@ -763,157 +809,6 @@ static void S_Spatialize(channel_t *ch)
 	S_SpatializeOrigin(ch, origin, ch->master_vol, ch->dist_mult);
 }
 
-/*
-static void S_SpatializeOrigin(const vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol)
-{
-	vec_t dot, dist, lscale, rscale, vol;
-	vec3_t source_vec;
-	VectorSubtract(origin, listener_origin, source_vec);
-	dist = VectorNormalize(source_vec);
-	dist = (dist > SOUND_FULLVOLUME) ? (dist - SOUND_FULLVOLUME) * dist_mult : 0;
-	if (dma.channels == 1 || !dist_mult) { lscale = rscale = 1.0f; }
-	else { dot = DotProduct(listener_right, source_vec); rscale = 0.5f * (1.0f + dot); lscale = 0.5f * (1.0f - dot); }
-	vol = master_vol * (1.0f - dist);
-	*right_vol = (vol * rscale < 0) ? 0 : vol * rscale;
-	*left_vol = (vol * lscale < 0) ? 0 : vol * lscale;
-}
-*/
-/*
-// ====================================================================
-// FINAL, ROBUST, AND MATHEMATICALLY SAFE S_SpatializeOrigin
-// This version is safe, clear, and easy to understand and extend.
-// ====================================================================
-static void S_SpatializeOrigin(const vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol)
-{
-	vec3_t	source_vec;
-	float	dist;
-	float	vol;
-
-	source_vec[0] = origin[0] - listener_origin[0];
-	source_vec[1] = origin[1] - listener_origin[1];
-	source_vec[2] = origin[2] - listener_origin[2];
-
-	dist = VectorNormalize(source_vec); // This is safe and returns the distance.
-
-	// --- CRITICAL SAFETY CHECK for sounds at the listener's exact position ---
-	// If distance is zero (or very close), we can't spatialize. Play at full volume.
-	if (dist < 0.1f)
-	{
-		*left_vol = master_vol;
-		*right_vol = master_vol;
-		return;
-	}
-
-	// --- Attenuation Logic ---
-    float attenuation_factor;
-    extern cvar_t *s_quality;
-
-    if (s_quality && s_quality->integer != 0) // Enhanced Quality Mode
-    {
-        // Use the safe lookup table for attenuation.
-        // Convert distance to a table index.
-        int table_index = (int)((dist / SOUND_FULLVOLUME) * (ATTN_TABLE_SIZE / 8.0f));
-
-        // Clamp the index to the table bounds.
-        if (table_index < 0) table_index = 0;
-        if (table_index >= ATTN_TABLE_SIZE) table_index = ATTN_TABLE_SIZE - 1;
-
-        attenuation_factor = attn_table[table_index];
-    }
-    else // Classic (Default) Mode
-    {
-        // Use the original, linear attenuation model.
-        float linear_dist = (dist > SOUND_FULLVOLUME) ? (dist - SOUND_FULLVOLUME) * dist_mult : 0;
-        attenuation_factor = 1.0f - linear_dist;
-    }
-
-	vol = master_vol * attenuation_factor;
-
-	// --- Panning Logic ---
-	// Since source_vec is already normalized by VectorNormalize, this is simple.
-	float dot = DotProduct(listener_right, source_vec);
-	float rscale = 0.5f * (1.0f + dot);
-	float lscale = 1.0f - rscale;
-
-	// Final conversion and clamping to ensure values are always safe.
-	int right_i = (int)(vol * rscale);
-	int left_i = (int)(vol * lscale);
-
-	*right_vol = (right_i < 0) ? 0 : (right_i > 255) ? 255 : right_i;
-	*left_vol = (left_i < 0) ? 0 : (left_i > 255) ? 255 : left_i;
-}
-*/
-
-// ====================================================================
-// S_SpatializeOrigin with added Z-axis (vertical) processing
-// ====================================================================
-/*
-static void S_SpatializeOrigin(const vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol)
-{
-	vec3_t	source_vec;
-	float	dist;
-	float	vol;
-
-	source_vec[0] = origin[0] - listener_origin[0];
-	source_vec[1] = origin[1] - listener_origin[1];
-	source_vec[2] = origin[2] - listener_origin[2];
-
-	dist = VectorNormalize(source_vec);
-
-	if (dist < 0.1f)
-	{
-		*left_vol = master_vol;
-		*right_vol = master_vol;
-		return;
-	}
-
-	// --- Attenuation Logic (no changes here) ---
-    float attenuation_factor;
-    extern cvar_t *s_quality;
-
-    if (s_quality && s_quality->integer != 0) // Enhanced Quality Mode
-    {
-        int table_index = (int)((dist / SOUND_FULLVOLUME) * (ATTN_TABLE_SIZE / 8.0f));
-        if (table_index < 0) table_index = 0;
-        if (table_index >= ATTN_TABLE_SIZE) table_index = ATTN_TABLE_SIZE - 1;
-        attenuation_factor = attn_table[table_index];
-    }
-    else // Classic (Default) Mode
-    {
-        float linear_dist = (dist > SOUND_FULLVOLUME) ? (dist - SOUND_FULLVOLUME) * dist_mult : 0;
-        attenuation_factor = 1.0f - linear_dist;
-    }
-
-	vol = master_vol * attenuation_factor;
-
-	// --- Panning Logic ---
-	// Horizontal (left/right) panning - original logic
-	float dot_right = DotProduct(listener_right, source_vec);
-	float rscale = 0.5f * (1.0f + dot_right);
-	float lscale = 1.0f - rscale;
-
-    // --- NEW Z-AXIS LOGIC ---
-    // Vertical (up/down) panning, applied as a volume modifier
-    if (s_quality && s_quality->integer != 0) // Only for Enhanced mode
-    {
-        float dot_up = DotProduct(listener_up, source_vec);
-        // fabs(dot_up) gives a value from 0 (horizontal) to 1 (vertical).
-        // (1.0 - fabs(dot_up)) gives a multiplier that is 1.0 for horizontal
-        // sounds and falls to 0.0 for sounds directly above/below.
-        // We use pow(..., 0.5) to soften the effect, so sounds don't disappear completely.
-        float vertical_attenuation = pow(1.0f - fabs(dot_up), 0.5);
-        vol *= vertical_attenuation;
-    }
-    // --- END OF NEW Z-AXIS LOGIC ---
-
-	// Final conversion and clamping
-	int right_i = (int)(vol * rscale);
-	int left_i = (int)(vol * lscale);
-
-	*right_vol = (right_i < 0) ? 0 : (right_i > 255) ? 255 : right_i;
-	*left_vol = (left_i < 0) ? 0 : (left_i > 255) ? 255 : left_i;
-}
-*/
 
 
 // ====================================================================

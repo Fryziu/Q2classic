@@ -17,7 +17,7 @@ ifneq ($(PLATFORM),linux)
 endif
 
 CC=gcc
-CFLAGS=-funsigned-char -pipe $(shell sdl2-config --cflags) -DGL_QUAKE -DUSE_SDL -DUSE_CURL
+CFLAGS=-funsigned-char -pipe $(shell sdl2-config --cflags) -DGL_QUAKE -DUSE_SDL -DUSE_CURL -Isrc/include/nanosvg
 
 ifeq ($(PLATFORM),darwin)
 	CFLAGS += -D__APPLE__ -I/opt/local/include
@@ -34,7 +34,7 @@ endif
 
 LDFLAGS += $(shell sdl2-config --libs)
 LDFLAGS += $(shell curl-config --libs)
-LDFLAGS += -ljpeg -lpng -lz
+LDFLAGS += -ljpeg -lpng -lz -lGLU
 
 all: debug
 

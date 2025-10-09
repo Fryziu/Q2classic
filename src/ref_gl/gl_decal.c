@@ -18,6 +18,101 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */                  
 //Decals, from egl, orginally from qfusion?
 #include "gl_local.h"
+#include <GL/glu.h> // Potrzebne dla gluBuild2DMipmaps
+
+// =======================================================================
+// SVG DECAL IMPLEMENTATION
+// =======================================================================
+
+// Definiujemy implementację NanoSVG w tym jednym pliku.
+#define NANOSVG_IMPLEMENTATION
+#include "nanosvg.h"
+#define NANOSVGRAST_IMPLEMENTATION
+#include "nanosvgrast.h"
+
+// Dane SVG dla prostego śladu po kuli (czarne, postrzępione kółko).
+// Osadzone bezpośrednio jako ciąg znaków.
+static const char* g_bullet_decal_svg =
+    "<svg width=\"64\" height=\"64\" viewBox=\"0 0 64 64\" xmlns=\"http://www.w3.org/2000/svg\">"
+    "<defs><radialGradient id=\"grad\" cx=\"50%\" cy=\"50%\" r=\"50%\" fx=\"50%\" fy=\"50%\">"
+    "<stop offset=\"0%\" style=\"stop-color:#000000;stop-opacity:1\" />"
+    "<stop offset=\"50%\" style=\"stop-color:#1A1A1A;stop-opacity:0.9\" />"
+    "<stop offset=\"80%\" style=\"stop-color:#333333;stop-opacity:0.5\" />"
+    "<stop offset=\"100%\" style=\"stop-color:#FFFFFF;stop-opacity:0\" />"
+    "</radialGradient></defs>"
+    "<path d=\"M32,16 C18,20 22,30 18,34 C14,38 18,48 32,50 C44,46 44,38 48,34 C52,30 48,20 32,16 Z\" fill=\"url(#grad)\"/>"
+    "<path d=\"M34 10 L30 18 L22 17 Z M48 20 L54 26 L49 32 Z M38 55 L32 50 L28 58 Z M15 42 L12 34 L20 31 Z\" fill=\"#111111\" fill-opacity=\"0.7\"/>"
+    "</svg>";
+
+// Nowa funkcja do rasteryzacji SVG i stworzenia tekstury OpenGL.
+static GLuint GL_RasterizeSVGToTexture(const char* svg_data, int width, int height)
+{
+    struct NSVGimage* image = NULL;
+    struct NSVGrasterizer* rast = NULL;
+    unsigned char* img_buffer = NULL;
+    GLuint tex_id = 0;
+
+    Com_Printf("Rasterizing SVG decal...\n");
+
+    // Parsuj dane SVG
+    // Uwaga: nanosvg modyfikuje wejściowy string, więc tworzymy jego kopię.
+    char* svg_copy = Z_TagMalloc(strlen(svg_data) + 1, TAG_RENDER_IMAGE);
+    strcpy(svg_copy, svg_data);
+    image = nsvgParse(svg_copy, "px", 96.0f);
+    Z_Free(svg_copy);
+
+    if (!image) {
+        Com_Printf("Could not parse SVG image.\n");
+        return 0;
+    }
+
+    // Stwórz rasteryzator
+    rast = nsvgCreateRasterizer();
+    if (!rast) {
+        Com_Printf("Could not create SVG rasterizer.\n");
+        nsvgDelete(image);
+        return 0;
+    }
+
+    // Zaalokuj bufor na piksele (RGBA)
+    img_buffer = Z_TagMalloc(width * height * 4, TAG_RENDER_IMAGE);
+    if (!img_buffer) {
+        Com_Printf("Could not allocate image buffer for SVG.\n");
+        nsvgDeleteRasterizer(rast);
+        nsvgDelete(image);
+        return 0;
+    }
+
+    // Rasteryzuj obraz
+    nsvgRasterize(rast, image, 0, 0, 1.0f, img_buffer, width, height, width * 4);
+
+    // Stwórz teksturę OpenGL
+    qglGenTextures(1, &tex_id);
+    qglBindTexture(GL_TEXTURE_2D, tex_id);
+    qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    // Użyj gluBuild2DMipmaps do automatycznego wygenerowania mipmap
+    gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, width, height, GL_RGBA, GL_UNSIGNED_BYTE, img_buffer);
+
+    qglBindTexture(GL_TEXTURE_2D, 0);
+
+    // Posprzątaj
+    nsvgDeleteRasterizer(rast);
+    nsvgDelete(image);
+    Z_Free(img_buffer);
+
+    if (tex_id == 0) {
+        Com_Printf("Failed to create OpenGL texture from SVG.\n");
+    } else {
+        Com_Printf("SVG decal texture created successfully (ID: %u).\n", tex_id);
+    }
+
+    return tex_id;
+}
+// =======================================================================
 
 #define DF_SHADE		0x00000400	// 1024
 #define DF_NOTIMESCALE	0x00000800	// 2048
@@ -73,6 +168,8 @@ static qboolean loadedDecalImages;
 
 image_t		*r_bholetexture;
 
+/*
+// loads decals in form of .png file
 void GL_InitDecalImages (void)
 {
 	r_bholetexture = GL_FindImage("pics/bullethole.png", it_sprite);
@@ -81,7 +178,66 @@ void GL_InitDecalImages (void)
 
 	loadedDecalImages = true;
 }
+*/
 
+void GL_InitDecalImages (void)
+{
+    GLuint decal_tex_id;
+
+    // Używamy naszej nowej funkcji do stworzenia tekstury z osadzonego SVG.
+    // Definiujemy rozmiar na 64x64 pikseli.
+    decal_tex_id = GL_RasterizeSVGToTexture(g_bullet_decal_svg, 64, 64);
+
+    if (decal_tex_id == 0)
+    {
+        // Jeśli z jakiegoś powodu rasteryzacja zawiedzie, użyj domyślnej tekstury.
+        r_bholetexture = r_notexture;
+        Com_Printf("WARNING: Using 'notexture' for bullet decals.\n");
+    }
+    else
+    {
+        // Musimy stworzyć "fałszywą" strukturę image_t dla naszej nowej tekstury,
+        // ponieważ reszta silnika operuje na wskaźnikach do image_t.
+        // Użyjemy do tego jednej ze statycznych, nieużywanych pozycji w globalnej
+        // tablicy gltextures, aby uniknąć dynamicznej alokacji.
+        // To jest czysty i bezpieczny "hack".
+
+        // Znajdź wolne miejsce w tablicy tekstur. Zaczynamy od końca dla bezpieczeństwa.
+        int i;
+        image_t *img = NULL;
+        for (i = MAX_GLTEXTURES - 1; i >= 0; --i)
+        {
+            if (gltextures[i].registration_sequence == 0)
+            {
+                img = &gltextures[i];
+                break;
+            }
+        }
+
+        if (img == NULL)
+        {
+            r_bholetexture = r_notexture;
+            Com_Printf("WARNING: No free texture slots for procedural decal.\n");
+        }
+        else
+        {
+            // Wypełnij strukturę image_t niezbędnymi danymi.
+            strcpy(img->name, "procedural/bullethole");
+            img->width = 64;
+            img->height = 64;
+            img->upload_width = 64;
+            img->upload_height = 64;
+            img->texnum = decal_tex_id;
+            img->registration_sequence = registration_sequence; // Oznacz jako używany
+            img->type = it_sprite; // Traktujemy go jak sprite
+
+            r_bholetexture = img; // Przypisz wskaźnik do naszej globalnej zmiennej
+            Com_Printf("Procedural bullet decal initialized.\n");
+        }
+    }
+
+    loadedDecalImages = true;
+}
 void GL_FreeUnusedDecalImages(void)
 {
 	if (!gl_decals->integer) {
