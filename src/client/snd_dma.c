@@ -135,8 +135,7 @@ static void S_Play_f(void);
 static void S_SoundList_f(void);
 static void S_SoundInfo_f(void);
 static void S_Spatialize(channel_t *ch);
-//static void S_SpatializeOrigin(const vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol);
-static void S_SpatializeOrigin(channel_t *ch, const vec3_t origin, float master_vol, float dist_mult);
+static void S_SpatializeOrigin (vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol);
 static struct sfx_s *S_RegisterSexedSound(int entnum, const char *base);
 static channel_t *S_PickChannel(int entnum, int entchannel);
 static sfx_t *S_FindName (const char *name, qboolean create);
@@ -301,7 +300,7 @@ void S_Init(void)
 	s_swapstereo = Cvar_Get( "s_swapstereo", "0", CVAR_ARCHIVE );
 	s_ambient = Cvar_Get ("s_ambient", "1", 0);
 	s_oldresample = Cvar_Get ("s_oldresample", "0", CVAR_LATCHED);
-	s_quality = Cvar_Get ("s_quality", "3", CVAR_ARCHIVE);
+	s_quality = Cvar_Get ("s_quality", "0", CVAR_ARCHIVE);
 	S_BuildAttenuationTable(); // Build the attenuation lookup table.
 
 	if (SNDDMA_Init()) {
@@ -737,28 +736,10 @@ void S_IssuePlaysound(playsound_t *ps)
 	VectorCopy(ps->origin, ch->origin);
 	ch->fixed_origin = ps->fixed_origin;
 
-	// --- KRYTYCZNA POPRAWKA LOGIKI TŁUMIENIA ---
-	// Zastępujemy wadliwą jednoliniową kalkulację jawną i poprawną logiką,
-	// która odzwierciedla intencje projektantów oryginalnej gry.
-	switch ((int)ps->attenuation)
-	{
-		case 1: // ATTN_NORM: Standardowe tłumienie dla większości dźwięków.
-			ch->dist_mult = 0.001f;
-			break;
-
-		case 2: // ATTN_IDLE: Szybkie tłumienie, słyszalne tylko z bliska.
-			ch->dist_mult = 0.002f;
-			break;
-
-		case 3: // ATTN_STATIC: Wolne tłumienie, słyszalne z dużej odległości.
-			ch->dist_mult = 0.0005f;
-			break;
-
-		case 0: // ATTN_NONE: Brak tłumienia.
-		default:
-			ch->dist_mult = 0.0f;
-			break;
-	}
+	if (ps->attenuation == ATTN_STATIC) // Zakładając, że ATTN_STATIC to 3
+	    ch->dist_mult = ps->attenuation * 0.001;
+	else
+	    ch->dist_mult = ps->attenuation * 0.0005;
 
 	S_Spatialize(ch);
 	ch->pos = 0;
@@ -788,99 +769,183 @@ static channel_t *S_PickChannel(int entnum, int entchannel)
 // This is the correct version of S_Spatialize
 static void S_Spatialize(channel_t *ch)
 {
-	vec3_t origin;
+	vec3_t		origin;
 
-	// Sounds attached to the player are always max volume, no occlusion.
-	if (ch->entnum == cl.playernum+1) {
+	// anything coming from the view entity will always be full volume
+	if (ch->entnum == cl.playernum+1)
+	{
 		ch->leftvol = ch->master_vol;
 		ch->rightvol = ch->master_vol;
-        ch->occlusion = 0;
 		return;
 	}
 
-	// Get the sound's origin in the world.
 	if (ch->fixed_origin)
-		VectorCopy(ch->origin, origin);
+	{
+		VectorCopy (ch->origin, origin);
+	}
 	else
-		CL_GetEntitySoundOrigin(ch->entnum, origin);
+		CL_GetEntitySoundOrigin (ch->entnum, origin);
 
-	// Call the new, correct SpatializeOrigin function.
-	// It will write leftvol, rightvol, and occlusion directly into 'ch'.
-	S_SpatializeOrigin(ch, origin, ch->master_vol, ch->dist_mult);
+    // Wywołanie z poprawnymi argumentami dla klasycznej wersji
+	S_SpatializeOrigin (origin, ch->master_vol, ch->dist_mult, &ch->leftvol, &ch->rightvol);
 }
-
 
 
 // ====================================================================
 // S_SpatializeOrigin with a more gameplay-friendly attenuation model
 // ====================================================================
-static void S_SpatializeOrigin(channel_t *ch, const vec3_t origin, float master_vol, float dist_mult)
+/*
+static void S_SpatializeOrigin (vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol)
 {
-	vec3_t	source_vec;
-	float	dist;
-	float	vol;
+    vec_t		dot;
+    vec_t		dist;
+    vec_t		lscale, rscale, scale;
+    vec3_t		source_vec;
 
-	VectorSubtract(origin, listener_origin, source_vec);
-	dist = VectorNormalize(source_vec);
-
-	if (dist < 0.1f) {
-		ch->leftvol = master_vol; ch->rightvol = master_vol;
-		ch->occlusion = 0;
+	// W nowej wersji jest `if (cls.state != ca_active)`, ale zostawmy to,
+	// jest to poprawka bezpieczeństwa i nie wpływa na logikę.
+	if (cls.state != ca_active)
+	{
+		*left_vol = *right_vol = 255;
 		return;
 	}
 
-    float attenuation_factor;
-    extern cvar_t *s_quality;
+    // --- ORYGINALNA LOGIKA MATEMATYCZNA ---
+	VectorSubtract(origin, listener_origin, source_vec);
 
-    if (s_quality && s_quality->integer >= 1) // Enhanced Quality Mode
+	dist = VectorNormalize(source_vec);
+	dist -= SOUND_FULLVOLUME;
+	if (dist < 0)
+		dist = 0;			// close enough to be at full volume
+	dist *= dist_mult;		// different attenuation levels
+
+	dot = DotProduct(listener_right, source_vec);
+
+	if (dma.channels == 1 || !dist_mult)
+	{ // no attenuation = no spatialization
+		rscale = 1.0;
+		lscale = 1.0;
+	}
+	else
+	{
+		rscale = 0.5 * (1.0 + dot);
+		lscale = 0.5*(1.0 - dot);
+	}
+
+	// add in distance effect
+	scale = (1.0 - dist) * rscale;
+	*right_vol = (int) (master_vol * scale);
+	if (*right_vol < 0)
+		*right_vol = 0;
+
+	scale = (1.0 - dist) * lscale;
+	*left_vol = (int) (master_vol * scale);
+	if (*left_vol < 0)
+		*left_vol = 0;
+}
+*/
+
+// ====================================================================
+// POPRAWIONA WERSJA Z DYNAMICZNYM ZASIĘGIEM UWZGLĘDNIAJĄCYM dist_mult
+// ====================================================================
+static void S_SpatializeOrigin (vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol)
+{
+    vec3_t  source_vec;
+    float   dist;
+    float   vol;
+    float   attenuation_factor;
+
+    // --- Krok 1: Podstawowe obliczenia ---
+    VectorSubtract(origin, listener_origin, source_vec);
+    dist = VectorNormalize(source_vec);
+
+    if (dist < 0.1f)
     {
-        // Use a linear interpolation (Lerp) model for a gentle, controllable falloff.
-        const float MIN_ATTENUATION = 0.05f; // Sound at max distance will have 5% volume.
-
-        if (dist <= SOUND_FULLVOLUME) {
-            attenuation_factor = 1.0f;
-        } else {
-            // Calculate how far we are into the falloff range (0.0 to 1.0)
-            float falloff_range = MAX_HEARING_DISTANCE - SOUND_FULLVOLUME;
-            float dist_in_falloff = dist - SOUND_FULLVOLUME;
-            float falloff_percent = dist_in_falloff / falloff_range;
-
-            // Clamp the value to ensure it's between 0.0 and 1.0
-            if (falloff_percent > 1.0f) falloff_percent = 1.0f;
-            if (falloff_percent < 0.0f) falloff_percent = 0.0f;
-
-            // Linearly interpolate the volume
-            attenuation_factor = 1.0f - falloff_percent * (1.0f - MIN_ATTENUATION);
-        }
+        *left_vol = (int)master_vol;
+        *right_vol = (int)master_vol;
+        return;
     }
-    else // Classic (Default) Mode
+
+    // --- Krok 2: Wybór modelu tłumienia ---
+    switch (s_quality->integer)
     {
-        // Use the original, linear attenuation model.
-        float linear_dist = (dist > SOUND_FULLVOLUME) ? (dist - SOUND_FULLVOLUME) * dist_mult : 0;
-        attenuation_factor = 1.0f - linear_dist;
+        case 1:
+        case 2:
+            // POZIOM 1 i 2: Nowe modele z POPRAWNĄ obsługą dist_mult
+            {
+                // Jeśli dist_mult jest zerowe (ATTN_NONE), brak tłumienia
+                if (dist_mult <= 0.0f)
+                {
+                    attenuation_factor = 1.0f;
+                    break;
+                }
+
+                // Oblicz dynamicznie maksymalną odległość na podstawie dist_mult.
+                // 1.0f / dist_mult to dystans, na którym dźwięk całkowicie zanika w modelu klasycznym.
+                float max_dist_for_sound = (1.0f / dist_mult) + SOUND_FULLVOLUME;
+
+                if (dist <= SOUND_FULLVOLUME) {
+                    attenuation_factor = 1.0f;
+                } else if (dist > max_dist_for_sound) {
+                    attenuation_factor = 0.0f;
+                } else {
+                    float falloff_range = max_dist_for_sound - SOUND_FULLVOLUME;
+                    float dist_into_falloff = dist - SOUND_FULLVOLUME;
+                    float falloff_percent = dist_into_falloff / falloff_range;
+
+                    if (s_quality->integer == 1) // Poziom 1: Liniowy spadek
+                    {
+                        attenuation_factor = 1.0f - falloff_percent;
+                    }
+                    else // Poziom 2: Kwadratowy spadek
+                    {
+                        float inverted_percent = 1.0f - falloff_percent;
+                        attenuation_factor = inverted_percent * inverted_percent;
+                    }
+                }
+            }
+            break;
+
+        case 0:
+        default:
+            // POZIOM 0: Klasyczny algorytm Quake II (bez zmian)
+            attenuation_factor = dist - SOUND_FULLVOLUME;
+            if (attenuation_factor < 0)
+                attenuation_factor = 0;
+            attenuation_factor *= dist_mult;
+
+            // Zabezpieczenie przed wartościami > 1.0, które mogłyby odwrócić głośność
+            if (attenuation_factor > 1.0f)
+                 attenuation_factor = 1.0f;
+
+            attenuation_factor = 1.0f - attenuation_factor;
+            break;
     }
 
-	vol = master_vol * attenuation_factor;
+    // --- Krok 3: Głośność po uwzględnieniu odległości ---
+    vol = master_vol * attenuation_factor;
 
-	// --- Panning & Occlusion Logic (no changes here) ---
-	float dot_right = DotProduct(listener_right, source_vec);
-	float rscale = 0.5f * (1.0f + dot_right);
-	float lscale = 1.0f - rscale;
-
-    ch->occlusion = 0;
-    if (s_quality && s_quality->integer >= 2) {
+    // --- Krok 4: Efekty dodatkowe (np. oś Z) ---
+    // Ta część pozostaje bez zmian
+    if (s_quality->integer >= 2)
+    {
         float dot_up = DotProduct(listener_up, source_vec);
         float vertical_attenuation = 1.0f - (fabs(dot_up) * 0.5f);
         vol *= vertical_attenuation;
-        if (s_quality && s_quality->integer >= 3) {
-            ch->occlusion = (int)(fabs(dot_up) * 255.0f);
-        }
     }
 
-	ch->leftvol = (int)(vol * lscale);
-	ch->rightvol = (int)(vol * rscale);
-}
+    // --- Krok 5: Panning ---
+    float dot_right = DotProduct(listener_right, source_vec);
+    float rscale = 0.5f * (1.0f + dot_right);
+    float lscale = 1.0f - rscale;
 
+    // --- Krok 6: Finalne obliczenie ---
+    int right_i = (int)(vol * rscale);
+    int left_i = (int)(vol * lscale);
+
+    *right_vol = (right_i < 0) ? 0 : (right_i > 255) ? 255 : right_i;
+    *left_vol = (left_i < 0) ? 0 : (left_i > 255) ? 255 : left_i;
+}
 
 void S_RawSamples(int samples, int rate, int width, int nchannels, byte *data) { /* Your full function body here */ }
 

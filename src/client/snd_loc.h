@@ -99,6 +99,7 @@ typedef struct
 } dma_t;
 
 // !!! if this is changed, the asm code must change !!!
+/*
 typedef struct
 {
 	sfx_t		*sfx;
@@ -117,6 +118,24 @@ typedef struct
 	int			master_vol;
 	qboolean	fixed_origin;
 	qboolean	autosound;
+} channel_t;
+*/
+
+typedef struct
+{
+	sfx_t		*sfx;			// sfx number
+	int			leftvol;		// 0-255 volume
+	int			rightvol;		// 0-255 volume
+	int			end;			// end time in global paintsamples
+	int 		pos;			// sample position in sfx
+	// Usunęliśmy: looping (było przestarzałe nawet w oryginale)
+	int			entnum;			// to allow overriding a specific sound
+	int			entchannel;		//
+	vec3_t		origin;			// only use if fixed_origin is set
+	vec_t		dist_mult;		// distance multiplier (attenuation/clipK)
+	int			master_vol;		// 0-255 master volume
+	qboolean	fixed_origin;	// use origin instead of fetching entnum's origin
+	qboolean	autosound;		// from an entity->sound, cleared each frame
 } channel_t;
 
 /*

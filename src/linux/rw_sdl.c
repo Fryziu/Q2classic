@@ -259,6 +259,21 @@ static void GetEvent(SDL_Event *event)
 			keyq_head = (keyq_head + 1) & 63;
 			break;
 
+		case SDL_MOUSEWHEEL:
+					if (event->wheel.y > 0) // Przewinięcie w górę (od siebie)
+					{
+						// Symulujemy pełne kliknięcie: wciśnięcie i natychmiastowe puszczenie
+						Key_Event(K_MWHEELUP, true, Sys_Milliseconds());
+						Key_Event(K_MWHEELUP, false, Sys_Milliseconds());
+					}
+					else if (event->wheel.y < 0) // Przewinięcie w dół (do siebie)
+					{
+						// Symulujemy pełne kliknięcie: wciśnięcie i natychmiastowe puszczenie
+						Key_Event(K_MWHEELDOWN, true, Sys_Milliseconds());
+						Key_Event(K_MWHEELDOWN, false, Sys_Milliseconds());
+					}
+					break;
+
 		case SDL_QUIT:
 			Sys_Quit();
 			break;
