@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 //
 // these are the key numbers that should be passed to Key_Event
 //
+
 #define	K_TAB			9
 #define	K_ENTER			13
 #define	K_ESCAPE		27
