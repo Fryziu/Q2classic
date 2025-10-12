@@ -15,10 +15,15 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-*/                  
+*/
 //Decals, from egl, orginally from qfusion?
+
 #include "gl_local.h"
+#include "gl_decal.h"
+#include "gl_decal_svg.h"
 #include <GL/glu.h> // Potrzebne dla gluBuild2DMipmaps
+
+static cvar_t	*gl_decals_debug;
 
 // =======================================================================
 // SVG DECAL IMPLEMENTATION
@@ -29,20 +34,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "nanosvg.h"
 #define NANOSVGRAST_IMPLEMENTATION
 #include "nanosvgrast.h"
-
-// Dane SVG dla prostego śladu po kuli (czarne, postrzępione kółko).
-// Osadzone bezpośrednio jako ciąg znaków.
-static const char* g_bullet_decal_svg =
-    "<svg width=\"64\" height=\"64\" viewBox=\"0 0 64 64\" xmlns=\"http://www.w3.org/2000/svg\">"
-    "<defs><radialGradient id=\"grad\" cx=\"50%\" cy=\"50%\" r=\"50%\" fx=\"50%\" fy=\"50%\">"
-    "<stop offset=\"0%\" style=\"stop-color:#000000;stop-opacity:1\" />"
-    "<stop offset=\"50%\" style=\"stop-color:#1A1A1A;stop-opacity:0.9\" />"
-    "<stop offset=\"80%\" style=\"stop-color:#333333;stop-opacity:0.5\" />"
-    "<stop offset=\"100%\" style=\"stop-color:#FFFFFF;stop-opacity:0\" />"
-    "</radialGradient></defs>"
-    "<path d=\"M32,16 C18,20 22,30 18,34 C14,38 18,48 32,50 C44,46 44,38 48,34 C52,30 48,20 32,16 Z\" fill=\"url(#grad)\"/>"
-    "<path d=\"M34 10 L30 18 L22 17 Z M48 20 L54 26 L49 32 Z M38 55 L32 50 L28 58 Z M15 42 L12 34 L20 31 Z\" fill=\"#111111\" fill-opacity=\"0.7\"/>"
-    "</svg>";
 
 // Nowa funkcja do rasteryzacji SVG i stworzenia tekstury OpenGL.
 static GLuint GL_RasterizeSVGToTexture(const char* svg_data, int width, int height)
@@ -112,38 +103,10 @@ static GLuint GL_RasterizeSVGToTexture(const char* svg_data, int width, int heig
 
     return tex_id;
 }
-// =======================================================================
+// ===
 
-#define DF_SHADE		0x00000400	// 1024
-#define DF_NOTIMESCALE	0x00000800	// 2048
 #define INSTANT_DECAL	-10000.0
 
-#define MAX_DECALS				256
-#define MAX_DECAL_VERTS			64
-#define MAX_DECAL_FRAGMENTS		64
-
-#define DECAL_BHOLE	1
-#define	DECAL_BLOOD	2
-
-typedef struct cdecal_t
-{
-	struct cdecal_t	*prev, *next;
-	float		time;
-
-	int			numverts;
-	vec3_t		verts[MAX_DECAL_VERTS];
-	vec2_t		stcoords[MAX_DECAL_VERTS];
-	mnode_t		*node;
-
-	vec3_t		direction;
-
-	vec4_t		color;
-	vec3_t		org;
-
-	int			type;
-	int			flags;
-
-} cdecal_t;
 
 typedef struct
 {
@@ -160,84 +123,96 @@ static cdecal_t	active_decals, *free_decals;
 static int R_GetClippedFragments (vec3_t origin, float radius, mat3_t axis, int maxfverts, vec3_t *fverts, int maxfragments, fragment_t *fragments);
 //void R_DrawDecal (int numverts, vec3_t *verts, vec2_t *stcoords, vec4_t color, int type, int flags);
 
-static cvar_t	*gl_decals;
+cvar_t	*gl_decals;
 static cvar_t	*gl_decals_time;
 static cvar_t	*gl_decals_max;
 
 static qboolean loadedDecalImages;
 
-image_t		*r_bholetexture;
+// Przechowujemy wskaźniki na wszystkie załadowane tekstury decali.
+image_t		*r_decal_bhole;     // Ślad po kuli
+image_t		*r_decal_scorch;    // Opalenizna po wybuchu
+image_t		*r_decal_blood;     // Krew
+image_t		*r_decal_energy;    // Ślad po broni energetycznej
 
-/*
-// loads decals in form of .png file
-void GL_InitDecalImages (void)
+//Architekt (M-AI-812)
+
+static image_t* R_CreateFakeImage(const char* name, int width, int height, GLuint tex_id)
 {
-	r_bholetexture = GL_FindImage("pics/bullethole.png", it_sprite);
-	if(!r_bholetexture)
-		r_bholetexture = r_notexture;
-
-	loadedDecalImages = true;
+    int i;
+    image_t *img = NULL;
+    for (i = MAX_GLTEXTURES - 1; i >= 0; --i)
+    {
+        if (gltextures[i].registration_sequence == 0)
+        {
+            img = &gltextures[i];
+            strcpy(img->name, name);
+            img->width = width;
+            img->height = height;
+            img->upload_width = width;
+            img->upload_height = height;
+            img->texnum = tex_id;
+            img->registration_sequence = registration_sequence;
+            img->type = it_sprite;
+            return img;
+        }
+    }
+    Com_Printf("WARNING: No free texture slots for procedural image '%s'.\n", name);
+    return NULL;
 }
-*/
-
 void GL_InitDecalImages (void)
 {
-    GLuint decal_tex_id;
+    GLuint  tex_id;
+    image_t *img;
 
-    // Używamy naszej nowej funkcji do stworzenia tekstury z osadzonego SVG.
-    // Definiujemy rozmiar na 64x64 pikseli.
-    decal_tex_id = GL_RasterizeSVGToTexture(g_bullet_decal_svg, 64, 64);
-
-    if (decal_tex_id == 0)
-    {
-        // Jeśli z jakiegoś powodu rasteryzacja zawiedzie, użyj domyślnej tekstury.
-        r_bholetexture = r_notexture;
-        Com_Printf("WARNING: Using 'notexture' for bullet decals.\n");
-    }
-    else
-    {
-        // Musimy stworzyć "fałszywą" strukturę image_t dla naszej nowej tekstury,
-        // ponieważ reszta silnika operuje na wskaźnikach do image_t.
-        // Użyjemy do tego jednej ze statycznych, nieużywanych pozycji w globalnej
-        // tablicy gltextures, aby uniknąć dynamicznej alokacji.
-        // To jest czysty i bezpieczny "hack".
-
-        // Znajdź wolne miejsce w tablicy tekstur. Zaczynamy od końca dla bezpieczeństwa.
-        int i;
-        image_t *img = NULL;
-        for (i = MAX_GLTEXTURES - 1; i >= 0; --i)
-        {
-            if (gltextures[i].registration_sequence == 0)
-            {
-                img = &gltextures[i];
-                break;
-            }
-        }
-
-        if (img == NULL)
-        {
-            r_bholetexture = r_notexture;
-            Com_Printf("WARNING: No free texture slots for procedural decal.\n");
-        }
-        else
-        {
-            // Wypełnij strukturę image_t niezbędnymi danymi.
-            strcpy(img->name, "procedural/bullethole");
-            img->width = 64;
-            img->height = 64;
-            img->upload_width = 64;
-            img->upload_height = 64;
-            img->texnum = decal_tex_id;
-            img->registration_sequence = registration_sequence; // Oznacz jako używany
-            img->type = it_sprite; // Traktujemy go jak sprite
-
-            r_bholetexture = img; // Przypisz wskaźnik do naszej globalnej zmiennej
-            Com_Printf("Procedural bullet decal initialized.\n");
-        }
-    }
-
+    Com_Printf("Initializing decal textures...\n");
     loadedDecalImages = true;
+
+    // #1: Tekstura Śladu po Kuli
+    r_decal_bhole = GL_FindImage("pics/bullethole.png", it_sprite);
+    if (!r_decal_bhole || r_decal_bhole == r_notexture) {
+        Com_Printf(" - INFO: 'bullethole.png' not found. Falling back to procedural SVG.\n");
+        tex_id = GL_RasterizeSVGToTexture(g_decal_svg_bhole, 64, 64);
+        img = (tex_id != 0) ? R_CreateFakeImage("procedural/bhole_svg", 64, 64, tex_id) : NULL;
+        r_decal_bhole = img ? img : r_notexture;
+    } else {
+        Com_Printf(" - Loaded 'pics/bullethole.png'.\n");
+    }
+
+    // #2: Tekstura Opalenizny po Wybuchu
+    r_decal_scorch = GL_FindImage("pics/scorch.png", it_sprite);
+    if (!r_decal_scorch || r_decal_scorch == r_notexture) {
+        Com_Printf(" - INFO: 'scorch.png' not found. Falling back to procedural SVG.\n");
+        tex_id = GL_RasterizeSVGToTexture(g_decal_svg_scorch, 128, 128);
+        img = (tex_id != 0) ? R_CreateFakeImage("procedural/scorch_svg", 128, 128, tex_id) : NULL;
+        r_decal_scorch = img ? img : r_notexture;
+    } else {
+        Com_Printf(" - Loaded 'pics/scorch.png'.\n");
+    }
+
+    // #3: Tekstura Broni Energetycznej
+    r_decal_energy = GL_FindImage("pics/energy_mark.png", it_sprite);
+    if (!r_decal_energy || r_decal_energy == r_notexture) {
+        Com_Printf(" - INFO: 'energy_mark.png' not found. Falling back to procedural SVG.\n");
+        tex_id = GL_RasterizeSVGToTexture(g_decal_svg_blaster, 64, 64);
+        img = (tex_id != 0) ? R_CreateFakeImage("procedural/energy_svg", 64, 64, tex_id) : NULL;
+        r_decal_energy = img ? img : r_notexture;
+    } else {
+        Com_Printf(" - Loaded 'pics/energy_mark.png'.\n");
+    }
+    // =======================================================================
+     // #4: Placeholder dla tekstury Krwi
+     // =======================================================================
+     // r_decal_blood = GL_FindImage("pics/blood.png", it_sprite);
+     // if (!r_decal_blood || r_decal_blood == r_notexture) {
+     //     // Tutaj można dodać fallback do SVG dla krwi w przyszłości
+     // } else {
+     //     Com_Printf(" - Loaded external decal from 'pics/blood.png'.\n");
+     // }
 }
+
+
+
 void GL_FreeUnusedDecalImages(void)
 {
 	if (!gl_decals->integer) {
@@ -250,7 +225,7 @@ void GL_FreeUnusedDecalImages(void)
 		return;
 	}
 
-	r_bholetexture->registration_sequence = registration_sequence;
+	r_decal_bhole->registration_sequence = registration_sequence;
 }
 
 static void GL_FreeDecals(void)
@@ -301,6 +276,7 @@ void GL_InitDecals (void)
 	gl_decals = Cvar_Get( "gl_decals", "1", CVAR_ARCHIVE );
 	gl_decals_time = Cvar_Get( "gl_decals_time", "30", CVAR_ARCHIVE );
 	gl_decals_max = Cvar_Get( "gl_decals_max", "256", CVAR_ARCHIVE );
+	gl_decals_debug = Cvar_Get( "gl_decals_debug", "0", CVAR_ARCHIVE );
 
 	gl_decals->OnChange = OnChange_Decals;
 	gl_decals_max->OnChange = OnChange_DecalsMax;
@@ -398,9 +374,32 @@ static void GL_FreeDecal ( cdecal_t *dl )
 makeDecal
 ===============
 */
+/*
 void R_AddDecal	(vec3_t origin, vec3_t dir, float red, float green, float blue, float alpha,
 				 float size, int type, int flags, float angle)
 {
+		// ===================================================================
+		// M-AI-812: BLOK DIAGNOSTYCZNY
+		// ===================================================================
+		if (gl_decals_debug && gl_decals_debug->integer > 0)
+		{
+			char *typeName = "UNKNOWN";
+			switch(type)
+			{
+				case DECAL_BHOLE:  typeName = "DECAL_BHOLE"; break;
+				case DECAL_SCORCH: typeName = "DECAL_SCORCH"; break;
+				case DECAL_BLOOD:  typeName = "DECAL_BLOOD"; break;
+			}
+			Com_Printf("R_AddDecal: Attempting to create '%s' decal.\n", typeName);
+
+			if (gl_decals_debug->integer > 1)
+			{
+				Com_Printf("  at: (%.1f, %.1f, %.1f), size: %.1f, flags: 0x%X\n",
+					origin[0], origin[1], origin[2], size, flags);
+			}
+		}
+		// ====
+
 	int			i, j, numfragments;
 	vec3_t		verts[MAX_DECAL_VERTS], shade;
 	fragment_t	*fr, fragments[MAX_DECAL_FRAGMENTS];
@@ -442,6 +441,32 @@ void R_AddDecal	(vec3_t origin, vec3_t dir, float red, float green, float blue, 
 
 		d->time = r_newrefdef.time;
 
+		// ===================================================================
+		        // ZMIANA: Wybór tekstury na podstawie typu decala
+		        // ===================================================================
+		        switch(type)
+		        {
+		            case DECAL_SCORCH:
+		                d->image = r_decal_scorch;
+		                break;
+		            case DECAL_BLOOD:
+		                // d->image = r_decal_blood; // (w przyszłości)
+		                d->image = r_notexture;
+		                break;
+		            case DECAL_BHOLE:
+		            default:
+		                d->image = r_decal_bhole;
+		                break;
+		        }
+
+		        // Jeśli wybrana tekstura jest nieważna, nie twórz decala
+		        if (!d->image || d->image == r_notexture)
+		        {
+		            GL_FreeDecal(d);
+		            continue;
+		        }
+		        // ===
+
 		d->numverts = fr->numverts;
 		d->node = fr->node;
 
@@ -473,7 +498,129 @@ void R_AddDecal	(vec3_t origin, vec3_t dir, float red, float green, float blue, 
 		}
 	}
 }
+*/
 
+void R_AddDecal	(vec3_t origin, vec3_t dir, float red, float green, float blue, float alpha,
+				 float size, int type, int flags, float angle)
+{
+	int			i, j, numfragments;
+	vec3_t		verts[MAX_DECAL_VERTS], shade;
+	fragment_t	*fr, fragments[MAX_DECAL_FRAGMENTS];
+	mat3_t		axis;
+	cdecal_t	*d;
+
+	// ===================================================================
+	// KROK 1: Blok diagnostyczny (tylko do logowania)
+	// ===================================================================
+	if (gl_decals_debug && gl_decals_debug->integer > 0)
+	{
+		char *typeName = "UNKNOWN";
+		switch(type)
+		{
+			case DECAL_BHOLE:  typeName = "DECAL_BHOLE"; break;
+			case DECAL_SCORCH: typeName = "DECAL_SCORCH"; break;
+			case DECAL_ENERGY: typeName = "DECAL_ENERGY"; break;
+			case DECAL_BLOOD:  typeName = "DECAL_BLOOD"; break;
+		}
+		Com_Printf("R_AddDecal: Received request to create '%s' decal.\n", typeName);
+
+		if (gl_decals_debug->integer > 1)
+		{
+			Com_Printf("  at: (%.1f, %.1f, %.1f), size: %.1f, flags: 0x%X\n",
+				origin[0], origin[1], origin[2], size, flags);
+		}
+	}
+
+	if (!gl_decals->integer)
+		return;
+
+	// invalid decal
+	if (size <= 0 || VectorCompare (dir, vec3_origin))
+		return;
+
+	// calculate orientation matrix
+	VectorNormalize2 (dir, axis[0]);
+	PerpendicularVector (axis[1], axis[0]);
+	RotatePointAroundVector (axis[2], axis[0], axis[1], angle);
+	CrossProduct (axis[0], axis[2], axis[1]);
+
+	numfragments = R_GetClippedFragments (origin, size, axis,
+		MAX_DECAL_VERTS, verts, MAX_DECAL_FRAGMENTS, fragments);
+
+	if (!numfragments)
+		return;
+
+	size = 0.5f / size;
+	VectorScale (axis[1], size, axis[1]);
+	VectorScale (axis[2], size, axis[2]);
+
+	for (i=0, fr=fragments ; i<numfragments ; i++, fr++)
+	{
+		if (fr->numverts > MAX_DECAL_VERTS)
+			fr->numverts = MAX_DECAL_VERTS;
+		else if (fr->numverts < 1)
+			continue;
+
+		// ===================================================================
+		// KROK 2: Alokacja i przypisanie tekstury (poprawna kolejność)
+		// ===================================================================
+		d = GL_AllocDecal ();
+		d->time = r_newrefdef.time;
+
+		switch(type)
+		{
+			case DECAL_SCORCH:
+				d->image = r_decal_scorch;
+				break;
+			case DECAL_ENERGY:
+				d->image = r_decal_energy;
+				break;
+			case DECAL_BLOOD:
+				d->image = r_notexture; // Placeholder
+				break;
+			case DECAL_BHOLE:
+			default:
+				d->image = r_decal_bhole;
+				break;
+		}
+
+		if (!d->image || d->image == r_notexture)
+		{
+			GL_FreeDecal(d);
+			continue;
+		}
+
+		// ===================================================================
+		// KROK 3: Reszta logiki funkcji (bez zmian)
+		// ===================================================================
+		d->numverts = fr->numverts;
+		d->node = fr->node;
+
+		VectorCopy(fr->surf->plane->normal, d->direction);
+		if (!(fr->surf->flags & SURF_PLANEBACK))
+			VectorNegate(d->direction, d->direction);
+
+		Vector4Set(d->color, red, green, blue, alpha);
+		VectorCopy (origin, d->org);
+
+		if (flags & DF_SHADE) {
+			R_LightPoint (origin, shade);
+			for (j=0 ; j<3 ; j++)
+				d->color[j] = (d->color[j] * shade[j] * 0.6f) + (d->color[j] * 0.4f);
+		}
+
+		d->type = type;
+		d->flags = flags;
+
+		for (j = 0; j < fr->numverts; j++) {
+			vec3_t v_temp; // Zmieniono nazwę, aby uniknąć konfliktu z logiem
+			VectorCopy (verts[fr->firstvert+j], d->verts[j]);
+			VectorSubtract (d->verts[j], origin, v_temp);
+			d->stcoords[j][0] = DotProduct (v_temp, axis[1]) + 0.5f;
+			d->stcoords[j][1] = DotProduct (v_temp, axis[2]) + 0.5f;
+		}
+	}
+}
 
 /*
 ===============
@@ -481,13 +628,80 @@ CL_AddDecals
 ===============
 */
 extern int r_visframecount;
+/*
+void R_AddDecals (void)
+{
+	cdecal_t	*dl, *next,	*active;
+		float		mindist, time;
+		vec3_t		v;
+		vec4_t		color;
+	    GLuint      last_texnum = 0; // ZMIANA: Śledzenie ostatnio użytej tekstury
 
+		if (!gl_decals->integer)
+			return;
+
+		active = &active_decals;
+		if (active->next == active)
+			return;
+
+		mindist = DotProduct(r_origin, viewAxis[0]) + 4.0f;
+
+		qglEnable(GL_POLYGON_OFFSET_FILL);
+		qglPolygonOffset(-1, -2);
+
+		qglDepthMask(GL_FALSE);
+		qglEnable(GL_BLEND);
+		GL_TexEnv(GL_MODULATE);
+
+	    // ZMIANA: Usunęliśmy stąd GL_Bind, ponieważ będzie on wywoływany w pętli.
+
+		for (dl = active->next; dl != active; dl = next)
+		{
+			next = dl->next;
+
+	        // ... (cała logika sprawdzania czasu życia, widoczności, etc. pozostaje bez zmian) ...
+	        // ...
+
+	        // ===================================================================
+	        // ZMIANA: Optymalizacja bindowania tekstur
+	        // ===================================================================
+	        // Binduj teksturę tylko wtedy, gdy jest inna niż poprzednia.
+	        if (dl->image->texnum != last_texnum)
+	        {
+	            GL_Bind(dl->image->texnum);
+	            last_texnum = dl->image->texnum;
+	        }
+	        // ===================================================================
+
+			Vector4Copy (dl->color, color);
+
+			time = dl->time + gl_decals_time->value - r_newrefdef.time;
+			if (time < 1.5f)
+				color[3] *= time / 1.5f;
+
+			//Draw it
+			qglColor4fv (color);
+			qglTexCoordPointer( 2, GL_FLOAT, 0, dl->stcoords);
+			qglVertexPointer( 3, GL_FLOAT, 0, dl->verts );
+			qglDrawArrays( GL_TRIANGLE_FAN, 0, dl->numverts );
+		}
+
+
+	GL_TexEnv(GL_REPLACE);
+	qglDisable(GL_BLEND);
+	qglColor4fv(colorWhite);
+	qglDepthMask(GL_TRUE);
+	qglDisable(GL_POLYGON_OFFSET_FILL);
+	qglVertexPointer( 3, GL_FLOAT, 0, r_arrays.vertices );
+}
+*/
 void R_AddDecals (void)
 {
 	cdecal_t	*dl, *next,	*active;
 	float		mindist, time;
 	vec3_t		v;
 	vec4_t		color;
+    GLuint      last_texnum = 0;
 
 	if (!gl_decals->integer)
 		return;
@@ -496,7 +710,7 @@ void R_AddDecals (void)
 	if (active->next == active)
 		return;
 
-	mindist = DotProduct(r_origin, viewAxis[0]) + 4.0f; 
+	mindist = DotProduct(r_origin, viewAxis[0]) + 4.0f;
 
 	qglEnable(GL_POLYGON_OFFSET_FILL);
 	qglPolygonOffset(-1, -2);
@@ -505,39 +719,50 @@ void R_AddDecals (void)
 	qglEnable(GL_BLEND);
 	GL_TexEnv(GL_MODULATE);
 
-	GL_Bind(r_bholetexture->texnum);
-
 	for (dl = active->next; dl != active; dl = next)
 	{
 		next = dl->next;
 
+		// Sprawdź czas życia decala
 		if (dl->time + gl_decals_time->value <= r_newrefdef.time ) {
 			GL_FreeDecal ( dl );
 			continue;
 		}
-		
+
+		// Sprawdź, czy węzeł, w którym jest decal, jest widoczny
 		if (dl->node == NULL || dl->node->visframe != r_visframecount)
 			continue;
 
-		// do not render if the decal is behind the view
+        // ===================================================================
+        // PRZYWRÓCONY KOD: Sprawdza, czy decal nie jest za plecami gracza
+        // lub odwrócony tyłem. To naprawia ostrzeżenia kompilatora.
+        // ===================================================================
+		// Nie renderuj, jeśli decal jest za płaszczyzną widoku
 		if ( DotProduct(dl->org, viewAxis[0]) < mindist)
 			continue;
 
-		// do not render if the view origin is behind the decal
+		// Nie renderuj, jeśli patrzymy na "tył" decala
 		VectorSubtract(dl->org, r_origin, v);
 		if (DotProduct(dl->direction, v) < 0)
 			continue;
+        // ===================================================================
+
+		// Binduj teksturę tylko wtedy, gdy jest inna niż poprzednia.
+        if (dl->image && dl->image->texnum != last_texnum)
+        {
+            GL_Bind(dl->image->texnum);
+            last_texnum = dl->image->texnum;
+        }
 
 		Vector4Copy (dl->color, color);
 
+		// Logika zanikania (fade out)
 		time = dl->time + gl_decals_time->value - r_newrefdef.time;
-
-		if (time < 1.5f)
+		if ( (dl->flags & DF_FADEOUT) && (time < 1.5f) )
 			color[3] *= time / 1.5f;
 
-		//Draw it
+		// Rysowanie
 		qglColor4fv (color);
-
 		qglTexCoordPointer( 2, GL_FLOAT, 0, dl->stcoords);
 		qglVertexPointer( 3, GL_FLOAT, 0, dl->verts );
 		qglDrawArrays( GL_TRIANGLE_FAN, 0, dl->numverts );
@@ -550,7 +775,6 @@ void R_AddDecals (void)
 	qglDisable(GL_POLYGON_OFFSET_FILL);
 	qglVertexPointer( 3, GL_FLOAT, 0, r_arrays.vertices );
 }
-
 
 #define	ON_EPSILON			0.1			// point on plane side epsilon
 #define BACKFACE_EPSILON	0.01

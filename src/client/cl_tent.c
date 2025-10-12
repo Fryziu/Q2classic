@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // cl_tent.c -- client side temporary entities
 
 #include "client.h"
+#include "cl_decals.h"
 
 typedef enum
 {
@@ -730,18 +731,47 @@ void CL_ParseTEnt (sizebuf_t *msg)
 		CL_ParticleEffect (pos, dir, 0xe8, 60);
 		break;
 
-	case TE_GUNSHOT:			// bullet hitting wall
-	case TE_SPARKS:
-	case TE_BULLET_SPARKS:
-		MSG_ReadPos (msg, pos);
-		MSG_ReadDir (msg, dir);
-		if (type == TE_GUNSHOT)
-			CL_ParticleEffect (pos, dir, 0, 40);
-		else
-			CL_ParticleEffect (pos, dir, 0xe0, 6);
+	case TE_GUNSHOT:
+	    case TE_SPARKS:
+	    case TE_BULLET_SPARKS:
 
-		if (type != TE_SPARKS)
-		{
+	        // 1. Wspólna obsługa dla trzech typów zdarzeń, aby uniknąć duplikacji kodu.
+	        vec3_t pos, dir;
+
+	        // 2. Odczytujemy dane (pozycję i kierunek) tylko raz.
+	        MSG_ReadPos (msg, pos);
+	        MSG_ReadDir (msg, dir);
+
+	        // 3. Wywołujemy nasz nowy, scentralizowany handler dla decali.
+	        // On sam zdecyduje, czy i jaki decal narysować na podstawie 'type'.
+	        CL_HandleTempEntityForDecal(type, pos, dir);
+
+	        // 4. Odtwarzamy oryginalną logikę dla efektów cząsteczkowych.
+	        if (type == TE_GUNSHOT)
+	            CL_ParticleEffect (pos, dir, 0, 40); // Czarny dym dla gunshot
+	        else
+	            CL_ParticleEffect (pos, dir, 0xe0, 6); // Żółte iskry dla sparks
+
+	        // 5. Odtwarzamy dodatkowe efekty (dźwięk, dym), które nie dotyczyły TE_SPARKS.
+	        // UWAGA: Usunęliśmy stąd starą linię R_AddDecal - jej zadanie przejął CL_HandleTempEntityForDecal.
+	        if (type != TE_SPARKS)
+	        {
+	            CL_SmokeAndFlash(pos);
+	            R_AddStain(pos, 1, 5); // Zakładam, że chcesz zachować efekt "stain"
+
+	            // impact sound
+	            int cnt = rand() & 15;
+	            if (cnt == 1)
+	                S_StartSound (pos, 0, 0, cl_sfx_ric1, 1, ATTN_NORM, 0);
+	            else if (cnt == 2)
+	                S_StartSound (pos, 0, 0, cl_sfx_ric2, 1, ATTN_NORM, 0);
+	            else if (cnt == 3)
+	                S_StartSound (pos, 0, 0, cl_sfx_ric3, 1, ATTN_NORM, 0);
+	        }
+
+	        break;
+
+
 #ifdef GL_QUAKE
 			R_AddDecal(pos, dir, 0, 0, 0, 1.0f, 2 + ((rand()%21*0.05f) - 0.5f), 1, 0, rand()%361);
 #endif
@@ -757,7 +787,7 @@ void CL_ParseTEnt (sizebuf_t *msg)
 				S_StartSound (pos, 0, 0, cl_sfx_ric2, 1, ATTN_NORM, 0);
 			else if (cnt == 3)
 				S_StartSound (pos, 0, 0, cl_sfx_ric3, 1, ATTN_NORM, 0);
-		}
+
 
 		break;
 		
@@ -826,6 +856,7 @@ void CL_ParseTEnt (sizebuf_t *msg)
 	case TE_BLASTER:			// blaster hitting wall
 		MSG_ReadPos (msg, pos);
 		MSG_ReadDir (msg, dir);
+		CL_HandleTempEntityForDecal(type, pos, dir);
 		CL_BlasterParticles (pos, dir);
 
 		R_AddStain(pos, 2, 10);
@@ -853,18 +884,31 @@ void CL_ParseTEnt (sizebuf_t *msg)
 		S_StartSound (pos,  0, 0, cl_sfx_lashit, 1, ATTN_NORM, 0);
 		break;
 		
-	case TE_RAILTRAIL:			// railgun effect
-		MSG_ReadPos (msg, pos);
-		MSG_ReadPos (msg, pos2);
-		CL_RailTrail (pos, pos2);
-		S_StartSound (pos2, 0, 0, cl_sfx_railg, 1, ATTN_NORM, 0);
-		break;
+	case TE_RAILTRAIL:
+	    {
+	        vec3_t pos, pos2, dir; // Zadeklaruj zmienne lokalnie
+
+	        MSG_ReadPos (msg, pos);
+	        MSG_ReadPos (msg, pos2);
+
+	        // Oblicz kierunek na podstawie początku i końca smugi
+	        VectorSubtract(pos2, pos, dir);
+	        VectorNormalize(dir);
+
+	        // Wywołaj handler z punktem końcowym (pos2) i obliczonym kierunkiem
+	        CL_HandleTempEntityForDecal(type, pos2, dir);
+
+	        CL_RailTrail (pos, pos2);
+	        S_StartSound (pos2, 0, 0, cl_sfx_railg, 1, ATTN_NORM, 0);
+	        break;
+	    }
 
 	case TE_EXPLOSION2:
 	case TE_GRENADE_EXPLOSION:
 	case TE_GRENADE_EXPLOSION_WATER:
 		MSG_ReadPos (msg, pos);
-
+		// dir dla eksplozji nie jest istotny, możemy przekazać vec3_origin
+		    CL_HandleTempEntityForDecal(type, pos, vec3_origin); // <-- DODAJ TĘ LINIĘ
 		R_AddStain(pos, 3, 35);
 
 		ex = CL_AllocExplosion ();
@@ -908,7 +952,7 @@ void CL_ParseTEnt (sizebuf_t *msg)
 	case TE_ROCKET_EXPLOSION_WATER:
 	case TE_EXPLOSION1_NP:						// PMM
 		MSG_ReadPos (msg, pos);
-
+		CL_HandleTempEntityForDecal(type, pos, vec3_origin); // <-- DODAJ TĘ LINIĘ
 		R_AddStain(pos, 3, 35);
 
 		ex = CL_AllocExplosion ();
@@ -935,6 +979,7 @@ void CL_ParseTEnt (sizebuf_t *msg)
 
 	case TE_BFG_EXPLOSION:
 		MSG_ReadPos (msg, pos);
+		CL_HandleTempEntityForDecal(type, pos, vec3_origin); // on the wall decals
 		ex = CL_AllocExplosion ();
 		VectorCopy (pos, ex->ent.origin);
 		ex->type = ex_poly;

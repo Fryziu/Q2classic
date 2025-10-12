@@ -66,6 +66,7 @@ src/%.o : src/%.c
 
 QUAKE2_OBJS = \
 	src/client/cl_cin.o \
+	src/client/cl_decals.o \
 	src/client/cl_demo.o \
 	src/client/cl_draw.o \
 	src/client/cl_ents.o \

@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // cl_fx.c -- entity effects parsing and management
 
 #include "client.h"
+#include "../ref_gl/gl_decal.h"
 
 void CL_LogoutEffect (const vec3_t org, int type);
 void CL_ItemRespawnParticles (const vec3_t org);
@@ -28,6 +29,8 @@ static vec3_t avelocities [NUMVERTEXNORMALS];
 
 extern	struct model_s	*cl_mod_smoke;
 extern	struct model_s	*cl_mod_flash;
+
+
 
 /*
 ==============================================================
@@ -861,6 +864,7 @@ CL_ParticleEffect
 Wall impact puffs
 ===============
 */
+
 void CL_ParticleEffect (const vec3_t org, const vec3_t dir, int color, int count)
 {
 	int			i;
