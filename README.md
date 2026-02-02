@@ -36,6 +36,13 @@ First, prepare your system with the essential build tools:
 ```bash
 sudo apt-get install build-essential automake git -y
 ```
+Build tools
+
+build-essential – installs the core compilation toolchain (GCC, linker, standard C/C++ libraries, and make) required to build the project.
+
+automake – generates portable Makefile templates used by the build system.
+
+git – version control system used to clone the repository and manage source code changes.
 
 #### 2. Install Dependencies
 
