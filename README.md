@@ -86,7 +86,7 @@ To play, you need the game data files (`.pak` files).
 
 #### 4. Run the Game
 
-Navigate to your `.quake2` directory and execute the game:
+Navigate to your `.q2classic` directory and execute the game:
 
 ```bash
 cd ~/.q2classic
