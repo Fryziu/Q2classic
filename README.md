@@ -23,7 +23,7 @@ This version introduces a robust, thread-safe sound mixer that resolves these cr
 
 If you do not own the full version of Quake II, you can download the shareware game data (v3.14), which includes the first single-player unit and several multiplayer maps. This is enough to get the game running.
 
-*   [Quake II Shareware Data (from Quetoo.org)](http://quetoo.org/files/quake2-quetoo.org-x86_64.tar.gz)
+*   [Quake II Shareware Data from http://tastyspleen.net/downloads](http://tastyspleen.net/quake/downloads/)
 
 ## Compiling from Source
 
