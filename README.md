@@ -42,9 +42,19 @@ sudo apt-get install build-essential automake git -y
 Next, install the libraries required by the game:
 
 ```bash
-sudo apt-get install libpng-dev libjpeg-dev libcurl4-gnutls-dev mesa-common-dev libsdl1.2-dev -y
+sudo apt-get install libpng-dev libjpeg-dev libcurl4-openssl-dev libsdl1.2-dev libsdl2-dev -y
 ```
-_Note: `liblz1` seems to be an incorrect package name and is not required for compilation. It has been removed from the list._
+Dependencies overview
+
+libpng-dev – provides support for loading and saving PNG images (used for textures, UI elements, screenshots).
+
+libjpeg-dev – enables JPEG image decoding, commonly used for textures and media assets.
+
+libcurl4-openssl-dev – networking library used for HTTP/HTTPS communication (e.g. update checks, master server queries).
+
+libsdl1.2-dev (legacy, to be removed) – provides window creation, input handling, audio, and OpenGL context management (deprecated).
+
+libsdl2-dev – modern replacement for SDL 1.2; handles windowing, input, audio, and OpenGL/Vulkan context creation in a cross-platform way.
 
 #### 3. Compile the Game
 
