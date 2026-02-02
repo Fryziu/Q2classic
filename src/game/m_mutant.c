@@ -143,6 +143,7 @@ mmove_t mutant_move_stand = {FRAME_stand101, FRAME_stand151, mutant_frames_stand
 void mutant_stand (edict_t *self)
 {
 	self->monsterinfo.currentmove = &mutant_move_stand;
+	    self->monsterinfo.currentmove_name = "mutant_move_stand";
 }
 
 
@@ -177,6 +178,7 @@ mmove_t mutant_move_idle = {FRAME_stand152, FRAME_stand164, mutant_frames_idle, 
 void mutant_idle (edict_t *self)
 {
 	self->monsterinfo.currentmove = &mutant_move_idle;
+	    self->monsterinfo.currentmove_name = "mutant_move_idle";
 	gi.sound (self, CHAN_VOICE, sound_idle, 1, ATTN_IDLE, 0);
 }
 
@@ -207,6 +209,7 @@ mmove_t mutant_move_walk = {FRAME_walk05, FRAME_walk16, mutant_frames_walk, NULL
 void mutant_walk_loop (edict_t *self)
 {
 	self->monsterinfo.currentmove = &mutant_move_walk;
+	    self->monsterinfo.currentmove_name = "mutant_move_walk";
 }
 
 mframe_t mutant_frames_start_walk [] =
@@ -221,6 +224,7 @@ mmove_t mutant_move_start_walk = {FRAME_walk01, FRAME_walk04, mutant_frames_star
 void mutant_walk (edict_t *self)
 {
 	self->monsterinfo.currentmove = &mutant_move_start_walk;
+	    self->monsterinfo.currentmove_name = "mutant_move_start_walk";
 }
 
 
@@ -242,9 +246,15 @@ mmove_t mutant_move_run = {FRAME_run03, FRAME_run08, mutant_frames_run, NULL};
 void mutant_run (edict_t *self)
 {
 	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
+	{
 		self->monsterinfo.currentmove = &mutant_move_stand;
+	    self->monsterinfo.currentmove_name = "mutant_move_stand";
+	}
 	else
+	{
 		self->monsterinfo.currentmove = &mutant_move_run;
+	    self->monsterinfo.currentmove_name = "mutant_move_run";
+	}
 }
 
 
@@ -298,6 +308,7 @@ mmove_t mutant_move_attack = {FRAME_attack09, FRAME_attack15, mutant_frames_atta
 void mutant_melee (edict_t *self)
 {
 	self->monsterinfo.currentmove = &mutant_move_attack;
+	    self->monsterinfo.currentmove_name = "mutant_move_attack";
 }
 
 
@@ -389,6 +400,7 @@ mmove_t mutant_move_jump = {FRAME_attack01, FRAME_attack08, mutant_frames_jump, 
 void mutant_jump (edict_t *self)
 {
 	self->monsterinfo.currentmove = &mutant_move_jump;
+	    self->monsterinfo.currentmove_name = "mutant_move_jump";
 }
 
 
@@ -513,16 +525,19 @@ void mutant_pain (edict_t *self, edict_t *other, float kick, int damage)
 	{
 		gi.sound (self, CHAN_VOICE, sound_pain1, 1, ATTN_NORM, 0);
 		self->monsterinfo.currentmove = &mutant_move_pain1;
+	    self->monsterinfo.currentmove_name = "mutant_move_pain1";
 	}
 	else if (r < 0.66)
 	{
 		gi.sound (self, CHAN_VOICE, sound_pain2, 1, ATTN_NORM, 0);
 		self->monsterinfo.currentmove = &mutant_move_pain2;
+	    self->monsterinfo.currentmove_name = "mutant_move_pain2";
 	}
 	else
 	{
 		gi.sound (self, CHAN_VOICE, sound_pain1, 1, ATTN_NORM, 0);
 		self->monsterinfo.currentmove = &mutant_move_pain3;
+	    self->monsterinfo.currentmove_name = "mutant_move_pain3";
 	}
 }
 
@@ -596,9 +611,15 @@ void mutant_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damag
 	self->s.skinnum = 1;
 
 	if (random() < 0.5)
+	{
 		self->monsterinfo.currentmove = &mutant_move_death1;
+	    self->monsterinfo.currentmove_name = "mutant_move_death1";
+	}
 	else
+	{
 		self->monsterinfo.currentmove = &mutant_move_death2;
+	    self->monsterinfo.currentmove_name = "mutant_move_death2";
+	}
 }
 
 
@@ -657,6 +678,7 @@ void SP_monster_mutant (edict_t *self)
 	gi.linkentity (self);
 	
 	self->monsterinfo.currentmove = &mutant_move_stand;
+	    self->monsterinfo.currentmove_name = "mutant_move_stand";
 
 	self->monsterinfo.scale = MODEL_SCALE;
 	walkmonster_start (self);

@@ -34,7 +34,7 @@ typedef struct msurface_s msurface_t;
 // --- Stałe Konfiguracyjne Modułu ---
 // M-AI-812: Przeniesione z gl_decal.c, ponieważ są używane przez
 // publiczną strukturę cdecal_t.
-#define MAX_DECALS				256     // Maksymalna liczba aktywnych decali
+#define MAX_DECALS				2048 //256     // Maksymalna liczba aktywnych decali
 #define MAX_DECAL_VERTS			64      // Maksymalna liczba wierzchołków na decal
 #define MAX_DECAL_FRAGMENTS		64      // Maksymalna liczba fragmentów przy cięciu
 
@@ -50,6 +50,7 @@ typedef struct msurface_s msurface_t;
 #define DF_GLOW             0x00001000  // Spraw, by decal "świecił" (RF_FULLBRIGHT).
 #define DF_FADEOUT          0x00002000  // Standardowe, liniowe zanikanie z czasem.
 #define DF_PULSE            0x00008000  // Efekt pulsowania.
+#define DF_FADE_COLOR       0x00010000  // NOWA FLAGA: Zanikanie koloru z A do B.
 
 // --- Główna Struktura Danych dla Decala ---
 typedef struct cdecal_s
@@ -71,7 +72,14 @@ typedef struct cdecal_s
 	int			type;
 	int			flags;
 
+	// --- NOWE POLA ---
+	vec4_t		end_color;
+	float		fadetime;
+
 } cdecal_t;
+
+// for generating substitute image  conchars.pcx
+image_t* GL_GenerateImageFromSVG(const char* svg_data, int width, int height, const char* name);
 
 // =======================================================================
 //                       Prototypy Funkcji Publicznych
@@ -87,6 +95,7 @@ void GL_FreeUnusedDecalImages (void);
 
 void R_AddDecal (vec3_t origin, vec3_t dir,
 				 float red, float green, float blue, float alpha,
-				 float size, int type, int flags, float angle);
+				 float size, int type, int flags, float angle,
+				 const vec4_t end_color, float fadetime);
 
 #endif // GL_DECAL_H

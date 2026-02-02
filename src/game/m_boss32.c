@@ -138,6 +138,7 @@ mmove_t	makron_move_stand = {FRAME_stand201, FRAME_stand260, makron_frames_stand
 void makron_stand (edict_t *self)
 {
 	self->monsterinfo.currentmove = &makron_move_stand;
+	    self->monsterinfo.currentmove_name = "makron_move_stand";
 }
 
 mframe_t makron_frames_run [] =
@@ -204,14 +205,19 @@ mmove_t	makron_move_walk = {FRAME_walk204, FRAME_walk213, makron_frames_run, NUL
 void makron_walk (edict_t *self)
 {
 		self->monsterinfo.currentmove = &makron_move_walk;
+		    self->monsterinfo.currentmove_name = "makron_move_walk";
 }
 
 void makron_run (edict_t *self)
 {
 	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
-		self->monsterinfo.currentmove = &makron_move_stand;
+	{	self->monsterinfo.currentmove = &makron_move_stand;
+	    self->monsterinfo.currentmove_name = "makron_move_stand";
+	}
 	else
-		self->monsterinfo.currentmove = &makron_move_run;
+	{	self->monsterinfo.currentmove = &makron_move_run;
+	    self->monsterinfo.currentmove_name = "makron_move_run";
+	}
 }
 
 mframe_t makron_frames_pain6 [] =
@@ -575,11 +581,13 @@ void makron_pain (edict_t *self, edict_t *other, float kick, int damage)
 	{
 		gi.sound (self, CHAN_VOICE, sound_pain4, 1, ATTN_NONE,0);
 		self->monsterinfo.currentmove = &makron_move_pain4;
+		    self->monsterinfo.currentmove_name = "makron_move_pain4";
 	}
 	else if (damage <= 110)
 	{
 		gi.sound (self, CHAN_VOICE, sound_pain5, 1, ATTN_NONE,0);
 		self->monsterinfo.currentmove = &makron_move_pain5;
+		    self->monsterinfo.currentmove_name = "makron_move_pain5";
 	}
 	else
 	{
@@ -588,12 +596,14 @@ void makron_pain (edict_t *self, edict_t *other, float kick, int damage)
 			{
 				gi.sound (self, CHAN_VOICE, sound_pain6, 1, ATTN_NONE,0);
 				self->monsterinfo.currentmove = &makron_move_pain6;
+				    self->monsterinfo.currentmove_name = "makron_move_pain6";
 			}
 		} else {
 			if (random() <= 0.35)
 			{
 				gi.sound (self, CHAN_VOICE, sound_pain6, 1, ATTN_NONE,0);
 				self->monsterinfo.currentmove = &makron_move_pain6;
+				    self->monsterinfo.currentmove_name = "makron_move_pain6";
 			}
 		}
 	}
@@ -602,6 +612,7 @@ void makron_pain (edict_t *self, edict_t *other, float kick, int damage)
 void makron_sight(edict_t *self, edict_t *other)
 {
 	self->monsterinfo.currentmove = &makron_move_sight;
+	    self->monsterinfo.currentmove_name = "makron_move_sight";
 }
 
 void makron_attack(edict_t *self)
@@ -611,11 +622,17 @@ void makron_attack(edict_t *self)
 	r = random();
 
 	if (r <= 0.3)
-		self->monsterinfo.currentmove = &makron_move_attack3;
+	{		self->monsterinfo.currentmove = &makron_move_attack3;
+		    self->monsterinfo.currentmove_name = "makron_move_attack3";
+	}
 	else if (r <= 0.6)
-		self->monsterinfo.currentmove = &makron_move_attack4;
+	{		self->monsterinfo.currentmove = &makron_move_attack4;
+		    self->monsterinfo.currentmove_name = "makron_move_attack4";
+	}
 	else
-		self->monsterinfo.currentmove = &makron_move_attack5;
+	{		self->monsterinfo.currentmove = &makron_move_attack5;
+		    self->monsterinfo.currentmove_name = "makron_move_attack5";
+	}
 }
 
 /*
@@ -700,6 +717,7 @@ void makron_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damag
 	makron_torso (tempent);
 
 	self->monsterinfo.currentmove = &makron_move_death2;
+	    self->monsterinfo.currentmove_name = "makron_move_death2";
 	
 }
 
@@ -855,7 +873,9 @@ void SP_monster_makron (edict_t *self)
 	gi.linkentity (self);
 	
 //	self->monsterinfo.currentmove = &makron_move_stand;
+	    self->monsterinfo.currentmove_name = "makron_move_stand";
 	self->monsterinfo.currentmove = &makron_move_sight;
+	    self->monsterinfo.currentmove_name = "makron_move_sight";
 	self->monsterinfo.scale = MODEL_SCALE;
 
 	walkmonster_start(self);

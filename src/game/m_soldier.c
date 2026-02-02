@@ -211,9 +211,15 @@ mmove_t soldier_move_stand4 = {FRAME_stand401, FRAME_stand452, soldier_frames_st
 void soldier_stand (edict_t *self)
 {
 	if ((self->monsterinfo.currentmove == &soldier_move_stand3) || (random() < 0.8))
+	{
 		self->monsterinfo.currentmove = &soldier_move_stand1;
+	    self->monsterinfo.currentmove_name = "soldier_move_stand1";
+	}
 	else
+	{
 		self->monsterinfo.currentmove = &soldier_move_stand3;
+	    self->monsterinfo.currentmove_name = "soldier_move_stand3";
+	}
 }
 
 
@@ -283,9 +289,15 @@ mmove_t soldier_move_walk2 = {FRAME_walk209, FRAME_walk218, soldier_frames_walk2
 void soldier_walk (edict_t *self)
 {
 	if (random() < 0.5)
+	{
 		self->monsterinfo.currentmove = &soldier_move_walk1;
+	    self->monsterinfo.currentmove_name = "soldier_move_walk1";
+	}
 	else
+	{
 		self->monsterinfo.currentmove = &soldier_move_walk2;
+	    self->monsterinfo.currentmove_name = "soldier_move_walk2";
+	}
 }
 
 
@@ -318,6 +330,7 @@ void soldier_run (edict_t *self)
 	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
 	{
 		self->monsterinfo.currentmove = &soldier_move_stand1;
+	    self->monsterinfo.currentmove_name = "soldier_move_stand1";
 		return;
 	}
 
@@ -326,10 +339,12 @@ void soldier_run (edict_t *self)
 		self->monsterinfo.currentmove == &soldier_move_start_run)
 	{
 		self->monsterinfo.currentmove = &soldier_move_run;
+	    self->monsterinfo.currentmove_name = "soldier_move_run";
 	}
 	else
 	{
 		self->monsterinfo.currentmove = &soldier_move_start_run;
+	    self->monsterinfo.currentmove_name = "soldier_move_start_run";
 	}
 }
 
@@ -412,12 +427,15 @@ void soldier_pain (edict_t *self, edict_t *other, float kick, int damage)
 	int		n;
 
 	if (self->health < (self->max_health / 2))
-			self->s.skinnum |= 1;
+		self->s.skinnum |= 1;
 
 	if (level.time < self->pain_debounce_time)
 	{
 		if ((self->velocity[2] > 100) && ( (self->monsterinfo.currentmove == &soldier_move_pain1) || (self->monsterinfo.currentmove == &soldier_move_pain2) || (self->monsterinfo.currentmove == &soldier_move_pain3)))
+		{
 			self->monsterinfo.currentmove = &soldier_move_pain4;
+		    self->monsterinfo.currentmove_name = "soldier_move_pain4";
+		}
 		return;
 	}
 
@@ -434,6 +452,7 @@ void soldier_pain (edict_t *self, edict_t *other, float kick, int damage)
 	if (self->velocity[2] > 100)
 	{
 		self->monsterinfo.currentmove = &soldier_move_pain4;
+	    self->monsterinfo.currentmove_name = "soldier_move_pain4";
 		return;
 	}
 
@@ -443,11 +462,20 @@ void soldier_pain (edict_t *self, edict_t *other, float kick, int damage)
 	r = random();
 
 	if (r < 0.33)
+	{
 		self->monsterinfo.currentmove = &soldier_move_pain1;
+	    self->monsterinfo.currentmove_name = "soldier_move_pain1";
+	}
 	else if (r < 0.66)
+	{
 		self->monsterinfo.currentmove = &soldier_move_pain2;
+	    self->monsterinfo.currentmove_name = "soldier_move_pain2";
+	}
 	else
+	{
 		self->monsterinfo.currentmove = &soldier_move_pain3;
+	    self->monsterinfo.currentmove_name = "soldier_move_pain3";
+	}
 }
 
 
@@ -774,13 +802,20 @@ void soldier_attack(edict_t *self)
 	if (self->s.skinnum < 4)
 	{
 		if (random() < 0.5)
+		{
 			self->monsterinfo.currentmove = &soldier_move_attack1;
+		    self->monsterinfo.currentmove_name = "soldier_move_attack1";
+		}
 		else
+		{
 			self->monsterinfo.currentmove = &soldier_move_attack2;
+		    self->monsterinfo.currentmove_name = "soldier_move_attack2";
+		}
 	}
 	else
 	{
 		self->monsterinfo.currentmove = &soldier_move_attack4;
+	    self->monsterinfo.currentmove_name = "soldier_move_attack4";
 	}
 }
 
@@ -800,6 +835,7 @@ void soldier_sight(edict_t *self, edict_t *other)
 	{
 		if (random() > 0.5)
 			self->monsterinfo.currentmove = &soldier_move_attack6;
+		    self->monsterinfo.currentmove_name = "soldier_move_attack6";
 	}
 }
 
@@ -839,6 +875,7 @@ void soldier_dodge (edict_t *self, edict_t *attacker, float eta)
 	if (skill->value == 0)
 	{
 		self->monsterinfo.currentmove = &soldier_move_duck;
+	    self->monsterinfo.currentmove_name = "soldier_move_duck";
 		return;
 	}
 
@@ -848,22 +885,35 @@ void soldier_dodge (edict_t *self, edict_t *attacker, float eta)
 	if (skill->value == 1)
 	{
 		if (r > 0.33)
+		{
 			self->monsterinfo.currentmove = &soldier_move_duck;
+		    self->monsterinfo.currentmove_name = "soldier_move_duck";
+		}
 		else
+		{
 			self->monsterinfo.currentmove = &soldier_move_attack3;
+		    self->monsterinfo.currentmove_name = "soldier_move_attack3";
+		}
 		return;
 	}
 
 	if (skill->value >= 2)
 	{
 		if (r > 0.66)
+		{
 			self->monsterinfo.currentmove = &soldier_move_duck;
+		    self->monsterinfo.currentmove_name = "soldier_move_duck";
+		}
 		else
+		{
 			self->monsterinfo.currentmove = &soldier_move_attack3;
+		    self->monsterinfo.currentmove_name = "soldier_move_attack3";
+		}
 		return;
 	}
 
 	self->monsterinfo.currentmove = &soldier_move_attack3;
+    self->monsterinfo.currentmove_name = "soldier_move_attack3";
 }
 
 
@@ -1150,7 +1200,7 @@ void soldier_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int dama
 	{
 		gi.sound (self, CHAN_VOICE, gi.soundindex ("misc/udeath.wav"), 1, ATTN_NORM, 0);
 		for (n= 0; n < 3; n++)
-			ThrowGib (self, "models/objects/gibs/sm_meat/tris.md2", damage, GIB_ORGANIC);
+		ThrowGib (self, "models/objects/gibs/sm_meat/tris.md2", damage, GIB_ORGANIC);
 		ThrowGib (self, "models/objects/gibs/chest/tris.md2", damage, GIB_ORGANIC);
 		ThrowHead (self, "models/objects/gibs/head2/tris.md2", damage, GIB_ORGANIC);
 		self->deadflag = DEAD_DEAD;
@@ -1176,20 +1226,36 @@ void soldier_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int dama
 	{
 		// head shot
 		self->monsterinfo.currentmove = &soldier_move_death3;
+		    self->monsterinfo.currentmove_name = "soldier_move_death3";
 		return;
 	}
 
 	n = rand() % 5;
 	if (n == 0)
+	{
 		self->monsterinfo.currentmove = &soldier_move_death1;
+	    self->monsterinfo.currentmove_name = "soldier_move_death1";
+	}
 	else if (n == 1)
+	{
 		self->monsterinfo.currentmove = &soldier_move_death2;
+	    self->monsterinfo.currentmove_name = "soldier_move_death2";
+	}
 	else if (n == 2)
+	{
 		self->monsterinfo.currentmove = &soldier_move_death4;
+	    self->monsterinfo.currentmove_name = "soldier_move_death4";
+	}
 	else if (n == 3)
+	{
 		self->monsterinfo.currentmove = &soldier_move_death5;
+	    self->monsterinfo.currentmove_name = "soldier_move_death5";
+	}
 	else
+	{
 		self->monsterinfo.currentmove = &soldier_move_death6;
+	    self->monsterinfo.currentmove_name = "soldier_move_death6";
+	}
 }
 
 

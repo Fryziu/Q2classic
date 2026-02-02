@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -21,6 +21,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "gl_local.h"
 #include "gl_decal.h"
 #include "gl_decal_svg.h"
+
+
 #include <GL/glu.h> // Potrzebne dla gluBuild2DMipmaps
 
 static cvar_t	*gl_decals_debug;
@@ -288,7 +290,7 @@ void GL_InitDecals (void)
 
 void GL_ShutDownDecals (void)
 {
-	
+
 	if(!loadedDecalImages)
 		return;
 
@@ -367,141 +369,9 @@ static void GL_FreeDecal ( cdecal_t *dl )
 	dl->next = free_decals;
 	free_decals = dl;
 }
-
-
-/*
-===============
-makeDecal
-===============
-*/
-/*
 void R_AddDecal	(vec3_t origin, vec3_t dir, float red, float green, float blue, float alpha,
-				 float size, int type, int flags, float angle)
-{
-		// ===================================================================
-		// M-AI-812: BLOK DIAGNOSTYCZNY
-		// ===================================================================
-		if (gl_decals_debug && gl_decals_debug->integer > 0)
-		{
-			char *typeName = "UNKNOWN";
-			switch(type)
-			{
-				case DECAL_BHOLE:  typeName = "DECAL_BHOLE"; break;
-				case DECAL_SCORCH: typeName = "DECAL_SCORCH"; break;
-				case DECAL_BLOOD:  typeName = "DECAL_BLOOD"; break;
-			}
-			Com_Printf("R_AddDecal: Attempting to create '%s' decal.\n", typeName);
-
-			if (gl_decals_debug->integer > 1)
-			{
-				Com_Printf("  at: (%.1f, %.1f, %.1f), size: %.1f, flags: 0x%X\n",
-					origin[0], origin[1], origin[2], size, flags);
-			}
-		}
-		// ====
-
-	int			i, j, numfragments;
-	vec3_t		verts[MAX_DECAL_VERTS], shade;
-	fragment_t	*fr, fragments[MAX_DECAL_FRAGMENTS];
-	mat3_t		axis;
-	cdecal_t	*d;
-
-	if (!gl_decals->integer)
-		return;
-
-	// invalid decal
-	if (size <= 0 || VectorCompare (dir, vec3_origin))
-		return;
-
-	// calculate orientation matrix
-	VectorNormalize2 (dir, axis[0]);
-	PerpendicularVector (axis[1], axis[0]);
-	RotatePointAroundVector (axis[2], axis[0], axis[1], angle);
-	CrossProduct (axis[0], axis[2], axis[1]);
-
-	numfragments = R_GetClippedFragments (origin, size, axis, // clip it
-		MAX_DECAL_VERTS, verts, MAX_DECAL_FRAGMENTS, fragments);
-
-	// no valid fragments
-	if (!numfragments)
-		return;
-
-	size = 0.5f / size;
-	VectorScale (axis[1], size, axis[1]);
-	VectorScale (axis[2], size, axis[2]);
-
-	for (i=0, fr=fragments ; i<numfragments ; i++, fr++)
-	{
-		if (fr->numverts > MAX_DECAL_VERTS)
-			fr->numverts = MAX_DECAL_VERTS;
-		else if (fr->numverts < 1)
-			continue;
-
-		d = GL_AllocDecal ();
-
-		d->time = r_newrefdef.time;
-
-		// ===================================================================
-		        // ZMIANA: Wybór tekstury na podstawie typu decala
-		        // ===================================================================
-		        switch(type)
-		        {
-		            case DECAL_SCORCH:
-		                d->image = r_decal_scorch;
-		                break;
-		            case DECAL_BLOOD:
-		                // d->image = r_decal_blood; // (w przyszłości)
-		                d->image = r_notexture;
-		                break;
-		            case DECAL_BHOLE:
-		            default:
-		                d->image = r_decal_bhole;
-		                break;
-		        }
-
-		        // Jeśli wybrana tekstura jest nieważna, nie twórz decala
-		        if (!d->image || d->image == r_notexture)
-		        {
-		            GL_FreeDecal(d);
-		            continue;
-		        }
-		        // ===
-
-		d->numverts = fr->numverts;
-		d->node = fr->node;
-
-		VectorCopy(fr->surf->plane->normal, d->direction);
-		// reverse direction
-		if (!(fr->surf->flags & SURF_PLANEBACK))
-			VectorNegate(d->direction, d->direction);
-
-		Vector4Set(d->color, red, green, blue, alpha);
-		VectorCopy (origin, d->org);
-
-		if (flags&DF_SHADE) {
-			R_LightPoint (origin, shade);
-
-			for (j=0 ; j<3 ; j++)
-				d->color[j] = (d->color[j] * shade[j] * 0.6f) + (d->color[j] * 0.4f);
-		}
-
-		d->type = type;
-		d->flags = flags;
-
-		for (j = 0; j < fr->numverts; j++) {
-			vec3_t v;
-
-			VectorCopy (verts[fr->firstvert+j], d->verts[j]);
-			VectorSubtract (d->verts[j], origin, v);
-			d->stcoords[j][0] = DotProduct (v, axis[1]) + 0.5f;
-			d->stcoords[j][1] = DotProduct (v, axis[2]) + 0.5f;
-		}
-	}
-}
-*/
-
-void R_AddDecal	(vec3_t origin, vec3_t dir, float red, float green, float blue, float alpha,
-				 float size, int type, int flags, float angle)
+				 float size, int type, int flags, float angle,
+				 const vec4_t end_color, float fadetime)
 {
 	int			i, j, numfragments;
 	vec3_t		verts[MAX_DECAL_VERTS], shade;
@@ -600,8 +470,15 @@ void R_AddDecal	(vec3_t origin, vec3_t dir, float red, float green, float blue, 
 		if (!(fr->surf->flags & SURF_PLANEBACK))
 			VectorNegate(d->direction, d->direction);
 
-		Vector4Set(d->color, red, green, blue, alpha);
+			Vector4Set(d->color, red, green, blue, alpha);
 		VectorCopy (origin, d->org);
+
+		if (flags & DF_FADE_COLOR)
+		{
+			if (end_color)
+				Vector4Copy(end_color, d->end_color);
+			d->fadetime = fadetime;
+		}
 
 		if (flags & DF_SHADE) {
 			R_LightPoint (origin, shade);
@@ -622,79 +499,6 @@ void R_AddDecal	(vec3_t origin, vec3_t dir, float red, float green, float blue, 
 	}
 }
 
-/*
-===============
-CL_AddDecals
-===============
-*/
-extern int r_visframecount;
-/*
-void R_AddDecals (void)
-{
-	cdecal_t	*dl, *next,	*active;
-		float		mindist, time;
-		vec3_t		v;
-		vec4_t		color;
-	    GLuint      last_texnum = 0; // ZMIANA: Śledzenie ostatnio użytej tekstury
-
-		if (!gl_decals->integer)
-			return;
-
-		active = &active_decals;
-		if (active->next == active)
-			return;
-
-		mindist = DotProduct(r_origin, viewAxis[0]) + 4.0f;
-
-		qglEnable(GL_POLYGON_OFFSET_FILL);
-		qglPolygonOffset(-1, -2);
-
-		qglDepthMask(GL_FALSE);
-		qglEnable(GL_BLEND);
-		GL_TexEnv(GL_MODULATE);
-
-	    // ZMIANA: Usunęliśmy stąd GL_Bind, ponieważ będzie on wywoływany w pętli.
-
-		for (dl = active->next; dl != active; dl = next)
-		{
-			next = dl->next;
-
-	        // ... (cała logika sprawdzania czasu życia, widoczności, etc. pozostaje bez zmian) ...
-	        // ...
-
-	        // ===================================================================
-	        // ZMIANA: Optymalizacja bindowania tekstur
-	        // ===================================================================
-	        // Binduj teksturę tylko wtedy, gdy jest inna niż poprzednia.
-	        if (dl->image->texnum != last_texnum)
-	        {
-	            GL_Bind(dl->image->texnum);
-	            last_texnum = dl->image->texnum;
-	        }
-	        // ===================================================================
-
-			Vector4Copy (dl->color, color);
-
-			time = dl->time + gl_decals_time->value - r_newrefdef.time;
-			if (time < 1.5f)
-				color[3] *= time / 1.5f;
-
-			//Draw it
-			qglColor4fv (color);
-			qglTexCoordPointer( 2, GL_FLOAT, 0, dl->stcoords);
-			qglVertexPointer( 3, GL_FLOAT, 0, dl->verts );
-			qglDrawArrays( GL_TRIANGLE_FAN, 0, dl->numverts );
-		}
-
-
-	GL_TexEnv(GL_REPLACE);
-	qglDisable(GL_BLEND);
-	qglColor4fv(colorWhite);
-	qglDepthMask(GL_TRUE);
-	qglDisable(GL_POLYGON_OFFSET_FILL);
-	qglVertexPointer( 3, GL_FLOAT, 0, r_arrays.vertices );
-}
-*/
 void R_AddDecals (void)
 {
 	cdecal_t	*dl, *next,	*active;
@@ -754,7 +558,20 @@ void R_AddDecals (void)
             last_texnum = dl->image->texnum;
         }
 
-		Vector4Copy (dl->color, color);
+				Vector4Copy (dl->color, color);
+
+		// Interpolacja koloru, jeśli flaga jest ustawiona
+		if (dl->flags & DF_FADE_COLOR)
+		{
+			float frac = (r_newrefdef.time - dl->time) / dl->fadetime;
+			if (frac < 0.0f) frac = 0.0f;
+			if (frac > 1.0f) frac = 1.0f;
+
+			for (int i = 0; i < 4; i++)
+			{
+				color[i] = dl->color[i] + frac * (dl->end_color[i] - dl->color[i]);
+			}
+		}
 
 		// Logika zanikania (fade out)
 		time = dl->time + gl_decals_time->value - r_newrefdef.time;
@@ -1051,4 +868,16 @@ static int R_GetClippedFragments (vec3_t origin, float radius, mat3_t axis, int 
 	R_RecursiveFragmentNode (r_worldmodel->nodes, origin, radius, axis[0]);
 
 	return numClippedFragments;
+}
+
+// Ta funkcja jest niemal identyczna jak GL_RasterizeSVGToTexture,
+// ale zwraca image_t* i ma inną nazwę dla przejrzystości.
+image_t* GL_GenerateImageFromSVG(const char* svg_data, int width, int height, const char* name)
+{
+    GLuint tex_id = GL_RasterizeSVGToTexture(svg_data, width, height);
+    if (tex_id == 0)
+    {
+        return NULL;
+    }
+    return R_CreateFakeImage(name, width, height, tex_id);
 }

@@ -196,10 +196,14 @@ mmove_t	floater_move_stand2 = {FRAME_stand201, FRAME_stand252, floater_frames_st
 
 void floater_stand (edict_t *self)
 {
-	if (random() <= 0.5)		
-		self->monsterinfo.currentmove = &floater_move_stand1;
+	if (random() <= 0.5)
+	{		self->monsterinfo.currentmove = &floater_move_stand1;
+		    self->monsterinfo.currentmove_name = "floater_move_stand1";
+	}
 	else
-		self->monsterinfo.currentmove = &floater_move_stand2;
+	{		self->monsterinfo.currentmove = &floater_move_stand2;
+		    self->monsterinfo.currentmove_name = "floater_move_stand2";
+	}
 }
 
 mframe_t floater_frames_activate [] =
@@ -502,14 +506,19 @@ mmove_t	floater_move_run = {FRAME_stand101, FRAME_stand152, floater_frames_run, 
 void floater_run (edict_t *self)
 {
 	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
-		self->monsterinfo.currentmove = &floater_move_stand1;
+	{		self->monsterinfo.currentmove = &floater_move_stand1;
+		    self->monsterinfo.currentmove_name = "floater_move_stand1";
+	}
 	else
-		self->monsterinfo.currentmove = &floater_move_run;
+	{		self->monsterinfo.currentmove = &floater_move_run;
+		    self->monsterinfo.currentmove_name = "floater_move_run";
+	}
 }
 
 void floater_walk (edict_t *self)
 {
 	self->monsterinfo.currentmove = &floater_move_walk;
+	    self->monsterinfo.currentmove_name = "floater_move_walk";
 }
 
 void floater_wham (edict_t *self)
@@ -551,15 +560,20 @@ void floater_zap (edict_t *self)
 void floater_attack(edict_t *self)
 {
 	self->monsterinfo.currentmove = &floater_move_attack1;
+	    self->monsterinfo.currentmove_name = "floater_move_attack1";
 }
 
 
 void floater_melee(edict_t *self)
 {
-	if (random() < 0.5)		
-		self->monsterinfo.currentmove = &floater_move_attack3;
+	if (random() < 0.5)
+	{		self->monsterinfo.currentmove = &floater_move_attack3;
+		    self->monsterinfo.currentmove_name = "floater_move_attack3";
+	}
 	else
-		self->monsterinfo.currentmove = &floater_move_attack2;
+	{		self->monsterinfo.currentmove = &floater_move_attack2;
+		    self->monsterinfo.currentmove_name = "floater_move_attack2";
+	}
 }
 
 
@@ -582,11 +596,13 @@ void floater_pain (edict_t *self, edict_t *other, float kick, int damage)
 	{
 		gi.sound (self, CHAN_VOICE, sound_pain1, 1, ATTN_NORM, 0);
 		self->monsterinfo.currentmove = &floater_move_pain1;
+		self->monsterinfo.currentmove_name = "floater_move_pain1";
 	}
 	else
 	{
 		gi.sound (self, CHAN_VOICE, sound_pain2, 1, ATTN_NORM, 0);
 		self->monsterinfo.currentmove = &floater_move_pain2;
+		self->monsterinfo.currentmove_name = "floater_move_pain2";
 	}
 }
 
@@ -652,10 +668,16 @@ void SP_monster_floater (edict_t *self)
 
 	gi.linkentity (self);
 
-	if (random() <= 0.5)		
-		self->monsterinfo.currentmove = &floater_move_stand1;	
+	if (random() <= 0.5)
+	{
+		self->monsterinfo.currentmove = &floater_move_stand1;
+	    self->monsterinfo.currentmove_name = "floater_move_stand1";
+	}
 	else
-		self->monsterinfo.currentmove = &floater_move_stand2;	
+	{
+		self->monsterinfo.currentmove = &floater_move_stand2;
+	    self->monsterinfo.currentmove_name = "floater_move_stand2";
+	}
 	
 	self->monsterinfo.scale = MODEL_SCALE;
 

@@ -1355,6 +1355,14 @@ static void GL_Register( void )
 	Cvar_Subsystem( CVAR_SYSTEM_VIDEO );
 
 	r_lefthand = Cvar_Get( "hand", "0", CVAR_USERINFO | CVAR_ARCHIVE );
+	// =======================================================================
+	    // M-AI-812: Nowa zmienna do kontrolowania widoczności broni w hand 2
+	    // =======================================================================
+	    // Ta zmienna będzie w 100% po stronie klienta.
+	    // 0 = Ukryj broń dla hand 2 (domyślne zachowanie)
+	    // 1 = Pokaż broń dla hand 2
+	    Cvar_Get( "cl_gun_show_center", "0", CVAR_ARCHIVE );
+	    // ===
 	r_norefresh = Cvar_Get ("r_norefresh", "0", 0);
 	r_fullbright = Cvar_Get ("r_fullbright", "0", CVAR_CHEAT);
 	r_drawentities = Cvar_Get ("r_drawentities", "1", 0);
@@ -2224,4 +2232,6 @@ void R_DrawBeam (void)
 	qglDepthMask( GL_TRUE );
 	qglColor4fv(colorWhite);
 }
+
+
 

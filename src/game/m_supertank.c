@@ -133,6 +133,7 @@ mmove_t	supertank_move_stand = {FRAME_stand_1, FRAME_stand_60, supertank_frames_
 void supertank_stand (edict_t *self)
 {
 	self->monsterinfo.currentmove = &supertank_move_stand;
+    self->monsterinfo.currentmove_name = "supertank_move_stand";
 }
 
 
@@ -190,19 +191,27 @@ mmove_t	supertank_move_forward = {FRAME_forwrd_1, FRAME_forwrd_18, supertank_fra
 void supertank_forward (edict_t *self)
 {
 		self->monsterinfo.currentmove = &supertank_move_forward;
+	    self->monsterinfo.currentmove_name = "supertank_move_forward";
 }
 
 void supertank_walk (edict_t *self)
 {
 		self->monsterinfo.currentmove = &supertank_move_forward;
+	    self->monsterinfo.currentmove_name = "supertank_move_forward";
 }
 
 void supertank_run (edict_t *self)
 {
 	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
+	{
 		self->monsterinfo.currentmove = &supertank_move_stand;
+	    self->monsterinfo.currentmove_name = "supertank_move_stand";
+	}
 	else
+	{
 		self->monsterinfo.currentmove = &supertank_move_run;
+	    self->monsterinfo.currentmove_name = "supertank_move_run";
+	}
 }
 
 mframe_t supertank_frames_turn_right [] =
@@ -442,11 +451,20 @@ void supertank_reattack1(edict_t *self)
 {
 	if (visible(self, self->enemy))
 		if (random() < 0.9)
+		{
 			self->monsterinfo.currentmove = &supertank_move_attack1;
+		    self->monsterinfo.currentmove_name = "supertank_move_attack1";
+		}
 		else
-			self->monsterinfo.currentmove = &supertank_move_end_attack1;	
+		{
+			self->monsterinfo.currentmove = &supertank_move_end_attack1;
+		    self->monsterinfo.currentmove_name = "supertank_move_end_attack1";
+		}
 	else
+	{
 		self->monsterinfo.currentmove = &supertank_move_end_attack1;
+	    self->monsterinfo.currentmove_name = "supertank_move_end_attack1";
+	}
 }
 
 void supertank_pain (edict_t *self, edict_t *other, float kick, int damage)
@@ -477,16 +495,19 @@ void supertank_pain (edict_t *self, edict_t *other, float kick, int damage)
 	{
 		gi.sound (self, CHAN_VOICE, sound_pain1, 1, ATTN_NORM,0);
 		self->monsterinfo.currentmove = &supertank_move_pain1;
+		    self->monsterinfo.currentmove_name = "supertank_move_pain1";
 	}
 	else if (damage <= 25)
 	{
 		gi.sound (self, CHAN_VOICE, sound_pain3, 1, ATTN_NORM,0);
 		self->monsterinfo.currentmove = &supertank_move_pain2;
+		    self->monsterinfo.currentmove_name = "supertank_move_pain2";
 	}
 	else
 	{
 		gi.sound (self, CHAN_VOICE, sound_pain2, 1, ATTN_NORM,0);
 		self->monsterinfo.currentmove = &supertank_move_pain3;
+		    self->monsterinfo.currentmove_name = "supertank_move_pain3";
 	}
 }
 
@@ -565,13 +586,20 @@ void supertank_attack(edict_t *self)
 	if (range <= 160)
 	{
 		self->monsterinfo.currentmove = &supertank_move_attack1;
+	    self->monsterinfo.currentmove_name = "supertank_move_attack1";
 	}
 	else
 	{	// fire rockets more often at distance
 		if (random() < 0.3)
+		{
 			self->monsterinfo.currentmove = &supertank_move_attack1;
+		    self->monsterinfo.currentmove_name = "supertank_move_attack1";
+		}
 		else
+		{
 			self->monsterinfo.currentmove = &supertank_move_attack2;
+		    self->monsterinfo.currentmove_name = "supertank_move_attack2";
+		}
 	}
 }
 
@@ -661,6 +689,7 @@ void supertank_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int da
 	self->takedamage = DAMAGE_NO;
 	self->count = 0;
 	self->monsterinfo.currentmove = &supertank_move_death;
+    self->monsterinfo.currentmove_name = "supertank_move_death";
 }
 
 //
@@ -711,6 +740,7 @@ void SP_monster_supertank (edict_t *self)
 	gi.linkentity (self);
 	
 	self->monsterinfo.currentmove = &supertank_move_stand;
+	    self->monsterinfo.currentmove_name = "supertank_move_stand";
 	self->monsterinfo.scale = MODEL_SCALE;
 
 	walkmonster_start(self);

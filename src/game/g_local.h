@@ -27,6 +27,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define	GAME_INCLUDE
 #include "game.h"
 
+// M-AI: Tabela relokacji dla wskaźników mmove_t, aby naprawić błędy zapisu/odczytu.
+
+/* fixme remove !~?
+void RegisterMMove(mmove_t *move)
+{
+    if (mmove_count < MAX_MMOVES) {
+        mmove_table[mmove_count++] = move;
+    } else {
+        gi.error("RegisterMMove: Przekroczono limit MAX_MMOVES");
+    }
+}
+*/
+
 // the "gameversion" client command will print this plus compile date
 #define	GAMEVERSION	"baseq2"
 
@@ -38,7 +51,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define	svc_inventory		5
 #define	svc_stufftext		11
 
-//==================================================================
+//===
 
 // view pitching times
 #define DAMAGE_TIME		0.5
@@ -415,7 +428,11 @@ typedef struct
 
 typedef struct
 {
-	mmove_t		*currentmove;
+	//mmove_t		*currentmove;
+
+	const char      *currentmove_name; // Przechowujemy nazwę
+	mmove_t         *currentmove;      // Wskaźnik jest teraz dynamicznie ładowany (cache)
+
 	int			aiflags;
 	int			nextframe;
 	float		scale;

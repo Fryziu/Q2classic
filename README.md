@@ -73,8 +73,8 @@ mkdir -p ~/.quake2/baseq2
 Copy the compiled executable and game library to their respective locations:
 
 ```bash
-cp /bin/q2classic ~/.quake2/
-cp /bin/q2game.so ~/.quake2/baseq2/
+cp bin/quake2 ~/.quake2/
+cp bin/game.so ~/.quake2/baseq2/
 ```
 
 #### 3. Add Game Data

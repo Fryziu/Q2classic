@@ -81,9 +81,27 @@ int CL_ParseEntityBits (sizebuf_t *msg, unsigned int *bits)
 	return (int)number;
 }
 
+
+#define MAX_VISIBLE_ENTITIES	512
+
+/*
+==================
+CL_DeltaEntity_Discard
+
+Parses deltas but discards the result to handle overflow gracefully
+==================
+*/
+static void CL_DeltaEntity_Discard (sizebuf_t *msg, int newnum, const entity_state_t *old, int bits)
+{
+	entity_state_t	dummy;
+
+	MSG_ParseDeltaEntity(msg, old, &dummy, newnum, bits, cls.protocolVersion);
+}
+
 /*
 ==================
 CL_DeltaEntity
+
 
 Parses deltas from the given base and adds the resulting entity
 to the current frame
@@ -188,7 +206,9 @@ static void CL_ParsePacketEntities (sizebuf_t *msg, const frame_t *oldframe, fra
 		{	// one or more entities from the old packet are unchanged
 			if (cl_shownet->integer == 3)
 				Com_Printf ("   unchanged: %i\n", oldnum);
-			CL_DeltaEntity(msg, newframe, oldnum, oldstate, 0);
+			
+			if (newframe->num_entities < MAX_VISIBLE_ENTITIES)
+				CL_DeltaEntity(msg, newframe, oldnum, oldstate, 0);
 			
 			oldindex++;
 
@@ -224,7 +244,11 @@ static void CL_ParsePacketEntities (sizebuf_t *msg, const frame_t *oldframe, fra
 		{	// delta from previous state
 			if (cl_shownet->integer == 3)
 				Com_Printf ("   delta: %i\n", newnum);
-			CL_DeltaEntity(msg, newframe, newnum, oldstate, bits);
+
+			if (newframe->num_entities < MAX_VISIBLE_ENTITIES)
+				CL_DeltaEntity(msg, newframe, newnum, oldstate, bits);
+			else
+				CL_DeltaEntity_Discard(msg, newnum, oldstate, bits);
 
 			oldindex++;
 
@@ -242,7 +266,12 @@ static void CL_ParsePacketEntities (sizebuf_t *msg, const frame_t *oldframe, fra
 		{	// delta from baseline
 			if (cl_shownet->integer == 3)
 				Com_Printf ("   baseline: %i\n", newnum);
-			CL_DeltaEntity(msg, newframe, newnum, &cl_entities[newnum].baseline, bits);
+			
+			if (newframe->num_entities < MAX_VISIBLE_ENTITIES)
+				CL_DeltaEntity(msg, newframe, newnum, &cl_entities[newnum].baseline, bits);
+			else
+				CL_DeltaEntity_Discard(msg, newnum, &cl_entities[newnum].baseline, bits);
+			
 			continue;
 		}
 
@@ -253,7 +282,9 @@ static void CL_ParsePacketEntities (sizebuf_t *msg, const frame_t *oldframe, fra
 	{	// one or more entities from the old packet are unchanged
 		if (cl_shownet->integer == 3)
 			Com_Printf ("   unchanged: %i\n", oldnum);
-		CL_DeltaEntity(msg, newframe, oldnum, oldstate, 0);
+		
+		if (newframe->num_entities < MAX_VISIBLE_ENTITIES)
+			CL_DeltaEntity(msg, newframe, oldnum, oldstate, 0);
 		
 		oldindex++;
 

@@ -104,6 +104,7 @@ mmove_t brain_move_stand = {FRAME_stand01, FRAME_stand30, brain_frames_stand, NU
 void brain_stand (edict_t *self)
 {
 	self->monsterinfo.currentmove = &brain_move_stand;
+	    self->monsterinfo.currentmove_name = "brain_move_stand";
 }
 
 
@@ -152,6 +153,7 @@ void brain_idle (edict_t *self)
 {
 	gi.sound (self, CHAN_AUTO, sound_idle3, 1, ATTN_IDLE, 0);
 	self->monsterinfo.currentmove = &brain_move_idle;
+	    self->monsterinfo.currentmove_name = "brain_move_idle";
 }
 
 
@@ -235,8 +237,10 @@ void brain_walk (edict_t *self)
 {
 //	if (random() <= 0.5)
 		self->monsterinfo.currentmove = &brain_move_walk1;
+		    self->monsterinfo.currentmove_name = "brain_move_walk1";
 //	else
 //		self->monsterinfo.currentmove = &brain_move_walk2;
+		    self->monsterinfo.currentmove_name = "brain_move_walk2";
 }
 
 
@@ -359,6 +363,7 @@ void brain_dodge (edict_t *self, edict_t *attacker, float eta)
 
 	self->monsterinfo.pausetime = level.time + eta + 0.5;
 	self->monsterinfo.currentmove = &brain_move_duck;
+	    self->monsterinfo.currentmove_name = "brain_move_duck";
 }
 
 
@@ -475,6 +480,7 @@ void brain_chest_closed (edict_t *self)
 	{
 		self->spawnflags &= ~65536;
 		self->monsterinfo.currentmove = &brain_move_attack1;
+		    self->monsterinfo.currentmove_name = "brain_move_attack1";
 	}
 }
 
@@ -503,9 +509,13 @@ mmove_t brain_move_attack2 = {FRAME_attak201, FRAME_attak217, brain_frames_attac
 void brain_melee(edict_t *self)
 {
 	if (random() <= 0.5)
-		self->monsterinfo.currentmove = &brain_move_attack1;
+	{		self->monsterinfo.currentmove = &brain_move_attack1;
+		    self->monsterinfo.currentmove_name = "brain_move_attack1";
+	}
 	else
-		self->monsterinfo.currentmove = &brain_move_attack2;
+	{		self->monsterinfo.currentmove = &brain_move_attack2;
+		    self->monsterinfo.currentmove_name = "brain_move_attack2";
+	}
 }
 
 
@@ -533,9 +543,13 @@ void brain_run (edict_t *self)
 {
 	self->monsterinfo.power_armor_type = POWER_ARMOR_SCREEN;
 	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
-		self->monsterinfo.currentmove = &brain_move_stand;
+	{		self->monsterinfo.currentmove = &brain_move_stand;
+		    self->monsterinfo.currentmove_name = "brain_move_stand";
+	}
 	else
-		self->monsterinfo.currentmove = &brain_move_run;
+	{		self->monsterinfo.currentmove = &brain_move_run;
+		    self->monsterinfo.currentmove_name = "brain_move_run";
+	}
 }
 
 
@@ -558,16 +572,19 @@ void brain_pain (edict_t *self, edict_t *other, float kick, int damage)
 	{
 		gi.sound (self, CHAN_VOICE, sound_pain1, 1, ATTN_NORM, 0);
 		self->monsterinfo.currentmove = &brain_move_pain1;
+		    self->monsterinfo.currentmove_name = "brain_move_pain1";
 	}
 	else if (r < 0.66)
 	{
 		gi.sound (self, CHAN_VOICE, sound_pain2, 1, ATTN_NORM, 0);
 		self->monsterinfo.currentmove = &brain_move_pain2;
+		    self->monsterinfo.currentmove_name = "brain_move_pain2";
 	}
 	else
 	{
 		gi.sound (self, CHAN_VOICE, sound_pain1, 1, ATTN_NORM, 0);
 		self->monsterinfo.currentmove = &brain_move_pain3;
+		    self->monsterinfo.currentmove_name = "brain_move_pain3";
 	}
 }
 
@@ -611,9 +628,13 @@ void brain_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage
 	self->deadflag = DEAD_DEAD;
 	self->takedamage = DAMAGE_YES;
 	if (random() <= 0.5)
-		self->monsterinfo.currentmove = &brain_move_death1;
+	{		self->monsterinfo.currentmove = &brain_move_death1;
+		    self->monsterinfo.currentmove_name = "brain_move_death1";
+	}
 	else
-		self->monsterinfo.currentmove = &brain_move_death2;
+	{		self->monsterinfo.currentmove = &brain_move_death2;
+		    self->monsterinfo.currentmove_name = "brain_move_death2";
+	}
 }
 
 /*QUAKED monster_brain (1 .5 0) (-16 -16 -24) (16 16 32) Ambush Trigger_Spawn Sight
@@ -669,7 +690,8 @@ void SP_monster_brain (edict_t *self)
 
 	gi.linkentity (self);
 
-	self->monsterinfo.currentmove = &brain_move_stand;	
+	self->monsterinfo.currentmove = &brain_move_stand;
+	    self->monsterinfo.currentmove_name = "brain_move_stand";	
 	self->monsterinfo.scale = MODEL_SCALE;
 
 	walkmonster_start (self);

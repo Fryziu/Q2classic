@@ -2107,6 +2107,17 @@ void CL_InitLocal (void)
 // register our variables
 	cl_stereo_separation = Cvar_Get( "cl_stereo_separation", "0.4", CVAR_ARCHIVE );
 	cl_stereo = Cvar_Get( "cl_stereo", "0", 0 );
+	// =======================================================================
+	    // M-AI-812: Dodane zmienne do personalizacji kolorów efektów
+	    // =======================================================================
+	    // Używane do kontrolowania koloru smugi Railguna (i potencjalnie innych)
+	// Użyłem Cvar_Get bez przypisywania do zmiennej globalnej. To jest celowe.
+	// Nie potrzebujemy trzymać wskaźników do tych cvarów przez cały czas – odczytamy ich wartości wtedy, gdy będą potrzebne.
+	// Flaga CVAR_ARCHIVE sprawi, że ich wartości będą zapisywane w konfiguracji gracza.
+	    Cvar_Get("cl_railcolor_r", "0.3", CVAR_ARCHIVE);
+	    Cvar_Get("cl_railcolor_g", "0.5", CVAR_ARCHIVE);
+	    Cvar_Get("cl_railcolor_b", "1.0", CVAR_ARCHIVE);
+	// ===
 
 	cl_add_blend = Cvar_Get ("cl_blend", "1", 0);
 	cl_add_lights = Cvar_Get ("cl_lights", "1", 0);

@@ -169,6 +169,7 @@ static int XLateKey(SDL_Keysym *key)
 
 	switch (key->sym)
 	{
+
 		case SDLK_KP_9:			key_code = K_KP_PGUP; break;
 		case SDLK_KP_8:			key_code = K_KP_UPARROW; break;
 		case SDLK_KP_7:			key_code = K_KP_HOME; break;
@@ -210,6 +211,18 @@ static int XLateKey(SDL_Keysym *key)
 		case SDLK_F10:		key_code = K_F10; break;
 		case SDLK_F11:		key_code = K_F11; break;
 		case SDLK_F12:		key_code = K_F12; break;
+		// =======================================================================
+		        // M-AI-812: Dodana obsługa rozszerzonych klawiszy funkcyjnych
+		        // =======================================================================
+		        case SDLK_F13:		key_code = K_F13; break;
+		        case SDLK_F14:		key_code = K_F14; break;
+		        case SDLK_F15:		key_code = K_F15; break;
+		        case SDLK_F16:		key_code = K_F16; break;
+		        case SDLK_F17:		key_code = K_F17; break;
+		        case SDLK_F18:		key_code = K_F18; break;
+		        case SDLK_F19:		key_code = K_F19; break;
+		        // F20-F24 można dodać w ten sam sposób
+		        // ===
 		case SDLK_CAPSLOCK:		key_code = K_CAPSLOCK; break;
 		case SDLK_RSHIFT:
 		case SDLK_LSHIFT:		key_code = K_SHIFT; break;
@@ -222,12 +235,28 @@ static int XLateKey(SDL_Keysym *key)
 		case SDLK_ESCAPE:		key_code = K_ESCAPE; break;
 		case SDLK_SPACE:		key_code = K_SPACE; break;
 		case SDLK_PAUSE:		key_code = K_PAUSE; break;
+		 // =======================================================================
+		        // M-AI-812: Dodana obsługa dodatkowych klawiszy systemowych
+		        // =======================================================================
+		        case SDLK_PRINTSCREEN:  key_code = K_PRINT_SCREEN; break;
+		        case SDLK_SCROLLLOCK:   key_code = K_SCROLL_LOCK; break;
+		        // ===
 		default:
-			// FINAL FIX: Convert all character symbols to lowercase.
-			// The engine expects lowercase for bindings and console commands.
-			// tolower() will correctly handle A-Z and leave other symbols untouched.
-			key_code = tolower(key->sym);
-			break;
+		    // Najpierw sprawdzamy, czy kod klawisza w ogóle mieści się w
+		    // bezpiecznym zakresie ASCII (0-255), który nasza gra obsługuje.
+		    if (key->sym > 0 && key->sym < 256)
+		    {
+		        // Jeśli tak, to jest to prawdopodobnie znak drukowalny.
+		        // Konwertujemy go na małą literę, co jest poprawnym zachowaniem.
+		        key_code = tolower(key->sym);
+		    }
+		    else
+		    {
+		        // Jeśli kod jest poza zakresem (np. dla NumLock, ScrollLock itp.),
+		        // jest to nieznany klawisz specjalny. IGNORUJEMY GO, zwracając 0.
+		        key_code = 0;
+		    }
+		    break;
 	}
 
 	return key_code;
@@ -378,6 +407,15 @@ static unsigned char *SDLimp_InitGraphics( viddef_t *vid )
 	// This is critical for switching between fullscreen and windowed modes.
 	if (window)
 	{
+		// SAFETY: Wayland/SDL3 crash workaround.
+		// Ensure the mouse is released and the event queue is empty before destroying the window.
+		// This prevents 'pointer_dispatch_relative_motion' from accessing dead window memory.
+		if (SDL_GetRelativeMouseMode()) {
+			SDL_SetRelativeMouseMode(SDL_FALSE);
+		}
+		SDL_PumpEvents();
+		SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
+
 		SDL_DestroyWindow(window);
 		window = NULL;  // Set pointer to NULL after destroying
 		surface = NULL; // The old surface is also invalid now
@@ -549,6 +587,15 @@ void SWimp_SetPalette( const unsigned char *palette )
 
 void SWimp_Shutdown( void )
 {
+	// SAFETY: Wayland/SDL3 crash workaround.
+	// Ensure the mouse is released and the event queue is empty before destroying the window.
+	// This prevents 'pointer_dispatch_relative_motion' from accessing dead window memory.
+	if (SDL_GetRelativeMouseMode()) {
+		SDL_SetRelativeMouseMode(SDL_FALSE);
+	}
+	SDL_PumpEvents();
+	SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
+
 	if (surface)
 		SDL_FreeSurface(surface);
 	surface = NULL;

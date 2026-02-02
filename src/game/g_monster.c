@@ -17,7 +17,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
+
 #include "g_local.h"
+#include "g_move_reg.h"
 
 
 //
@@ -357,13 +359,41 @@ void M_SetEffects (edict_t *ent)
 	}
 }
 
-
+//
 void M_MoveFrame (edict_t *self)
 {
 	mmove_t	*move;
 	int		index;
 
+    // M-AI: Odtwarzanie wskaźnika animacji (cache) po wczytaniu gry.
+    // Działa tylko raz, gdy currentmove jest NULL.
+    if (!self->monsterinfo.currentmove)
+    {
+        if (!self->monsterinfo.currentmove_name)
+        {
+            gi.dprintf("FATAL: %s at %s ma NULL currentmove i NULL currentmove_name.\n", self->classname, vtos(self->s.origin));
+            self->think = NULL; // Zablokuj dalsze myślenie, aby uniknąć pętli błędów.
+            return;
+        }
+
+        self->monsterinfo.currentmove = FindMMoveByName(self->monsterinfo.currentmove_name);
+        if (!self->monsterinfo.currentmove)
+        {
+            gi.dprintf("FATAL: %s at %s nie może znaleźć animacji o nazwie '%s'.\n", self->classname, vtos(self->s.origin), self->monsterinfo.currentmove_name);
+            self->think = NULL;
+            return;
+        }
+    }
+
 	move = self->monsterinfo.currentmove;
+    
+    // SAFETY CHECK: Handle corrupt pointers from bad savegames
+    if (!move) {
+        // If no move is set, stop thinking to prevent crash
+        self->nextthink = -1; 
+        return;
+    }
+
 	self->nextthink = level.time + FRAMETIME;
 
 	if ((self->monsterinfo.nextframe) && (self->monsterinfo.nextframe >= move->firstframe) && (self->monsterinfo.nextframe <= move->lastframe))
@@ -416,6 +446,8 @@ void M_MoveFrame (edict_t *self)
 		move->frame[index].thinkfunc (self);
 }
 
+
+///
 
 void monster_think (edict_t *self)
 {

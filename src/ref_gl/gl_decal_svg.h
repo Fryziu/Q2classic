@@ -1,6 +1,23 @@
 #ifndef GL_DECAL_SVG_H
 #define GL_DECAL_SVG_H
 
+// Deklaracje "extern" informują kompilator, że te zmienne istnieją,
+// ale są zdefiniowane w innym pliku (.c).
+// Dzięki temu każdy plik, który dołącza ten nagłówek, wie o ich istnieniu,
+// ale nie tworzy ich własnej kopii.
+
+extern const char* g_decal_svg_bhole;
+extern const char* g_decal_svg_blaster;
+extern const char* g_decal_svg_scorch;
+extern const char* g_conchars_svg;
+
+#endif // GL_DECAL_SVG_H
+
+
+/*
+#ifndef GL_DECAL_SVG_H
+#define GL_DECAL_SVG_H
+
 // =======================================================================
 //          Repozytorium Wbudowanych Zasobów SVG dla Decali
 // =======================================================================
@@ -32,4 +49,26 @@ static const char* g_decal_svg_scorch =
 // --- Placeholder dla krwi ---
 // (możemy dodać w przyszłości)
 
+// --- Siatka Znaków Konsoli (Font Atlas) ---
+// Pełna siatka ma 256 znaków (16x16) w teksturze 256x128.
+// Każdy znak ma 16x8 pikseli.
+static const char* g_conchars_svg =
+    "<svg width=\"128\" height=\"128\" xmlns=\"http://www.w3.org/2000/svg\">"
+    "<style> .font { font: 10px monospace; fill: white; } </style>"
+    // Linia 0 (znaki specjalne)
+    // ...
+    // Linia 2 (znaki spacji, !, "...)
+    "<text x=\"1\" y=\"23\" class=\"font\"> </text>"
+    "<text x=\"9\" y=\"23\" class=\"font\">!</text>"
+    "<text x=\"17\" y=\"23\" class=\"font\">\"</text>"
+    // ...
+    // Linia 3 (znaki @, A, B, C...)
+    "<text x=\"1\" y=\"39\" class=\"font\">@</text>"
+    "<text x=\"9\" y=\"39\" class=\"font\">A</text>"
+    "<text x=\"17\" y=\"39\" class=\"font\">B</text>"
+    "<text x=\"25\" y=\"39\" class=\"font\">C</text>"
+    // ...i tak dalej dla wszystkich 256 znaków...
+    "</svg>";
+
 #endif // GL_DECAL_SVG_H
+*/

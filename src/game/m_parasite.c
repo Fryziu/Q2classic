@@ -119,24 +119,33 @@ mmove_t parasite_move_end_fidget = {FRAME_stand28, FRAME_stand35, parasite_frame
 void parasite_end_fidget (edict_t *self)
 {
 	self->monsterinfo.currentmove = &parasite_move_end_fidget;
+    self->monsterinfo.currentmove_name = "parasite_move_end_fidget";
 }
 
 void parasite_do_fidget (edict_t *self)
 {
 	self->monsterinfo.currentmove = &parasite_move_fidget;
+    self->monsterinfo.currentmove_name = "parasite_move_fidget";
 }
 
 void parasite_refidget (edict_t *self)
 { 
 	if (random() <= 0.8)
+	{
 		self->monsterinfo.currentmove = &parasite_move_fidget;
+	    self->monsterinfo.currentmove_name = "parasite_move_fidget";
+	}
 	else
+	{
 		self->monsterinfo.currentmove = &parasite_move_end_fidget;
+	    self->monsterinfo.currentmove_name = "parasite_move_end_fidget";
+	}
 }
 
 void parasite_idle (edict_t *self)
 { 
 	self->monsterinfo.currentmove = &parasite_move_start_fidget;
+	    self->monsterinfo.currentmove_name = "parasite_move_start_fidget";
 }
 
 
@@ -165,6 +174,7 @@ mmove_t	parasite_move_stand = {FRAME_stand01, FRAME_stand17, parasite_frames_sta
 void parasite_stand (edict_t *self)
 {
 	self->monsterinfo.currentmove = &parasite_move_stand;
+    self->monsterinfo.currentmove_name = "parasite_move_stand";
 }
 
 
@@ -201,17 +211,29 @@ mmove_t parasite_move_stop_run = {FRAME_run10, FRAME_run15, parasite_frames_stop
 void parasite_start_run (edict_t *self)
 {	
 	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
+	{
 		self->monsterinfo.currentmove = &parasite_move_stand;
+	    self->monsterinfo.currentmove_name = "parasite_move_stand";
+	}
 	else
+	{
 		self->monsterinfo.currentmove = &parasite_move_start_run;
+	    self->monsterinfo.currentmove_name = "parasite_move_start_run";
+	}
 }
 
 void parasite_run (edict_t *self)
 {
 	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
+	{
 		self->monsterinfo.currentmove = &parasite_move_stand;
+	    self->monsterinfo.currentmove_name = "parasite_move_stand";
+	}
 	else
+	{
 		self->monsterinfo.currentmove = &parasite_move_run;
+	    self->monsterinfo.currentmove_name = "parasite_move_run";
+	}
 }
 
 
@@ -248,11 +270,13 @@ mmove_t parasite_move_stop_walk = {FRAME_run10, FRAME_run15, parasite_frames_sto
 void parasite_start_walk (edict_t *self)
 {	
 	self->monsterinfo.currentmove = &parasite_move_start_walk;
+    self->monsterinfo.currentmove_name = "parasite_move_start_walk";
 }
 
 void parasite_walk (edict_t *self)
 {
 	self->monsterinfo.currentmove = &parasite_move_walk;
+    self->monsterinfo.currentmove_name = "parasite_move_walk";
 }
 
 
@@ -291,6 +315,7 @@ void parasite_pain (edict_t *self, edict_t *other, float kick, int damage)
 		gi.sound (self, CHAN_VOICE, sound_pain2, 1, ATTN_NORM, 0);
 
 	self->monsterinfo.currentmove = &parasite_move_pain1;
+	    self->monsterinfo.currentmove_name = "parasite_move_pain1";
 }
 
 
@@ -434,8 +459,10 @@ void parasite_attack (edict_t *self)
 {
 //	if (random() <= 0.2)
 //		self->monsterinfo.currentmove = &parasite_move_break;
+		    self->monsterinfo.currentmove_name = "parasite_move_break";
 //	else
 		self->monsterinfo.currentmove = &parasite_move_drain;
+	    self->monsterinfo.currentmove_name = "parasite_move_drain";
 }
 
 
@@ -493,6 +520,7 @@ void parasite_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int dam
 	self->deadflag = DEAD_DEAD;
 	self->takedamage = DAMAGE_YES;
 	self->monsterinfo.currentmove = &parasite_move_death;
+    self->monsterinfo.currentmove_name = "parasite_move_death";
 }
 
 /*
@@ -545,7 +573,8 @@ void SP_monster_parasite (edict_t *self)
 
 	gi.linkentity (self);
 
-	self->monsterinfo.currentmove = &parasite_move_stand;	
+	self->monsterinfo.currentmove = &parasite_move_stand;
+    self->monsterinfo.currentmove_name = "parasite_move_stand";
 	self->monsterinfo.scale = MODEL_SCALE;
 
 	walkmonster_start (self);

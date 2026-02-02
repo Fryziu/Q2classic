@@ -61,6 +61,7 @@ mmove_t berserk_move_stand = {FRAME_stand1, FRAME_stand5, berserk_frames_stand, 
 void berserk_stand (edict_t *self)
 {
 	self->monsterinfo.currentmove = &berserk_move_stand;
+	    self->monsterinfo.currentmove_name = "berserk_move_stand";
 }
 
 mframe_t berserk_frames_stand_fidget [] =
@@ -96,6 +97,7 @@ void berserk_fidget (edict_t *self)
 		return;
 
 	self->monsterinfo.currentmove = &berserk_move_stand_fidget;
+	    self->monsterinfo.currentmove_name = "berserk_move_stand_fidget";
 	gi.sound (self, CHAN_WEAPON, sound_idle, 1, ATTN_IDLE, 0);
 }
 
@@ -120,6 +122,7 @@ mmove_t berserk_move_walk = {FRAME_walkc1, FRAME_walkc11, berserk_frames_walk, N
 void berserk_walk (edict_t *self)
 {
 	self->monsterinfo.currentmove = &berserk_move_walk;
+	    self->monsterinfo.currentmove_name = "berserk_move_walk";
 }
 
 /*
@@ -161,9 +164,15 @@ mmove_t berserk_move_run1 = {FRAME_run1, FRAME_run6, berserk_frames_run1, NULL};
 void berserk_run (edict_t *self)
 {
 	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
+	{
 		self->monsterinfo.currentmove = &berserk_move_stand;
+		    self->monsterinfo.currentmove_name = "berserk_move_stand";
+	}
 	else
+	{
 		self->monsterinfo.currentmove = &berserk_move_run1;
+		    self->monsterinfo.currentmove_name = "berserk_move_run1";
+	}
 }
 
 
@@ -249,9 +258,15 @@ mmove_t berserk_move_attack_strike = {FRAME_att_c21, FRAME_att_c34, berserk_fram
 void berserk_melee (edict_t *self)
 {
 	if ((rand() % 2) == 0)
+	{
 		self->monsterinfo.currentmove = &berserk_move_attack_spike;
+		    self->monsterinfo.currentmove_name = "berserk_move_attack_spike";
+	}
 	else
+	{
 		self->monsterinfo.currentmove = &berserk_move_attack_club;
+		    self->monsterinfo.currentmove_name = "berserk_move_attack_club";
+	}
 }
 
 
@@ -327,9 +342,13 @@ void berserk_pain (edict_t *self, edict_t *other, float kick, int damage)
 		return;		// no pain anims in nightmare
 
 	if ((damage < 20) || (random() < 0.5))
-		self->monsterinfo.currentmove = &berserk_move_pain1;
+	{		self->monsterinfo.currentmove = &berserk_move_pain1;
+		    self->monsterinfo.currentmove_name = "berserk_move_pain1";
+	}
 	else
-		self->monsterinfo.currentmove = &berserk_move_pain2;
+	{		self->monsterinfo.currentmove = &berserk_move_pain2;
+		    self->monsterinfo.currentmove_name = "berserk_move_pain2";
+	}
 }
 
 
@@ -402,9 +421,13 @@ void berserk_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int dama
 	self->takedamage = DAMAGE_YES;
 
 	if (damage >= 50)
-		self->monsterinfo.currentmove = &berserk_move_death1;
+	{		self->monsterinfo.currentmove = &berserk_move_death1;
+		    self->monsterinfo.currentmove_name = "berserk_move_death1";
+	}
 	else
-		self->monsterinfo.currentmove = &berserk_move_death2;
+	{		self->monsterinfo.currentmove = &berserk_move_death2;
+		    self->monsterinfo.currentmove_name = "berserk_move_death2";
+	}
 }
 
 
@@ -449,6 +472,7 @@ void SP_monster_berserk (edict_t *self)
 	self->monsterinfo.search = berserk_search;
 
 	self->monsterinfo.currentmove = &berserk_move_stand;
+	    self->monsterinfo.currentmove_name = "berserk_move_stand";
 	self->monsterinfo.scale = MODEL_SCALE;
 
 	gi.linkentity (self);

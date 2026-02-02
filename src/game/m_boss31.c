@@ -161,6 +161,7 @@ void jorg_step_right (edict_t *self)
 void jorg_stand (edict_t *self)
 {
 	self->monsterinfo.currentmove = &jorg_move_stand;
+	    self->monsterinfo.currentmove_name = "jorg_move_stand";
 }
 
 mframe_t jorg_frames_run [] =
@@ -229,14 +230,19 @@ mmove_t jorg_move_end_walk = {FRAME_walk20, FRAME_walk25, jorg_frames_end_walk, 
 void jorg_walk (edict_t *self)
 {
 		self->monsterinfo.currentmove = &jorg_move_walk;
+		    self->monsterinfo.currentmove_name = "jorg_move_walk";
 }
 
 void jorg_run (edict_t *self)
 {
 	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
-		self->monsterinfo.currentmove = &jorg_move_stand;
+	{		self->monsterinfo.currentmove = &jorg_move_stand;
+		    self->monsterinfo.currentmove_name = "jorg_move_stand";
+	}
 	else
-		self->monsterinfo.currentmove = &jorg_move_run;
+	{		self->monsterinfo.currentmove = &jorg_move_run;
+		    self->monsterinfo.currentmove_name = "jorg_move_run";
+	}
 }
 
 mframe_t jorg_frames_pain3 [] =
@@ -395,22 +401,25 @@ void jorg_reattack1(edict_t *self)
 {
 	if (visible(self, self->enemy))
 		if (random() < 0.9)
-			self->monsterinfo.currentmove = &jorg_move_attack1;
+		{	self->monsterinfo.currentmove = &jorg_move_attack1;
+		    self->monsterinfo.currentmove_name = "jorg_move_attack1";
+		}
 		else
-		{
-			self->s.sound = 0;
-			self->monsterinfo.currentmove = &jorg_move_end_attack1;	
+		{	self->s.sound = 0;
+			self->monsterinfo.currentmove = &jorg_move_end_attack1;
+		    self->monsterinfo.currentmove_name = "jorg_move_end_attack1";
 		}
 	else
-	{
-		self->s.sound = 0;
-		self->monsterinfo.currentmove = &jorg_move_end_attack1;	
+	{	self->s.sound = 0;
+		self->monsterinfo.currentmove = &jorg_move_end_attack1;
+	    self->monsterinfo.currentmove_name = "jorg_move_end_attack1";
 	}
 }
 
 void jorg_attack1(edict_t *self)
 {
 	self->monsterinfo.currentmove = &jorg_move_attack1;
+	self->monsterinfo.currentmove_name = "jorg_move_attack1";
 }
 
 void jorg_pain (edict_t *self, edict_t *other, float kick, int damage)
@@ -456,11 +465,13 @@ void jorg_pain (edict_t *self, edict_t *other, float kick, int damage)
 	{
 		gi.sound (self, CHAN_VOICE, sound_pain1, 1, ATTN_NORM,0);
 		self->monsterinfo.currentmove = &jorg_move_pain1;
+		    self->monsterinfo.currentmove_name = "jorg_move_pain1";
 	}
 	else if (damage <= 100)
 	{
 		gi.sound (self, CHAN_VOICE, sound_pain2, 1, ATTN_NORM,0);
 		self->monsterinfo.currentmove = &jorg_move_pain2;
+		    self->monsterinfo.currentmove_name = "jorg_move_pain2";
 	}
 	else
 	{
@@ -468,6 +479,7 @@ void jorg_pain (edict_t *self, edict_t *other, float kick, int damage)
 		{
 			gi.sound (self, CHAN_VOICE, sound_pain3, 1, ATTN_NORM,0);
 			self->monsterinfo.currentmove = &jorg_move_pain3;
+			    self->monsterinfo.currentmove_name = "jorg_move_pain3";
 		}
 	}
 }
@@ -544,11 +556,13 @@ void jorg_attack(edict_t *self)
 		gi.sound (self, CHAN_VOICE, sound_attack1, 1, ATTN_NORM,0);
 		self->s.sound = gi.soundindex ("boss3/w_loop.wav");
 		self->monsterinfo.currentmove = &jorg_move_start_attack1;
+		    self->monsterinfo.currentmove_name = "jorg_move_start_attack1";
 	}
 	else
 	{
 		gi.sound (self, CHAN_VOICE, sound_attack2, 1, ATTN_NORM,0);
 		self->monsterinfo.currentmove = &jorg_move_attack2;
+		    self->monsterinfo.currentmove_name = "jorg_move_attack2";
 	}
 }
 
@@ -589,6 +603,7 @@ void jorg_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage,
 	self->s.sound = 0;
 	self->count = 0;
 	self->monsterinfo.currentmove = &jorg_move_death;
+	    self->monsterinfo.currentmove_name = "jorg_move_death";
 }
 
 qboolean Jorg_CheckAttack (edict_t *self)
@@ -737,6 +752,7 @@ void SP_monster_jorg (edict_t *self)
 	gi.linkentity (self);
 	
 	self->monsterinfo.currentmove = &jorg_move_stand;
+	    self->monsterinfo.currentmove_name = "jorg_move_stand";
 	self->monsterinfo.scale = MODEL_SCALE;
 
 	walkmonster_start(self);

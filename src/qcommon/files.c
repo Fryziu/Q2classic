@@ -1293,7 +1293,7 @@ static void FS_AddGameDirectory (const char *dir)
 ================
 FS_AddHomeAsGameDirectory
 
-Use ~/.quake2/dir as fs_gamedir
+Use ~/.q2classic/dir as fs_gamedir
 ================
 */
 #ifndef _WIN32
@@ -1303,7 +1303,7 @@ static void FS_AddHomeAsGameDirectory (const char *dir)
 	char *homedir = getenv("HOME");
 
 	if(homedir) {
-		int len = snprintf(gdir,sizeof(gdir),"%s/.quake2/%s/", homedir, dir);
+		int len = snprintf(gdir,sizeof(gdir),"%s/.q2classic/%s/", homedir, dir);
 		Com_Printf("using %s for writing\n",gdir);
 		FS_CreatePath (gdir);
 
@@ -1377,7 +1377,7 @@ static void FS_DefaultGamedir( void ) {
 
 #ifndef _WIN32
 	if(fs_usehomedir->integer) {
-		Com_sprintf(fs_gamedir, sizeof(fs_gamedir ), "%s/.quake2/"BASEDIRNAME, getenv("HOME"));
+		Com_sprintf(fs_gamedir, sizeof(fs_gamedir ), "%s/.q2classic/"BASEDIRNAME, getenv("HOME"));
 	}
 #endif
 
@@ -1911,7 +1911,7 @@ void FS_InitFilesystem (void)
 	FS_AddGameDirectory (va("%s/"BASEDIRNAME, fs_basedir->string));
 
 	//
-	// then add a '.quake2/baseq2' directory in home directory by default
+	// then add a '.q2classic/baseq2' directory in home directory by default
 	//
 #ifndef _WIN32
 	fs_usehomedir = Cvar_Get ("fs_usehomedir", "1", 0);

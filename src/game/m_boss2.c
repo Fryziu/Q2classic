@@ -414,19 +414,25 @@ mmove_t boss2_move_death = {FRAME_death2, FRAME_death50, boss2_frames_death, bos
 void boss2_stand (edict_t *self)
 {
 		self->monsterinfo.currentmove = &boss2_move_stand;
+		    self->monsterinfo.currentmove_name = "boss2_move_stand";
 }
 
 void boss2_run (edict_t *self)
 {
 	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
-		self->monsterinfo.currentmove = &boss2_move_stand;
+	{		self->monsterinfo.currentmove = &boss2_move_stand;
+		    self->monsterinfo.currentmove_name = "boss2_move_stand";
+	}
 	else
-		self->monsterinfo.currentmove = &boss2_move_run;
+	{		self->monsterinfo.currentmove = &boss2_move_run;
+		    self->monsterinfo.currentmove_name = "boss2_move_run";
+	}
 }
 
 void boss2_walk (edict_t *self)
-{
-	self->monsterinfo.currentmove = &boss2_move_walk;
+
+{	self->monsterinfo.currentmove = &boss2_move_walk;
+    self->monsterinfo.currentmove_name = "boss2_move_walk";
 }
 
 void boss2_attack (edict_t *self)
@@ -438,32 +444,43 @@ void boss2_attack (edict_t *self)
 	range = VectorLength (vec);
 	
 	if (range <= 125)
-	{
-		self->monsterinfo.currentmove = &boss2_move_attack_pre_mg;
+	{		self->monsterinfo.currentmove = &boss2_move_attack_pre_mg;
+		    self->monsterinfo.currentmove_name = "boss2_move_attack_pre_mg";
 	}
 	else 
 	{
 		if (random() <= 0.6)
-			self->monsterinfo.currentmove = &boss2_move_attack_pre_mg;
+		{		self->monsterinfo.currentmove = &boss2_move_attack_pre_mg;
+			    self->monsterinfo.currentmove_name = "boss2_move_attack_pre_mg";
+		}
 		else
-			self->monsterinfo.currentmove = &boss2_move_attack_rocket;
+		{		self->monsterinfo.currentmove = &boss2_move_attack_rocket;
+			    self->monsterinfo.currentmove_name = "boss2_move_attack_rocket";
+		}
 	}
 }
 
 void boss2_attack_mg (edict_t *self)
 {
 	self->monsterinfo.currentmove = &boss2_move_attack_mg;
+	    self->monsterinfo.currentmove_name = "boss2_move_attack_mg";
 }
 
 void boss2_reattack_mg (edict_t *self)
 {
 	if ( infront(self, self->enemy) )
 		if (random() <= 0.7)
-			self->monsterinfo.currentmove = &boss2_move_attack_mg;
+		{		self->monsterinfo.currentmove = &boss2_move_attack_mg;
+			    self->monsterinfo.currentmove_name = "boss2_move_attack_mg";
+		}
 		else
-			self->monsterinfo.currentmove = &boss2_move_attack_post_mg;
+		{		self->monsterinfo.currentmove = &boss2_move_attack_post_mg;
+			    self->monsterinfo.currentmove_name = "boss2_move_attack_post_mg";
+		}
 	else
-		self->monsterinfo.currentmove = &boss2_move_attack_post_mg;
+	{		self->monsterinfo.currentmove = &boss2_move_attack_post_mg;
+		    self->monsterinfo.currentmove_name = "boss2_move_attack_post_mg";
+	}
 }
 
 
@@ -481,16 +498,19 @@ void boss2_pain (edict_t *self, edict_t *other, float kick, int damage)
 	{
 		gi.sound (self, CHAN_VOICE, sound_pain3, 1, ATTN_NONE, 0);
 		self->monsterinfo.currentmove = &boss2_move_pain_light;
+		    self->monsterinfo.currentmove_name = "boss2_move_pain_light";
 	}
 	else if (damage < 30)
 	{
 		gi.sound (self, CHAN_VOICE, sound_pain1, 1, ATTN_NONE, 0);
 		self->monsterinfo.currentmove = &boss2_move_pain_light;
+		    self->monsterinfo.currentmove_name = "boss2_move_pain_light";
 	}
 	else 
 	{
 		gi.sound (self, CHAN_VOICE, sound_pain2, 1, ATTN_NONE, 0);
 		self->monsterinfo.currentmove = &boss2_move_pain_heavy;
+		    self->monsterinfo.currentmove_name = "boss2_move_pain_heavy";
 	}
 }
 
@@ -511,6 +531,7 @@ void boss2_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage
 	self->takedamage = DAMAGE_NO;
 	self->count = 0;
 	self->monsterinfo.currentmove = &boss2_move_death;
+	    self->monsterinfo.currentmove_name = "boss2_move_death";
 #if 0
 	int		n;
 
@@ -534,6 +555,7 @@ void boss2_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage
 	self->deadflag = DEAD_DEAD;
 	self->takedamage = DAMAGE_YES;
 	self->monsterinfo.currentmove = &boss2_move_death;
+	    self->monsterinfo.currentmove_name = "boss2_move_death";
 #endif
 }
 
@@ -671,7 +693,8 @@ void SP_monster_boss2 (edict_t *self)
 	self->monsterinfo.checkattack = Boss2_CheckAttack;
 	gi.linkentity (self);
 
-	self->monsterinfo.currentmove = &boss2_move_stand;	
+	self->monsterinfo.currentmove = &boss2_move_stand;
+	    self->monsterinfo.currentmove_name = "boss2_move_stand";	
 	self->monsterinfo.scale = MODEL_SCALE;
 
 	flymonster_start (self);

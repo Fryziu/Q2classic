@@ -127,6 +127,7 @@ void gunner_fidget (edict_t *self)
 		return;
 	if (random() <= 0.05)
 		self->monsterinfo.currentmove = &gunner_move_fidget;
+		    self->monsterinfo.currentmove_name = "gunner_move_fidget";
 }
 
 mframe_t gunner_frames_stand [] =
@@ -169,6 +170,7 @@ mmove_t	gunner_move_stand = {FRAME_stand01, FRAME_stand30, gunner_frames_stand, 
 void gunner_stand (edict_t *self)
 {
 		self->monsterinfo.currentmove = &gunner_move_stand;
+		    self->monsterinfo.currentmove_name = "gunner_move_stand";
 }
 
 
@@ -193,6 +195,7 @@ mmove_t gunner_move_walk = {FRAME_walk07, FRAME_walk19, gunner_frames_walk, NULL
 void gunner_walk (edict_t *self)
 {
 	self->monsterinfo.currentmove = &gunner_move_walk;
+	    self->monsterinfo.currentmove_name = "gunner_move_walk";
 }
 
 mframe_t gunner_frames_run [] =
@@ -212,9 +215,15 @@ mmove_t gunner_move_run = {FRAME_run01, FRAME_run08, gunner_frames_run, NULL};
 void gunner_run (edict_t *self)
 {
 	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
+	{
 		self->monsterinfo.currentmove = &gunner_move_stand;
+		self->monsterinfo.currentmove_name = "gunner_move_stand";
+	}
 	else
+	{
 		self->monsterinfo.currentmove = &gunner_move_run;
+	    self->monsterinfo.currentmove_name = "gunner_move_run";
+	}
 }
 
 mframe_t gunner_frames_runandshoot [] =
@@ -232,6 +241,7 @@ mmove_t gunner_move_runandshoot = {FRAME_runs01, FRAME_runs06, gunner_frames_run
 void gunner_runandshoot (edict_t *self)
 {
 	self->monsterinfo.currentmove = &gunner_move_runandshoot;
+	    self->monsterinfo.currentmove_name = "gunner_move_runandshoot";
 }
 
 mframe_t gunner_frames_pain3 [] =
@@ -299,11 +309,20 @@ void gunner_pain (edict_t *self, edict_t *other, float kick, int damage)
 		return;		// no pain anims in nightmare
 
 	if (damage <= 10)
+	{
 		self->monsterinfo.currentmove = &gunner_move_pain3;
+	    self->monsterinfo.currentmove_name = "gunner_move_pain3";
+	}
 	else if (damage <= 25)
+	{
 		self->monsterinfo.currentmove = &gunner_move_pain2;
+	    self->monsterinfo.currentmove_name = "gunner_move_pain2";
+	}
 	else
+	{
 		self->monsterinfo.currentmove = &gunner_move_pain1;
+	    self->monsterinfo.currentmove_name = "gunner_move_pain1";
+	}
 }
 
 void gunner_dead (edict_t *self)
@@ -357,6 +376,7 @@ void gunner_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damag
 	self->deadflag = DEAD_DEAD;
 	self->takedamage = DAMAGE_YES;
 	self->monsterinfo.currentmove = &gunner_move_death;
+	    self->monsterinfo.currentmove_name = "gunner_move_death";
 }
 
 
@@ -415,6 +435,7 @@ void gunner_dodge (edict_t *self, edict_t *attacker, float eta)
 		self->enemy = attacker;
 
 	self->monsterinfo.currentmove = &gunner_move_duck;
+	    self->monsterinfo.currentmove_name = "gunner_move_duck";
 }
 
 
@@ -549,19 +570,27 @@ void gunner_attack(edict_t *self)
 	if (range (self, self->enemy) == RANGE_MELEE)
 	{
 		self->monsterinfo.currentmove = &gunner_move_attack_chain;
+		self->monsterinfo.currentmove_name = "gunner_move_attack_chain";
 	}
 	else
 	{
 		if (random() <= 0.5)
+		{
 			self->monsterinfo.currentmove = &gunner_move_attack_grenade;
+		    self->monsterinfo.currentmove_name = "gunner_move_attack_grenade";
+		}
 		else
+		{
 			self->monsterinfo.currentmove = &gunner_move_attack_chain;
+		    self->monsterinfo.currentmove_name = "gunner_move_attack_chain";
+		}
 	}
 }
 
 void gunner_fire_chain(edict_t *self)
 {
 	self->monsterinfo.currentmove = &gunner_move_fire_chain;
+	    self->monsterinfo.currentmove_name = "gunner_move_fire_chain";
 }
 
 void gunner_refire_chain(edict_t *self)
@@ -571,9 +600,11 @@ void gunner_refire_chain(edict_t *self)
 			if (random() <= 0.5)
 			{
 				self->monsterinfo.currentmove = &gunner_move_fire_chain;
+				    self->monsterinfo.currentmove_name = "gunner_move_fire_chain";
 				return;
 			}
 	self->monsterinfo.currentmove = &gunner_move_endfire_chain;
+	    self->monsterinfo.currentmove_name = "gunner_move_endfire_chain";
 }
 
 /*QUAKED monster_gunner (1 .5 0) (-16 -16 -24) (16 16 32) Ambush Trigger_Spawn Sight
@@ -621,7 +652,8 @@ void SP_monster_gunner (edict_t *self)
 
 	gi.linkentity (self);
 
-	self->monsterinfo.currentmove = &gunner_move_stand;	
+	self->monsterinfo.currentmove = &gunner_move_stand;
+	    self->monsterinfo.currentmove_name = "gunner_move_stand";	
 	self->monsterinfo.scale = MODEL_SCALE;
 
 	walkmonster_start (self);

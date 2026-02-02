@@ -19,6 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 // snd_dma.c -- main control for any streaming sound output device
 #include "client.h"
+#include "../qcommon/qcommon.h"
 #include "snd_loc.h"
 #include "SDL2/SDL.h"
 
@@ -112,6 +113,7 @@ SDL_mutex  *s_sound_mutex = NULL;
 cvar_t *s_volume, *s_show, *s_loadas8bit;
 cvar_t *s_testsound, *s_khz, *s_mixahead, *s_primary;
 cvar_t *s_swapstereo, *s_ambient, *s_oldresample, *s_quality;
+cvar_t *s_sdl_resample, *s_force_mono, *s_sound_overlap;
 
 //AI s_quality 0=Classic, 1=Attenuation, 2=Positional, 3=Filtering
 
@@ -274,6 +276,13 @@ static void S_PrintDebugInfo(const char *moment)
     Com_Printf("=============================================\n\n");
 }
 
+static void OnChange_SoundRestart(cvar_t *self, const char *oldValue)
+{
+	// Ta funkcja jest wywoływana automatycznie, gdy cvar się zmieni.
+	// Dodaje komendę 'snd_restart' do wykonania w następnej klatce.
+	Cbuf_AddText("snd_restart\n");
+}
+
 /*
 ====================================================================
 Initialization and Shutdown
@@ -301,6 +310,11 @@ void S_Init(void)
 	s_ambient = Cvar_Get ("s_ambient", "1", 0);
 	s_oldresample = Cvar_Get ("s_oldresample", "0", CVAR_LATCHED);
 	s_quality = Cvar_Get ("s_quality", "0", CVAR_ARCHIVE);
+	s_sdl_resample = Cvar_Get("s_sdl_resample", "1", CVAR_LATCHED);
+	s_force_mono = Cvar_Get("s_force_mono", "1", CVAR_LATCHED);
+	s_sound_overlap = Cvar_Get("s_sound_overlap", "0", CVAR_ARCHIVE);
+	s_sdl_resample->OnChange = OnChange_SoundRestart;
+	s_force_mono->OnChange = OnChange_SoundRestart;
 	S_BuildAttenuationTable(); // Build the attenuation lookup table.
 
 	if (SNDDMA_Init()) {
@@ -574,7 +588,14 @@ void S_BeginRegistration(void) { s_registration_sequence++; s_registering = true
 sfx_t *S_RegisterSound(const char *name) {
 	if (!sound_started) return NULL;
 	sfx_t *sfx = S_FindName(name, true);
-	if (!s_registering) S_LoadSound(sfx);
+
+	// KLUCZOWA ZMIANA:
+	// Jeśli nie jesteśmy w trakcie rejestracji poziomu,
+	// dźwięk jest "efektem specjalnym" i musi być załadowany natychmiast.
+	// W przeciwnym razie, S_EndRegistration załaduje go hurtowo.
+	if (!s_registering) {
+		S_LoadSound(sfx);
+	}
 	return sfx;
 }
 
@@ -632,6 +653,9 @@ void S_EndRegistration(void)
 		sfx = &known_sfx[i];
 		if (sfx->name[0] && sfx->registration_sequence == s_registration_sequence)
 		{
+			// ZASTĘPUJEMY starą, wbudowaną logikę JEDNYM wywołaniem.
+			// Funkcja S_LoadSound jest inteligentna i nie załaduje
+			// dźwięku drugi raz, jeśli już jest w pamięci.
 			S_LoadSound(sfx);
 		}
 	}
@@ -721,6 +745,128 @@ Helper and Internal Functions (Full, correct versions)
 */
 
 
+/*
+====================================================================
+Helper and Internal Functions (Full, correct versions)
+====================================================================
+*/
+
+// Definicja pomocnicza do śledzenia, jak został zaalokowany bufor audio.
+typedef enum {
+	BUF_ORIGIN_SDL, // Zaalokowany przez SDL_LoadWAV
+	BUF_ORIGIN_Z    // Zaalokowany przez Z_Malloc
+} buffer_origin_t;
+
+sfxcache_t *S_LoadSound(sfx_t *s)
+{
+	byte *raw_data;
+	int raw_len;
+	char name[MAX_QPATH];
+	char path[MAX_QPATH];
+
+	// --- NOWA, KLUCZOWA POPRAWKA ---
+	// Dźwięki z '*' na początku to dynamiczne aliasy (np. dźwięki gracza),
+	// które są rozwiązywane w czasie rzeczywistym. Nie są to pliki,
+	// więc nie próbujemy ich tutaj ładować.
+	if (s->name[0] == '*')
+		return NULL;
+
+	if (s->cache)
+		return s->cache;
+
+	if (s->truename)
+		Q_strncpyz(name, s->truename, sizeof(name));
+	else
+		Q_strncpyz(name, s->name, sizeof(name));
+
+	// --- KLUCZOWA POPRAWKA ---
+	// Sprawdzamy, czy nazwa dźwięku zaczyna się od specjalnego znacznika '#'.
+	if (name[0] == '#')
+	{
+		// Jeśli tak, ścieżka jest względna od katalogu gry, a my pomijamy '#'.
+		Q_strncpyz(path, &name[1], sizeof(path));
+	}
+	else
+	{
+		// W przeciwnym razie jest to standardowy dźwięk z katalogu "sound/".
+		Com_sprintf(path, sizeof(path), "sound/%s", name);
+	}
+
+	raw_len = FS_LoadFile(path, (void **)&raw_data);
+	if (!raw_data) {
+		Com_Printf("S_LoadSound: Couldn't load %s\n", path);
+		return NULL;
+	}
+
+	SDL_RWops *rw = SDL_RWFromConstMem(raw_data, raw_len);
+	if (!rw) {
+		Com_Printf("S_LoadSound: SDL_RWFromConstMem failed for %s\n", path);
+		FS_FreeFile(raw_data);
+		return NULL;
+	}
+
+	SDL_AudioSpec spec;
+	Uint8 *wav_buffer;
+	Uint32 wav_length;
+
+	if (SDL_LoadWAV_RW(rw, 1, &spec, &wav_buffer, &wav_length) == NULL) {
+		Com_Printf("S_LoadSound: SDL_LoadWAV_RW failed for %s: %s\n", path, SDL_GetError());
+		FS_FreeFile(raw_data);
+		return NULL;
+	}
+	FS_FreeFile(raw_data);
+	buffer_origin_t buffer_type = BUF_ORIGIN_SDL;
+
+	if (spec.channels == 2 && s_force_mono->integer) {
+		int samples = wav_length / 4; // 2 kanały * 16-bit
+		Sint16 *src = (Sint16 *)wav_buffer;
+		Sint16 *mono_buffer = Z_TagMalloc(samples * sizeof(Sint16), TAG_CL_SFX);
+
+		for (int i = 0; i < samples; ++i)
+			mono_buffer[i] = (Sint16)(((int)src[i * 2] + (int)src[i * 2 + 1]) / 2);
+
+		if (buffer_type == BUF_ORIGIN_SDL) SDL_FreeWAV(wav_buffer); else Z_Free(wav_buffer);
+		wav_buffer = (Uint8 *)mono_buffer;
+		buffer_type = BUF_ORIGIN_Z;
+		wav_length = samples * sizeof(Sint16);
+		spec.channels = 1;
+	}
+
+	qboolean needs_conversion = (spec.format != AUDIO_S16LSB || spec.freq != dma.speed || spec.channels != dma.channels);
+	if (needs_conversion && s_sdl_resample->integer) {
+		SDL_AudioCVT cvt;
+		SDL_BuildAudioCVT(&cvt, spec.format, spec.channels, spec.freq,
+						  AUDIO_S16LSB, dma.channels, dma.speed);
+
+		cvt.buf = Z_TagMalloc(wav_length * cvt.len_mult, TAG_CL_SFX);
+		memcpy(cvt.buf, wav_buffer, wav_length);
+		cvt.len = wav_length;
+		SDL_ConvertAudio(&cvt);
+
+		if (buffer_type == BUF_ORIGIN_SDL) SDL_FreeWAV(wav_buffer); else Z_Free(wav_buffer);
+		wav_buffer = cvt.buf;
+		buffer_type = BUF_ORIGIN_Z;
+		wav_length = cvt.len_cvt;
+		spec.freq = dma.speed;
+		spec.format = AUDIO_S16LSB;
+		spec.channels = dma.channels;
+	}
+
+	sfxcache_t *sc = Z_TagMalloc(sizeof(sfxcache_t) + wav_length, TAG_CL_SFX);
+	sc->length = wav_length / (spec.channels * (SDL_AUDIO_BITSIZE(spec.format) / 8));
+	sc->speed = spec.freq;
+	sc->width = (SDL_AUDIO_BITSIZE(spec.format) / 8);
+	sc->channels = spec.channels;
+	sc->loopstart = -1;
+	memcpy(sc->data, wav_buffer, wav_length);
+
+	if (buffer_type == BUF_ORIGIN_SDL) SDL_FreeWAV(wav_buffer); else Z_Free(wav_buffer);
+
+	s->cache = sc;
+
+	return sc;
+}
+
 void S_IssuePlaysound(playsound_t *ps)
 {
 	channel_t *ch = S_PickChannel(ps->entnum, ps->entchannel);
@@ -752,9 +898,15 @@ static channel_t *S_PickChannel(int entnum, int entchannel)
 	int first_to_die = -1;
 	int life_left = 0x7fffffff;
 	for (int i=0; i < MAX_CHANNELS; i++) {
-		if (entchannel != 0 && channels[i].entnum == entnum && channels[i].entchannel == entchannel) {
-			first_to_die = i; break;
+		// --- KLUCZOWA ZMIANA ---
+		// Wykonaj tę logikę tylko jeśli s_sound_overlap jest wyłączony.
+		if (!s_sound_overlap || !s_sound_overlap->integer)
+		{
+			if (entchannel != 0 && channels[i].entnum == entnum && channels[i].entchannel == entchannel) {
+				first_to_die = i; break;
+			}
 		}
+
 		if (channels[i].entnum == cl.playernum+1 && entnum != cl.playernum+1 && channels[i].sfx) continue;
 		if (channels[i].end - paintedtime < life_left) {
 			life_left = channels[i].end - paintedtime;
@@ -846,105 +998,53 @@ static void S_SpatializeOrigin (vec3_t origin, float master_vol, float dist_mult
 */
 
 // ====================================================================
-// POPRAWIONA WERSJA Z DYNAMICZNYM ZASIĘGIEM UWZGLĘDNIAJĄCYM dist_mult
+// KLASYCZNA IMPLEMENTACJA QUAKE II - zgodna z R1Q2
 // ====================================================================
 static void S_SpatializeOrigin (vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol)
 {
-    vec3_t  source_vec;
-    float   dist;
-    float   vol;
-    float   attenuation_factor;
+    vec_t		dot;
+    vec_t		dist;
+    vec_t		lscale, rscale, scale;
+    vec3_t		source_vec;
 
-    // --- Krok 1: Podstawowe obliczenia ---
-    VectorSubtract(origin, listener_origin, source_vec);
-    dist = VectorNormalize(source_vec);
+	if (cls.state != ca_active)
+	{
+		*left_vol = *right_vol = 255;
+		return;
+	}
 
-    if (dist < 0.1f)
-    {
-        *left_vol = (int)master_vol;
-        *right_vol = (int)master_vol;
-        return;
-    }
+// calculate stereo seperation and distance attenuation
+	VectorSubtract(origin, listener_origin, source_vec);
 
-    // --- Krok 2: Wybór modelu tłumienia ---
-    switch (s_quality->integer)
-    {
-        case 1:
-        case 2:
-            // POZIOM 1 i 2: Nowe modele z POPRAWNĄ obsługą dist_mult
-            {
-                // Jeśli dist_mult jest zerowe (ATTN_NONE), brak tłumienia
-                if (dist_mult <= 0.0f)
-                {
-                    attenuation_factor = 1.0f;
-                    break;
-                }
+	dist = VectorNormalize(source_vec);
+	dist -= SOUND_FULLVOLUME;
+	if (dist < 0)
+		dist = 0;			// close enough to be at full volume
+	dist *= dist_mult;		// different attenuation levels
 
-                // Oblicz dynamicznie maksymalną odległość na podstawie dist_mult.
-                // 1.0f / dist_mult to dystans, na którym dźwięk całkowicie zanika w modelu klasycznym.
-                float max_dist_for_sound = (1.0f / dist_mult) + SOUND_FULLVOLUME;
+	dot = DotProduct(listener_right, source_vec);
 
-                if (dist <= SOUND_FULLVOLUME) {
-                    attenuation_factor = 1.0f;
-                } else if (dist > max_dist_for_sound) {
-                    attenuation_factor = 0.0f;
-                } else {
-                    float falloff_range = max_dist_for_sound - SOUND_FULLVOLUME;
-                    float dist_into_falloff = dist - SOUND_FULLVOLUME;
-                    float falloff_percent = dist_into_falloff / falloff_range;
+	if (dma.channels == 1 || !dist_mult)
+	{ // no attenuation = no spatialization
+		rscale = 1.0;
+		lscale = 1.0;
+	}
+	else
+	{
+		rscale = 0.5 * (1.0 + dot);
+		lscale = 0.5*(1.0 - dot);
+	}
 
-                    if (s_quality->integer == 1) // Poziom 1: Liniowy spadek
-                    {
-                        attenuation_factor = 1.0f - falloff_percent;
-                    }
-                    else // Poziom 2: Kwadratowy spadek
-                    {
-                        float inverted_percent = 1.0f - falloff_percent;
-                        attenuation_factor = inverted_percent * inverted_percent;
-                    }
-                }
-            }
-            break;
+	// add in distance effect
+	scale = (1.0 - dist) * rscale;
+	*right_vol = (int) (master_vol * scale);
+	if (*right_vol < 0)
+		*right_vol = 0;
 
-        case 0:
-        default:
-            // POZIOM 0: Klasyczny algorytm Quake II (bez zmian)
-            attenuation_factor = dist - SOUND_FULLVOLUME;
-            if (attenuation_factor < 0)
-                attenuation_factor = 0;
-            attenuation_factor *= dist_mult;
-
-            // Zabezpieczenie przed wartościami > 1.0, które mogłyby odwrócić głośność
-            if (attenuation_factor > 1.0f)
-                 attenuation_factor = 1.0f;
-
-            attenuation_factor = 1.0f - attenuation_factor;
-            break;
-    }
-
-    // --- Krok 3: Głośność po uwzględnieniu odległości ---
-    vol = master_vol * attenuation_factor;
-
-    // --- Krok 4: Efekty dodatkowe (np. oś Z) ---
-    // Ta część pozostaje bez zmian
-    if (s_quality->integer >= 2)
-    {
-        float dot_up = DotProduct(listener_up, source_vec);
-        float vertical_attenuation = 1.0f - (fabs(dot_up) * 0.5f);
-        vol *= vertical_attenuation;
-    }
-
-    // --- Krok 5: Panning ---
-    float dot_right = DotProduct(listener_right, source_vec);
-    float rscale = 0.5f * (1.0f + dot_right);
-    float lscale = 1.0f - rscale;
-
-    // --- Krok 6: Finalne obliczenie ---
-    int right_i = (int)(vol * rscale);
-    int left_i = (int)(vol * lscale);
-
-    *right_vol = (right_i < 0) ? 0 : (right_i > 255) ? 255 : right_i;
-    *left_vol = (left_i < 0) ? 0 : (left_i > 255) ? 255 : left_i;
+	scale = (1.0 - dist) * lscale;
+	*left_vol = (int) (master_vol * scale);
+	if (*left_vol < 0)
+		*left_vol = 0;
 }
 
 void S_RawSamples(int samples, int rate, int width, int nchannels, byte *data) { /* Your full function body here */ }

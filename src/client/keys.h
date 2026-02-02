@@ -50,6 +50,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define	K_F10			144
 #define	K_F11			145
 #define	K_F12			146
+// =======================================================================
+// M-AI-812: Dodane definicje dla rozszerzonych klawiszy funkcyjnych i multimedialnych
+// =======================================================================
+#define K_F13			246
+#define K_F14			247
+#define K_F15			248
+#define K_F16			249
+#define K_F17			250
+#define K_F18			251
+#define K_F19			252
+// Można kontynuować aż do F24, jeśli jest potrzeba
+// Zostawiamy trochę miejsca na przyszłość
 #define	K_INS			147
 #define	K_DEL			148
 #define	K_PGDN			149
@@ -136,6 +148,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define K_MWHEELDOWN	244
 #define K_MWHEELUP		245
+
+#define K_PRINT_SCREEN	253
+#define K_SCROLL_LOCK	254
+#define K_PAUSE			255
 
 #define	MAX_KEYS		256
 

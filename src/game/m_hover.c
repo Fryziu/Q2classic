@@ -425,9 +425,11 @@ void hover_reattack (edict_t *self)
 			if (random() <= 0.6)		
 			{
 				self->monsterinfo.currentmove = &hover_move_attack1;
+				    self->monsterinfo.currentmove_name = "hover_move_attack1";
 				return;
 			}
 	self->monsterinfo.currentmove = &hover_move_end_attack;
+	    self->monsterinfo.currentmove_name = "hover_move_end_attack";
 }
 
 
@@ -458,29 +460,39 @@ void hover_fire_blaster (edict_t *self)
 void hover_stand (edict_t *self)
 {
 		self->monsterinfo.currentmove = &hover_move_stand;
+	    self->monsterinfo.currentmove_name = "hover_move_stand";
 }
 
 void hover_run (edict_t *self)
 {
 	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
+	{
 		self->monsterinfo.currentmove = &hover_move_stand;
+	    self->monsterinfo.currentmove_name = "hover_move_stand";
+	}
 	else
+	{
 		self->monsterinfo.currentmove = &hover_move_run;
+	    self->monsterinfo.currentmove_name = "hover_move_run";
+	}
 }
 
 void hover_walk (edict_t *self)
 {
 	self->monsterinfo.currentmove = &hover_move_walk;
+    self->monsterinfo.currentmove_name = "hover_move_walk";
 }
 
 void hover_start_attack (edict_t *self)
 {
 	self->monsterinfo.currentmove = &hover_move_start_attack;
+    self->monsterinfo.currentmove_name = "hover_move_start_attack";
 }
 
 void hover_attack(edict_t *self)
 {
 	self->monsterinfo.currentmove = &hover_move_attack1;
+    self->monsterinfo.currentmove_name = "hover_move_attack1";
 }
 
 
@@ -503,17 +515,20 @@ void hover_pain (edict_t *self, edict_t *other, float kick, int damage)
 		{
 			gi.sound (self, CHAN_VOICE, sound_pain1, 1, ATTN_NORM, 0);
 			self->monsterinfo.currentmove = &hover_move_pain3;
+			self->monsterinfo.currentmove_name = "hover_move_pain3";
 		}
 		else
 		{
 			gi.sound (self, CHAN_VOICE, sound_pain2, 1, ATTN_NORM, 0);
 			self->monsterinfo.currentmove = &hover_move_pain2;
+		    self->monsterinfo.currentmove_name = "hover_move_pain2";
 		}
 	}
 	else
 	{
 		gi.sound (self, CHAN_VOICE, sound_pain1, 1, ATTN_NORM, 0);
 		self->monsterinfo.currentmove = &hover_move_pain1;
+	    self->monsterinfo.currentmove_name = "hover_move_pain1";
 	}
 }
 
@@ -566,6 +581,7 @@ void hover_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage
 	self->deadflag = DEAD_DEAD;
 	self->takedamage = DAMAGE_YES;
 	self->monsterinfo.currentmove = &hover_move_death1;
+    self->monsterinfo.currentmove_name = "hover_move_death1";
 }
 
 /*QUAKED monster_hover (1 .5 0) (-16 -16 -24) (16 16 32) Ambush Trigger_Spawn Sight
@@ -613,7 +629,8 @@ void SP_monster_hover (edict_t *self)
 
 	gi.linkentity (self);
 
-	self->monsterinfo.currentmove = &hover_move_stand;	
+	self->monsterinfo.currentmove = &hover_move_stand;
+	    self->monsterinfo.currentmove_name = "hover_move_stand";	
 	self->monsterinfo.scale = MODEL_SCALE;
 
 	flymonster_start (self);

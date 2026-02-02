@@ -102,6 +102,7 @@ void chick_fidget (edict_t *self)
 		return;
 	if (random() <= 0.3)
 		self->monsterinfo.currentmove = &chick_move_fidget;
+		    self->monsterinfo.currentmove_name = "chick_move_fidget";
 }
 
 mframe_t chick_frames_stand [] =
@@ -143,6 +144,7 @@ mmove_t chick_move_stand = {FRAME_stand101, FRAME_stand130, chick_frames_stand, 
 void chick_stand (edict_t *self)
 {
 	self->monsterinfo.currentmove = &chick_move_stand;
+	    self->monsterinfo.currentmove_name = "chick_move_stand";
 }
 
 mframe_t chick_frames_start_run [] =
@@ -196,6 +198,7 @@ mmove_t chick_move_walk = {FRAME_walk11, FRAME_walk20, chick_frames_walk, NULL};
 void chick_walk (edict_t *self)
 {
 	self->monsterinfo.currentmove = &chick_move_walk;
+	    self->monsterinfo.currentmove_name = "chick_move_walk";
 }
 
 void chick_run (edict_t *self)
@@ -203,6 +206,7 @@ void chick_run (edict_t *self)
 	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
 	{
 		self->monsterinfo.currentmove = &chick_move_stand;
+		    self->monsterinfo.currentmove_name = "chick_move_stand";
 		return;
 	}
 
@@ -210,10 +214,12 @@ void chick_run (edict_t *self)
 		self->monsterinfo.currentmove == &chick_move_start_run)
 	{
 		self->monsterinfo.currentmove = &chick_move_run;
+		    self->monsterinfo.currentmove_name = "chick_move_run";
 	}
 	else
 	{
 		self->monsterinfo.currentmove = &chick_move_start_run;
+		    self->monsterinfo.currentmove_name = "chick_move_start_run";
 	}
 }
 
@@ -287,11 +293,17 @@ void chick_pain (edict_t *self, edict_t *other, float kick, int damage)
 		return;		// no pain anims in nightmare
 
 	if (damage <= 10)
-		self->monsterinfo.currentmove = &chick_move_pain1;
+	{		self->monsterinfo.currentmove = &chick_move_pain1;
+		    self->monsterinfo.currentmove_name = "chick_move_pain1";
+	}
 	else if (damage <= 25)
-		self->monsterinfo.currentmove = &chick_move_pain2;
+	{		self->monsterinfo.currentmove = &chick_move_pain2;
+		    self->monsterinfo.currentmove_name = "chick_move_pain2";
+	}
 	else
-		self->monsterinfo.currentmove = &chick_move_pain3;
+	{		self->monsterinfo.currentmove = &chick_move_pain3;
+		    self->monsterinfo.currentmove_name = "chick_move_pain3";
+	}
 }
 
 void chick_dead (edict_t *self)
@@ -378,11 +390,13 @@ void chick_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage
 	if (n == 0)
 	{
 		self->monsterinfo.currentmove = &chick_move_death1;
+		    self->monsterinfo.currentmove_name = "chick_move_death1";
 		gi.sound (self, CHAN_VOICE, sound_death1, 1, ATTN_NORM, 0);
 	}
 	else
 	{
 		self->monsterinfo.currentmove = &chick_move_death2;
+		    self->monsterinfo.currentmove_name = "chick_move_death2";
 		gi.sound (self, CHAN_VOICE, sound_death2, 1, ATTN_NORM, 0);
 	}
 }
@@ -436,6 +450,7 @@ void chick_dodge (edict_t *self, edict_t *attacker, float eta)
 		self->enemy = attacker;
 
 	self->monsterinfo.currentmove = &chick_move_duck;
+	    self->monsterinfo.currentmove_name = "chick_move_duck";
 }
 
 void ChickSlash (edict_t *self)
@@ -535,15 +550,18 @@ void chick_rerocket(edict_t *self)
 				if (random() <= 0.6)
 				{
 					self->monsterinfo.currentmove = &chick_move_attack1;
+					    self->monsterinfo.currentmove_name = "chick_move_attack1";
 					return;
 				}
 	}	
 	self->monsterinfo.currentmove = &chick_move_end_attack1;
+	    self->monsterinfo.currentmove_name = "chick_move_end_attack1";
 }
 
 void chick_attack1(edict_t *self)
 {
 	self->monsterinfo.currentmove = &chick_move_attack1;
+	    self->monsterinfo.currentmove_name = "chick_move_attack1";
 }
 
 mframe_t chick_frames_slash [] =
@@ -578,21 +596,25 @@ void chick_reslash(edict_t *self)
 			if (random() <= 0.9)
 			{				
 				self->monsterinfo.currentmove = &chick_move_slash;
+				    self->monsterinfo.currentmove_name = "chick_move_slash";
 				return;
 			}
 			else
 			{
 				self->monsterinfo.currentmove = &chick_move_end_slash;
+				    self->monsterinfo.currentmove_name = "chick_move_end_slash";
 				return;
 			}
 		}
 	}
 	self->monsterinfo.currentmove = &chick_move_end_slash;
+	    self->monsterinfo.currentmove_name = "chick_move_end_slash";
 }
 
 void chick_slash(edict_t *self)
 {
 	self->monsterinfo.currentmove = &chick_move_slash;
+	    self->monsterinfo.currentmove_name = "chick_move_slash";
 }
 
 
@@ -609,12 +631,14 @@ mmove_t chick_move_start_slash = {FRAME_attak201, FRAME_attak203, chick_frames_s
 void chick_melee(edict_t *self)
 {
 	self->monsterinfo.currentmove = &chick_move_start_slash;
+	    self->monsterinfo.currentmove_name = "chick_move_start_slash";
 }
 
 
 void chick_attack(edict_t *self)
 {
 	self->monsterinfo.currentmove = &chick_move_start_attack1;
+	    self->monsterinfo.currentmove_name = "chick_move_start_attack1";
 }
 
 void chick_sight(edict_t *self, edict_t *other)
@@ -672,6 +696,7 @@ void SP_monster_chick (edict_t *self)
 	gi.linkentity (self);
 
 	self->monsterinfo.currentmove = &chick_move_stand;
+	    self->monsterinfo.currentmove_name = "chick_move_stand";
 	self->monsterinfo.scale = MODEL_SCALE;
 
 	walkmonster_start (self);

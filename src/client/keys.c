@@ -67,6 +67,19 @@ static keyname_t keynames[] =
 	{"F10", K_F10},
 	{"F11", K_F11},
 	{"F12", K_F12},
+	// =======================================================================
+	// M-AI-812: Dodane nazwy tekstowe dla nowych klawiszy
+	// =======================================================================
+		{"F13",				K_F13 },
+		{"F14",				K_F14 },
+		{"F15",				K_F15 },
+		{"F16",				K_F16 },
+		{"F17",				K_F17 },
+		{"F18",				K_F18 },
+		{"F19",				K_F19 },
+		{"PRINTSCREEN",		K_PRINT_SCREEN },
+		{"SCROLLLOCK",		K_SCROLL_LOCK },
+	// ===
 
 	{"INS", K_INS},
 	{"DEL", K_DEL},

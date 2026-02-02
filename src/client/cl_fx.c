@@ -50,6 +50,49 @@ typedef struct
 static clightstyle_t	cl_lightstyle[MAX_LIGHTSTYLES];
 static int	lastofs;
 
+// =======================================================================
+// M-AI-812: Nowa funkcja pomocnicza do konwersji kolorów
+// =======================================================================
+/*
+====================
+CL_FindBestColorIndex
+
+Znajduje w 256-kolorowej palecie gry kolor najbardziej zbliżony
+do podanego koloru w formacie RGB (float).
+Zwraca 8-bitowy indeks tego koloru.
+====================
+*/
+byte CL_FindBestColorIndex(float r, float g, float b)
+{
+    int i;
+    byte best_color_index = 0;
+    float best_color_diff = 999999.0f; // Zacznij od bardzo dużej wartości
+
+    // D palette to globalna tablica z paletą kolorów (zazwyczaj w ref_gl/gl_rmain.c)
+    extern const byte d_8to24table[256][4];
+
+    // Przeskaluj wejściowe floaty [0.0, 1.0] do zakresu bajtów [0, 255]
+    int ir = (int)(r * 255.0f);
+    int ig = (int)(g * 255.0f);
+    int ib = (int)(b * 255.0f);
+
+    for (i = 0; i < 256; i++)
+    {
+        // Oblicz "odległość" kolorów w przestrzeni RGB
+        int dr = ir - d_8to24table[i][0];
+        int dg = ig - d_8to24table[i][1];
+        int db = ib - d_8to24table[i][2];
+        float diff = (float)(dr*dr + dg*dg + db*db);
+
+        if (diff < best_color_diff)
+        {
+            best_color_diff = diff;
+            best_color_index = (byte)i;
+        }
+    }
+    return best_color_index;
+}
+///
 /*
 ================
 CL_ClearLightStyles
@@ -1549,6 +1592,7 @@ CL_RailTrail
 
 ===============
 */
+/*
 void CL_RailTrail (const vec3_t start, const vec3_t end)
 {
 	vec3_t		move, vec, right, up, dir;
@@ -1641,7 +1685,260 @@ void CL_RailTrail (const vec3_t start, const vec3_t end)
 		VectorAdd (move, vec, move);
 	}
 }
+*/
+// nowszy
+/*
 
+void CL_RailTrail (const vec3_t start, const vec3_t end)
+{
+	vec3_t		move, vec, right, up, dir;
+	float		len, c, s;
+	cparticle_t	*p;
+	int			i, j; // Dodano 'j' dla pętli
+	byte		clr;
+	cdlight_t   *dl;
+    vec3_t      rail_color;
+
+    // Odczytywanie koloru z cvarów (bez zmian)
+    rail_color[0] = Cvar_VariableValue("cl_railcolor_r");
+    rail_color[1] = Cvar_VariableValue("cl_railcolor_g");
+    rail_color[2] = Cvar_VariableValue("cl_railcolor_b");
+
+	VectorCopy (start, move);
+	VectorSubtract (end, start, vec);
+	len = VectorNormalize (vec);
+
+	// Dynamiczne światło (bez zmian)
+	dl = CL_AllocDlight(0);
+	VectorCopy(end, dl->origin);
+	dl->radius = 100;
+	dl->die = cl.time + 200;
+	VectorCopy(rail_color, dl->color);
+
+	MakeNormalVectors (vec, right, up);
+
+	// Główna pętla dla spirali
+	for (i=0 ; i<len ; i++)
+	{
+		if(i % 3 == 0){
+			VectorAdd(move, vec, move);
+			continue;
+		}
+
+		if (!free_particles) return;
+		p = free_particles;
+		free_particles = p->next;
+		p->next = active_particles;
+		active_particles = p;
+
+		p->time = cl.time;
+		VectorClear (p->accel);
+
+		Q_sincos(i * 0.1f, &s, &c);
+		VectorScale (right, c, dir);
+		VectorMA (dir, s, up, dir);
+
+		p->alpha = 1.0f;
+		p->alphavel = -1.0f / (1.0f+frand()*0.2f);
+
+        // ===================================================================
+        // NOWA LOGIKA: Dodanie kontrolowanej losowości do koloru RGB
+        // ===================================================================
+        {
+            vec3_t  particle_color;
+            float   color_variation = 0.15f; // Jak bardzo kolor ma się różnić
+
+            // 1. Zacznij od bazowego koloru
+            VectorCopy(rail_color, particle_color);
+
+            // 2. Dodaj losową wariację do każdej składowej
+            particle_color[0] += crand() * color_variation;
+            particle_color[1] += crand() * color_variation;
+            particle_color[2] += crand() * color_variation;
+
+            // 3. Upewnij się, że wartości są w prawidłowym zakresie [0, 1]
+            for (j = 0; j < 3; j++)
+            {
+                if (particle_color[j] < 0) particle_color[j] = 0;
+                if (particle_color[j] > 1) particle_color[j] = 1;
+            }
+
+            // 4. Dopiero teraz znajdź najlepszy indeks palety dla tego nowego koloru
+            clr = CL_FindBestColorIndex(particle_color[0], particle_color[1], particle_color[2]);
+        }
+
+		p->color = clr; // Każda cząsteczka ma teraz potencjalnie nieco inny odcień
+        // ===================================================================
+
+		p->org[0] = move[0] + dir[0]*3;
+		p->org[1] = move[1] + dir[1]*3;
+		p->org[2] = move[2] + dir[2]*3;
+		p->vel[0] = dir[0]*6;
+		p->vel[1] = dir[1]*6;
+		p->vel[2] = dir[2]*6;
+
+		VectorAdd (move, vec, move);
+	}
+
+    // Druga pętla "dymu" z poprawionym, bezpiecznym zakresem kolorów
+	float dec = 2.0f;
+	VectorScale (vec, dec, vec);
+	VectorCopy (start, move);
+
+	while (len > 0)
+	{
+		len -= dec;
+
+				if (!free_particles)
+					return;
+				p = free_particles;
+				free_particles = p->next;
+				p->next = active_particles;
+				active_particles = p;
+
+				p->time = cl.time;
+				VectorClear (p->accel);
+
+				p->alpha = 1.0f;
+				p->alphavel = -1.0f / (0.6f+frand()*0.2f);
+				//p->color = 0x0 + (rand()&15);
+				p->color = 4 + (rand() & 7);
+
+				p->org[0] = move[0] + crand()*3;
+				p->org[1] = move[1] + crand()*3;
+				p->org[2] = move[2] + crand()*3;
+				p->vel[0] = crand()*3;
+				p->vel[1] = crand()*3;
+				p->vel[2] = crand()*3;
+
+				VectorAdd (move, vec, move);
+	}
+
+}
+*/
+
+void CL_RailTrail (const vec3_t start, const vec3_t end)
+{
+	vec3_t		move, vec, right, up, dir;
+	float		len, c, s;
+	cparticle_t	*p;
+	int			i, j;
+	byte		clr;
+	cdlight_t   *dl;
+    vec3_t      rail_color;
+
+    rail_color[0] = Cvar_VariableValue("cl_railcolor_r");
+    rail_color[1] = Cvar_VariableValue("cl_railcolor_g");
+    rail_color[2] = Cvar_VariableValue("cl_railcolor_b");
+
+	VectorCopy (start, move);
+	VectorSubtract (end, start, vec);
+	len = VectorNormalize (vec);
+
+    // ===================================================================
+    // ZMIANA: Dodajemy DWA światła - jedno na końcu, drugie na początku.
+    // ===================================================================
+	// Światło na końcu smugi
+	dl = CL_AllocDlight(0);
+	VectorCopy(end, dl->origin);
+	dl->radius = 100;
+	dl->die = cl.time + 200;
+	VectorCopy(rail_color, dl->color);
+
+    // NOWOŚĆ: Światło na początku smugi (błysk przy wylocie)
+	dl = CL_AllocDlight(0);
+	VectorCopy(start, dl->origin);
+	dl->radius = 100;
+	dl->die = cl.time + 200;
+	VectorCopy(rail_color, dl->color);
+    // ===================================================================
+
+
+	MakeNormalVectors (vec, right, up);
+
+	// Główna pętla dla spirali
+	for (i=0 ; i<len ; i++)
+	{
+		if(i % 3 == 0){
+			VectorAdd(move, vec, move);
+			continue;
+		}
+
+		if (!free_particles) return;
+		p = free_particles;
+		free_particles = p->next;
+		p->next = active_particles;
+		active_particles = p;
+
+		p->time = cl.time;
+		VectorClear (p->accel);
+
+		Q_sincos(i * 0.1f, &s, &c);
+		VectorScale (right, c, dir);
+		VectorMA (dir, s, up, dir);
+
+		p->alpha = 1.0f;
+		p->alphavel = -1.0f / (1.0f+frand()*0.2f);
+
+        {
+            vec3_t  particle_color;
+            float   color_variation = 0.15f;
+
+            VectorCopy(rail_color, particle_color);
+            particle_color[0] += crand() * color_variation;
+            particle_color[1] += crand() * color_variation;
+            particle_color[2] += crand() * color_variation;
+
+            for (j = 0; j < 3; j++)
+            {
+                if (particle_color[j] < 0) particle_color[j] = 0;
+                if (particle_color[j] > 1) particle_color[j] = 1;
+            }
+            clr = CL_FindBestColorIndex(particle_color[0], particle_color[1], particle_color[2]);
+        }
+		p->color = clr;
+
+		p->org[0] = move[0] + dir[0]*3;
+		p->org[1] = move[1] + dir[1]*3;
+		p->org[2] = move[2] + dir[2]*3;
+		p->vel[0] = dir[0]*6;
+		p->vel[1] = dir[1]*6;
+		p->vel[2] = dir[2]*6;
+
+		VectorAdd (move, vec, move);
+	}
+
+    // Druga pętla "dymu"
+	float dec = 2.0f;
+	VectorScale (vec, dec, vec);
+	VectorCopy (start, move);
+
+	while (len > 0)
+	{
+		len -= dec;
+
+		if (!free_particles)
+			return;
+		p = free_particles;
+		free_particles = p->next;
+		p->next = active_particles;
+		active_particles = p;
+
+		p->time = cl.time;
+		VectorClear (p->accel);
+		p->alpha = 1.0f;
+		p->alphavel = -1.0f / (0.6f+frand()*0.2f);
+		p->color = 4 + (rand() & 7);
+		p->org[0] = move[0] + crand()*3;
+		p->org[1] = move[1] + crand()*3;
+		p->org[2] = move[2] + crand()*3;
+		p->vel[0] = crand()*3;
+		p->vel[1] = crand()*3;
+		p->vel[2] = crand()*3;
+
+		VectorAdd (move, vec, move);
+	}
+}
 // RAFAEL
 /*
 ===============

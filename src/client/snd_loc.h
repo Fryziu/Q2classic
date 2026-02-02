@@ -191,6 +191,7 @@ void S_InitScaletable (void);
 void S_MixAudio(void);
 sfxcache_t *S_LoadSound (sfx_t *s);
 void S_IssuePlaysound (playsound_t *ps);
+
 void S_PaintChannels(int endtime);
 void S_TransferPaintBuffer(int endtime);
 void S_PaintChannelFrom8 (channel_t *ch, sfxcache_t *sc, int count, int offset);

@@ -21,6 +21,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // draw.c
 
 #include "gl_local.h"
+#include "gl_decal.h"       // Potrzebne dla prototypu GL_GenerateImageFromSVG
+#include "gl_decal_svg.h"   // Potrzebne dla dostępu do zmiennej g_conchars_svg
 
 image_t		*draw_chars = NULL;
 
@@ -34,6 +36,7 @@ extern cvar_t *gl_fontshadow;
 Draw_InitLocal
 ===============
 */
+/*
 void Draw_InitLocal (void)
 {
 
@@ -61,7 +64,62 @@ void Draw_InitLocal (void)
 	qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 }
+*/
+void Draw_InitLocal (void)
+{
+    #include "gl_decal.h"
+    #include "gl_decal_svg.h"
 
+	// Unieważnij starą teksturę, jeśli istnieje
+	if(draw_chars){
+		draw_chars->type = -1;
+		draw_chars->registration_sequence = -1;
+	}
+    draw_chars = NULL;
+
+	// --- Logika Ładowania Czcionki z Wielostopniowym Fallbackiem ---
+
+    // Etap 1: Spróbuj załadować wersję wysokiej rozdzielczości
+	if(gl_scale->value > 1.0)
+    {
+		draw_chars = GL_FindImage("pics/conchars-highres.png", it_pic);
+	}
+
+    // Etap 2: Jeśli wersja high-res nie została załadowana (lub jest wyłączona), spróbuj standardowej
+    // POPRAWKA: Używamy teraz poprawnego, pancernego sprawdzania!
+	if(!draw_chars || draw_chars == r_notexture)
+    {
+		draw_chars = GL_FindImage("pics/conchars.pcx", it_pic);
+	}
+
+    // Etap 3: Jeśli standardowa wersja również zawiodła, użyj naszego fallbacku SVG
+    if (!draw_chars || draw_chars == r_notexture)
+    {
+        Com_Printf("INFO: No external font files found. Falling back to procedural SVG font.\n");
+
+        // POPRAWKA: Używamy teraz poprawnych wymiarów 128x128
+        draw_chars = GL_GenerateImageFromSVG(g_conchars_svg, 128, 128, "procedural/conchars_svg");
+
+        if (draw_chars) {
+            Com_Printf(" - Generated procedural SVG font successfully.\n");
+        } else {
+            Com_Printf("WARNING: SVG font rasterization failed.\n");
+        }
+    }
+
+	// Ostateczna weryfikacja
+	if (!draw_chars || draw_chars == r_notexture)
+		Com_Error (ERR_FATAL, "CRITICAL: Could not load or generate any console font.");
+
+    // Informacja o tym, co zostało załadowane
+    Com_Printf("Using font texture: %s\n", draw_chars->name);
+
+	// Konfiguracja tekstury
+	GL_Bind( draw_chars->texnum );
+	qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+}
+//
 const vec3_t color_table[8] = {
 	{0, 0, 0},	// Black
 	{1, 0, 0},	// Red

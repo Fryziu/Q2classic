@@ -171,8 +171,9 @@ void	R_EndFrame( void );
 void	R_AppActivate( qboolean active );
 
 #ifdef GL_QUAKE
-void R_AddDecal	(vec3_t origin, vec3_t dir, float red, float green, float blue, float alpha,
-				 float size, int type, int flags, float angle);
+void R_AddDecal        (vec3_t origin, vec3_t dir, float red, float green, float blue, float alpha,
+				 float size, int type, int flags, float angle,
+				 const vec4_t end_color, float fadetime);
 
 void R_AddStain (const vec3_t org, int color, float size); //Stainmaps
 #else

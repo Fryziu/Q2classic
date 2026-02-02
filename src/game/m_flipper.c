@@ -51,6 +51,7 @@ mmove_t	flipper_move_stand = {FRAME_flphor01, FRAME_flphor01, flipper_frames_sta
 void flipper_stand (edict_t *self)
 {
 		self->monsterinfo.currentmove = &flipper_move_stand;
+		    self->monsterinfo.currentmove_name = "flipper_move_stand";
 }
 
 #define FLIPPER_RUN_SPEED	24
@@ -89,6 +90,7 @@ mmove_t flipper_move_run_loop = {FRAME_flpver06, FRAME_flpver29, flipper_frames_
 void flipper_run_loop (edict_t *self)
 {
 	self->monsterinfo.currentmove = &flipper_move_run_loop;
+	    self->monsterinfo.currentmove_name = "flipper_move_run_loop";
 }
 
 mframe_t flipper_frames_run_start [] =
@@ -105,6 +107,7 @@ mmove_t flipper_move_run_start = {FRAME_flpver01, FRAME_flpver06, flipper_frames
 void flipper_run (edict_t *self)
 {
 	self->monsterinfo.currentmove = &flipper_move_run_start;
+	    self->monsterinfo.currentmove_name = "flipper_move_run_start";
 }
 
 /* Standard Swimming */ 
@@ -140,6 +143,7 @@ mmove_t flipper_move_walk = {FRAME_flphor01, FRAME_flphor24, flipper_frames_walk
 void flipper_walk (edict_t *self)
 {
 	self->monsterinfo.currentmove = &flipper_move_walk;
+	    self->monsterinfo.currentmove_name = "flipper_move_walk";
 }
 
 mframe_t flipper_frames_start_run [] =
@@ -155,6 +159,7 @@ mmove_t flipper_move_start_run = {FRAME_flphor01, FRAME_flphor05, flipper_frames
 void flipper_start_run (edict_t *self)
 {
 	self->monsterinfo.currentmove = &flipper_move_start_run;
+	    self->monsterinfo.currentmove_name = "flipper_move_start_run";
 }
 
 mframe_t flipper_frames_pain2 [] =
@@ -218,6 +223,7 @@ mmove_t flipper_move_attack = {FRAME_flpbit01, FRAME_flpbit20, flipper_frames_at
 void flipper_melee(edict_t *self)
 {
 	self->monsterinfo.currentmove = &flipper_move_attack;
+	    self->monsterinfo.currentmove_name = "flipper_move_attack";
 }
 
 void flipper_pain (edict_t *self, edict_t *other, float kick, int damage)
@@ -240,11 +246,13 @@ void flipper_pain (edict_t *self, edict_t *other, float kick, int damage)
 	{
 		gi.sound (self, CHAN_VOICE, sound_pain1, 1, ATTN_NORM, 0);
 		self->monsterinfo.currentmove = &flipper_move_pain1;
+		    self->monsterinfo.currentmove_name = "flipper_move_pain1";
 	}
 	else
 	{
 		gi.sound (self, CHAN_VOICE, sound_pain2, 1, ATTN_NORM, 0);
 		self->monsterinfo.currentmove = &flipper_move_pain2;
+		    self->monsterinfo.currentmove_name = "flipper_move_pain2";
 	}
 }
 
@@ -354,6 +362,7 @@ void flipper_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int dama
 	self->deadflag = DEAD_DEAD;
 	self->takedamage = DAMAGE_YES;
 	self->monsterinfo.currentmove = &flipper_move_death;
+	    self->monsterinfo.currentmove_name = "flipper_move_death";
 }
 
 /*QUAKED monster_flipper (1 .5 0) (-16 -16 -24) (16 16 32) Ambush Trigger_Spawn Sight
@@ -396,7 +405,8 @@ void SP_monster_flipper (edict_t *self)
 
 	gi.linkentity (self);
 
-	self->monsterinfo.currentmove = &flipper_move_stand;	
+	self->monsterinfo.currentmove = &flipper_move_stand;
+	    self->monsterinfo.currentmove_name = "flipper_move_stand";	
 	self->monsterinfo.scale = MODEL_SCALE;
 
 	swimmonster_start (self);

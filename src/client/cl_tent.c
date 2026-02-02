@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -157,7 +157,7 @@ void CL_RegisterTEntSounds (void)
 	cl_sfx_lightning = S_RegisterSound ("weapons/tesla.wav");
 	cl_sfx_disrexp = S_RegisterSound ("weapons/disrupthit.wav");
 //PGM
-}	
+}
 
 /*
 =================
@@ -200,7 +200,7 @@ void CL_RegisterTEntModels (void)
 	cl_mod_monster_heatbeam = R_RegisterModel ("models/proj/widowbeam/tris.md2");
 #endif
 //ROGUE
-}	
+}
 
 /*
 =================
@@ -242,8 +242,8 @@ explosion_t *CL_AllocExplosion (void)
 	{ // take a free explosion if possible
 		ex = cl_free_expl;
 		cl_free_expl = ex->next;
-	} 
-	else 
+	}
+	else
 	{ // grab the oldest one otherwise
 		ex = cl_explosions_headnode.prev;
 		ex->prev->next = ex->next;
@@ -340,9 +340,9 @@ static int CL_ParseBeam (sizebuf_t *msg, struct model_s *model)
 	vec3_t	start, end;
 	beam_t	*b;
 	int		i;
-	
+
 	ent = MSG_ReadShort (msg);
-	
+
 	MSG_ReadPos (msg, start);
 	MSG_ReadPos (msg, end);
 
@@ -374,7 +374,7 @@ static int CL_ParseBeam (sizebuf_t *msg, struct model_s *model)
 			return ent;
 		}
 	}
-	Com_Printf ("beam list overflow!\n");	
+	Com_Printf ("beam list overflow!\n");
 	return ent;
 }
 
@@ -389,9 +389,9 @@ static int CL_ParseBeam2 (sizebuf_t *msg, struct model_s *model)
 	vec3_t	start, end, offset;
 	beam_t	*b;
 	int		i;
-	
+
 	ent = MSG_ReadShort (msg);
-	
+
 	MSG_ReadPos (msg, start);
 	MSG_ReadPos (msg, end);
 	MSG_ReadPos (msg, offset);
@@ -418,14 +418,14 @@ static int CL_ParseBeam2 (sizebuf_t *msg, struct model_s *model)
 		{
 			b->entity = ent;
 			b->model = model;
-			b->endtime = cl.time + 200;	
+			b->endtime = cl.time + 200;
 			VectorCopy (start, b->start);
 			VectorCopy (end, b->end);
 			VectorCopy (offset, b->offset);
 			return ent;
 		}
 	}
-	Com_Printf ("beam list overflow!\n");	
+	Com_Printf ("beam list overflow!\n");
 	return ent;
 }
 
@@ -442,9 +442,9 @@ static int CL_ParsePlayerBeam (sizebuf_t *msg, struct model_s *model)
 	vec3_t	start, end, offset;
 	beam_t	*b;
 	int		i;
-	
+
 	ent = MSG_ReadShort (msg);
-	
+
 	MSG_ReadPos (msg, start);
 	MSG_ReadPos (msg, end);
 	// PMM - network optimization
@@ -488,7 +488,7 @@ static int CL_ParsePlayerBeam (sizebuf_t *msg, struct model_s *model)
 			return ent;
 		}
 	}
-	Com_Printf ("beam list overflow!\n");	
+	Com_Printf ("beam list overflow!\n");
 	return ent;
 }
 //rogue
@@ -504,7 +504,7 @@ static int CL_ParseLightning (sizebuf_t *msg, struct model_s *model)
 	vec3_t	start, end;
 	beam_t	*b;
 	int		i;
-	
+
 	srcEnt = MSG_ReadShort (msg);
 	destEnt = MSG_ReadShort (msg);
 
@@ -541,7 +541,7 @@ static int CL_ParseLightning (sizebuf_t *msg, struct model_s *model)
 			return srcEnt;
 		}
 	}
-	Com_Printf ("beam list overflow!\n");	
+	Com_Printf ("beam list overflow!\n");
 	return srcEnt;
 }
 
@@ -773,7 +773,7 @@ void CL_ParseTEnt (sizebuf_t *msg)
 
 
 #ifdef GL_QUAKE
-			R_AddDecal(pos, dir, 0, 0, 0, 1.0f, 2 + ((rand()%21*0.05f) - 0.5f), 1, 0, rand()%361);
+		R_AddDecal(pos, dir, 0, 0, 0, 1.0f, 2 + ((rand()%21*0.05f) - 0.5f), 1, 0, rand()%361, NULL, 0);
 #endif
 			CL_SmokeAndFlash(pos);
 
@@ -790,7 +790,7 @@ void CL_ParseTEnt (sizebuf_t *msg)
 
 
 		break;
-		
+
 	case TE_SCREEN_SPARKS:
 	case TE_SHIELD_SPARKS:
 		MSG_ReadPos (msg, pos);
@@ -802,12 +802,12 @@ void CL_ParseTEnt (sizebuf_t *msg)
 		//FIXME : replace or remove this sound
 		S_StartSound (pos, 0, 0, cl_sfx_lashit, 1, ATTN_NORM, 0);
 		break;
-		
+
 	case TE_SHOTGUN:			// bullet hitting wall
 		MSG_ReadPos (msg, pos);
 		MSG_ReadDir (msg, dir);
 #ifdef GL_QUAKE
-		R_AddDecal(pos, dir, 0, 0, 0, 1.0f, 2 + ((rand()%21*0.05f) - 0.5f), 1, 0, rand()%361);
+		R_AddDecal(pos, dir, 0, 0, 0, 1.0f, 2 + ((rand()%21*0.05f) - 0.5f), 1, 0, rand()%361, NULL, 0);
 #endif
 		CL_ParticleEffect (pos, dir, 0, 20);
 		CL_SmokeAndFlash(pos);
@@ -883,7 +883,7 @@ void CL_ParseTEnt (sizebuf_t *msg)
 		ex->frames = 4;
 		S_StartSound (pos,  0, 0, cl_sfx_lashit, 1, ATTN_NORM, 0);
 		break;
-		
+
 	case TE_RAILTRAIL:
 	    {
 	        vec3_t pos, pos2, dir; // Zadeklaruj zmienne lokalnie
@@ -945,7 +945,7 @@ void CL_ParseTEnt (sizebuf_t *msg)
 		CL_ExplosionParticles (pos);
 		S_StartSound (pos, 0, 0, cl_sfx_rockexp, 1, ATTN_NORM, 0);
 		break;
-	
+
 	case TE_EXPLOSION1:
 	case TE_EXPLOSION1_BIG:						// PMM
 	case TE_ROCKET_EXPLOSION:
@@ -978,22 +978,23 @@ void CL_ParseTEnt (sizebuf_t *msg)
 		break;
 
 	case TE_BFG_EXPLOSION:
-		MSG_ReadPos (msg, pos);
-		CL_HandleTempEntityForDecal(type, pos, vec3_origin); // on the wall decals
-		ex = CL_AllocExplosion ();
-		VectorCopy (pos, ex->ent.origin);
-		ex->type = ex_poly;
-		ex->ent.flags = RF_FULLBRIGHT;
-		ex->light = 350;
-		VectorSet(ex->lightcolor, 0.3f, 1.0f, 0.3f);
-		ex->ent.model = cl_mod_bfg_explo;
-		ex->ent.flags |= RF_TRANSLUCENT;
-		ex->ent.alpha = 0.30f;
-		ex->frames = 4;
-		break;
+			MSG_ReadPos (msg, pos);
+			//CL_HandleTempEntityForDecal(type, pos, vec3_origin); // UPEWNIJ SIĘ, ŻE TA LINIA TU JEST
+			ex = CL_AllocExplosion ();
+			VectorCopy (pos, ex->ent.origin);
+			ex->type = ex_poly;
+			ex->ent.flags = RF_FULLBRIGHT;
+			ex->light = 350;
+			VectorSet(ex->lightcolor, 0.3f, 1.0f, 0.3f);
+			ex->ent.model = cl_mod_bfg_explo;
+			ex->ent.flags |= RF_TRANSLUCENT;
+			ex->ent.alpha = 0.30f;
+			ex->frames = 4;
+			break;
 
 	case TE_BFG_BIGEXPLOSION:
 		MSG_ReadPos (msg, pos);
+		CL_HandleTempEntityForDecal(type, pos, vec3_origin);
 		CL_BFGExplosionParticles (pos);
 		break;
 
@@ -1064,7 +1065,7 @@ void CL_ParseTEnt (sizebuf_t *msg)
 	case TE_FLECHETTE:			// flechette
 		MSG_ReadPos (msg, pos);
 		MSG_ReadDir (msg, dir);
-		
+
 		// PMM
 		if (type == TE_BLASTER2)
 			CL_BlasterParticles2 (pos, dir, 0xd0);
@@ -1166,7 +1167,7 @@ void CL_ParseTEnt (sizebuf_t *msg)
 		CL_ParticleSteamEffect (pos, dir, 0x8, 50, 60);
 		S_StartSound (pos,  0, 0, cl_sfx_lashit, 1, ATTN_NORM, 0);
 		break;
-	
+
 	case TE_HEATBEAM_STEAM:
 		MSG_ReadPos (msg, pos);
 		MSG_ReadDir (msg, dir);
@@ -1254,7 +1255,7 @@ void CL_AddBeams (void)
 	float		forward;
 	float		len, steps;
 	float		model_length;
-	
+
 // update beams
 	for (i=0, b=cl_beams ; i< MAX_BEAMS ; i++, b++)
 	{
@@ -1291,7 +1292,7 @@ void CL_AddBeams (void)
 				yaw = 270;
 			if (yaw < 0.0f)
 				yaw += 360;
-	
+
 			forward = (float)sqrt(dist[0]*dist[0] + dist[1]*dist[1]);
 			pitch = ((float)atan2(dist[2], forward) * -180.0 / M_PI);
 			if (pitch < 0.0f)
@@ -1340,7 +1341,7 @@ void CL_AddBeams (void)
 			else {
 				VectorSet(ent.angles, pitch, yaw, rand()%360);
 			}
-			
+
 #ifdef GL_QUAKE
 			AnglesToAxis(ent.angles, ent.axis);
 #endif
@@ -1373,7 +1374,7 @@ void CL_AddPlayerBeams (void)
 	float		len, steps;
 	int			framenum = 0;
 	float		model_length;
-	
+
 	float		hand_multiplier;
 	frame_t		*oldframe;
 	player_state_t	*ps, *ops;
@@ -1399,7 +1400,7 @@ void CL_AddPlayerBeams (void)
 
 			// if coming from the player, update the start position
 			if (b->entity == cl.playernum+1)	// entity 0 is the world
-			{	
+			{
 				// set up gun position
 				// code straight out of CL_AddViewWeapon
 				ps = &cl.frame.playerstate;
@@ -1474,13 +1475,13 @@ void CL_AddPlayerBeams (void)
 				yaw = 270;
 			if (yaw < 0)
 				yaw += 360;
-	
+
 			forward = (float)sqrt(dist[0]*dist[0] + dist[1]*dist[1]);
 			pitch = ((float)atan2(dist[2], forward) * -180.0f / M_PI);
 			if (pitch < 0)
 				pitch += 360.0f;
 		}
-		
+
 		if (cl_mod_heatbeam && (b->model == cl_mod_heatbeam))
 		{
 			if (b->entity != cl.playernum+1)
@@ -1488,7 +1489,7 @@ void CL_AddPlayerBeams (void)
 				framenum = 2;
 				VectorSet(ent.angles, -pitch, yaw + 180.0f, 0);
 				AngleVectors(ent.angles, f, r, u);
-					
+
 				// if it's a non-origin offset, it's a player, so use the hardcoded player offset
 				if (!VectorCompare (b->offset, vec3_origin))
 				{
@@ -1542,7 +1543,7 @@ void CL_AddPlayerBeams (void)
 #ifdef GL_QUAKE
 			AnglesToAxis(ent.angles, ent.axis);
 #endif
-			V_AddEntity (&ent);			
+			V_AddEntity (&ent);
 			return;
 		}
 		while (d > 0)
@@ -1661,7 +1662,7 @@ void CL_AddExplosions (void)
 			break;
 		}
 
-		if (ex->type == ex_free) 
+		if (ex->type == ex_free)
 		{
 			CL_FreeExplosion (ex);
 			continue;

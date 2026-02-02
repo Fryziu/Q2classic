@@ -122,12 +122,14 @@ static void ControlsSetMenuItemValues( void )
 	s_options_cdvolume_box.curvalue 		= !Cvar_VariableValue("cd_nocd");
 #endif
 
-	switch((int)Cvar_VariableValue("s_khz"))
+	// --- KLUCZOWA POPRAWKA: Odczytujemy 'sndspeed' a nie 's_khz' i obsługujemy wszystkie wartości ---
+	switch((int)Cvar_VariableValue("sndspeed"))
 	{
-		case 48: s_options_quality_list.curvalue = 3; break;
-		case 44: s_options_quality_list.curvalue = 2; break;
-		case 22: s_options_quality_list.curvalue = 1; break;
-		default: s_options_quality_list.curvalue = 0; break;
+		case 48000: s_options_quality_list.curvalue = 3; break;
+		case 44100: s_options_quality_list.curvalue = 2; break;
+		case 22050: s_options_quality_list.curvalue = 1; break;
+		case 11025: s_options_quality_list.curvalue = 0; break;
+		default: s_options_quality_list.curvalue = 2; break; // Domyślnie 'High'
 	}
 
 	//s_options_quality_list.curvalue			= !Cvar_VariableValue( "s_loadas8bit" );
@@ -219,47 +221,21 @@ void ConsoleFunc( void *unused )
 	M_ForceMenuOff ();
 	cls.key_dest = key_console;
 }
-// sound engine is rewritten, so this function can be erased
-/*
+// sound engine is rewritten, so this function can be erased (KOMENTARZ JUŻ NIEAKTUALNY)
 static void UpdateSoundQualityFunc( void *unused )
 {
-	switch (s_options_quality_list.curvalue)
-	{
-	case 0:
-		Cvar_SetValue( "s_khz", 11 );
-		Cvar_SetValue( "s_loadas8bit", 1 );
-		break;
-	case 1:
-		Cvar_SetValue( "s_khz", 22 );
-		Cvar_SetValue( "s_loadas8bit", 0 );
-		break;
-	case 2:
-		Cvar_SetValue( "s_khz", 44 );
-		Cvar_SetValue( "s_loadas8bit", 0 );
-		break;
-	case 3:
-		Cvar_SetValue( "s_khz", 48 );
-		Cvar_SetValue( "s_loadas8bit", 0 );
-		break;
-	default:
-		Cvar_SetValue( "s_khz", 22 );
-		Cvar_SetValue( "s_loadas8bit", 0 );
-		break;
-	}
-	
+	// Tablica wartości odpowiadająca liście 'quality_items'
+	static int quality_values[] = { 11025, 22050, 44100, 48000 };
+
+	// Ustaw nową wartość cvara 'sndspeed' na podstawie wyboru w menu
+	Cvar_SetValue( "sndspeed", quality_values[s_options_quality_list.curvalue] );
+
+	// Ustaw cvar 's_primary' (kompatybilność)
 	Cvar_SetValue( "s_primary", s_options_compatibility_list.curvalue );
 
-	M_DrawTextBox( 8, 120 - 48, 36, 3 );
-	M_Print( 16 + 16, 120 - 48 + 8,  "Restarting the sound system. This" );
-	M_Print( 16 + 16, 120 - 48 + 16, "could take up to a minute, so" );
-	M_Print( 16 + 16, 120 - 48 + 24, "please be patient." );
-
-	// the text box won't show up unless we do a buffer swap
-	R_EndFrame();
-
-	CL_Snd_Restart_f();
+	// Zleć restart systemu dźwięku, aby zastosować zmiany
+	Cbuf_AddText("snd_restart\n");
 }
-*/
 static void Options_MenuDraw ( menuframework_s *self )
 {
 	M_Banner( "m_banner_options" );
@@ -281,10 +257,10 @@ void Options_MenuInit( void )
 #endif
 	static const char *quality_items[] =
 	{
-		"Low (11KHz/8-bit)",
-		"Normal (22KHz/16-bit)",
-		"High (44KHz/16-bit)",
-		"Extreme (48KHz/16-bit)",
+		"Low (11kHz)",
+		"Medium (22kHz)",
+		"High (44kHz)",
+		"Very High (48kHz)",
 		0
 	};
 
@@ -309,23 +285,24 @@ void Options_MenuInit( void )
 		0
 	};
 
-	squality = Cvar_VariableIntValue("s_khz");
+	// --- KLUCZOWA POPRAWKA: Również tutaj odczytujemy 'sndspeed' ---
+	squality = Cvar_VariableIntValue("sndspeed");
 
 	switch (squality)	{
-		case 11:
+		case 11025: // <-- Poprawiamy wartość
 			squality = 0;
 			break;
-		case 22:
+		case 22050: // <-- Poprawiamy wartość
 			squality = 1;
 			break;
-		case 44:
+		case 44100: // <-- Poprawiamy wartość
 			squality = 2;
 			break;
-		case 48:
+		case 48000: // <-- Poprawiamy wartość
 			squality = 3;
 			break;
 		default:
-			squality = 1;
+			squality = 2; // <-- Domyślnie 'High'
 			break;
 	}
 
@@ -358,16 +335,16 @@ void Options_MenuInit( void )
 	s_options_quality_list.generic.type	= MTYPE_SPINCONTROL;
 	s_options_quality_list.generic.x		= 0;
 	s_options_quality_list.generic.y		= y += 10;
-	s_options_quality_list.generic.name		= "sound quality NULL";
-	s_options_quality_list.generic.callback = NULL; //UpdateSoundQualityFunc;
+	s_options_quality_list.generic.name		= "sound quality";
+	s_options_quality_list.generic.callback = UpdateSoundQualityFunc;
 	s_options_quality_list.itemnames		= quality_items;
 	s_options_quality_list.curvalue			= squality;
 
 	s_options_compatibility_list.generic.type	= MTYPE_SPINCONTROL;
 	s_options_compatibility_list.generic.x		= 0;
 	s_options_compatibility_list.generic.y		= y += 10;
-	s_options_compatibility_list.generic.name	= "sound compatibility NULL";
-	s_options_compatibility_list.generic.callback = NULL; //UpdateSoundQualityFunc;
+	s_options_compatibility_list.generic.name	= "sound compatibility";
+	s_options_compatibility_list.generic.callback = UpdateSoundQualityFunc;
 	s_options_compatibility_list.itemnames		= compatibility_items;
 	s_options_compatibility_list.curvalue		= Cvar_VariableIntValue( "s_primary" );
 

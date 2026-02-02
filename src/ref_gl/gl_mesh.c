@@ -460,8 +460,20 @@ void R_DrawAliasModel (model_t *model)
 
 	if (currententity->flags & RF_WEAPONMODEL)
 	{
-		if ( r_lefthand->integer == 2 )
-			return;
+		 // Odczytaj wartość 'hand'
+		    int hand_value = r_lefthand->integer;
+
+		    // Odczytaj wartość naszego nowego przełącznika
+		    cvar_t *show_center = Cvar_Get("cl_gun_show_center", "0", 0);
+
+		    // Nowa, elastyczna logika:
+		    // Ukryj broń TYLKO I WYŁĄCZNIE, jeśli:
+		    // 1. hand jest ustawiony na 2, ORAZ
+		    // 2. nasz nowy przełącznik jest ustawiony na 0.
+		    if (hand_value == 2 && show_center->integer == 0)
+		    {
+		        return; // Nie rysuj broni
+		    }
 	}
 	else if ( R_CullAliasModel( frame, oldframe ) )
 		return;

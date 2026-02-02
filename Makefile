@@ -6,7 +6,7 @@
 PLATFORM=$(shell uname -s|tr A-Z a-z)
 
 # Installation directory
-DESTDIR=$(HOME)/.quake2
+DESTDIR=$(HOME)/.q2classic
 
 ifneq ($(PLATFORM),linux)
 	ifneq ($(PLATFORM),freebsd)
@@ -16,15 +16,22 @@ ifneq ($(PLATFORM),linux)
 	endif
 endif
 
+# --- ZMIANA: Definicja zmiennych dla flag ---
+C_STANDARD = -std=gnu11
+BASE_CFLAGS = -funsigned-char -pipe $(shell sdl2-config --cflags) -DGL_QUAKE -DUSE_SDL -DUSE_CURL -Isrc/include/nanosvg -Isrc/include/uthash
+WARNINGS = -Wall -Wextra -Wpedantic
+
 CC=gcc
-CFLAGS=-funsigned-char -pipe $(shell sdl2-config --cflags) -DGL_QUAKE -DUSE_SDL -DUSE_CURL -Isrc/include/nanosvg
+# --- ZMIANA: Użycie zmiennych i dodanie standardu C11 oraz ostrzeżeń ---
+CFLAGS=$(BASE_CFLAGS) $(C_STANDARD) $(WARNINGS)
 
 ifeq ($(PLATFORM),darwin)
 	CFLAGS += -D__APPLE__ -I/opt/local/include
 endif
 
-DEBUG_CFLAGS=$(CFLAGS) -g -Wall
-RELEASE_CFLAGS=$(CFLAGS) -g -O2 -Wall -DNDEBUG
+# --- ZMIANA: Dodanie -flto dla optymalizacji w release ---
+DEBUG_CFLAGS=$(CFLAGS) -g
+RELEASE_CFLAGS=$(CFLAGS) -O2 -DNDEBUG
 
 ifeq ($(PLATFORM),freebsd)
 	LDFLAGS=-lm
@@ -35,6 +42,11 @@ endif
 LDFLAGS += $(shell sdl2-config --libs)
 LDFLAGS += $(shell curl-config --libs)
 LDFLAGS += -ljpeg -lpng -lz -lGLU
+
+# --- ZMIANA: Dodanie -flto do flag linkera dla buildu release ---
+#ifeq ($(MAKECMDGOALS),release)
+#	LDFLAGS += -flto
+#endif
 
 all: debug
 
@@ -85,7 +97,6 @@ QUAKE2_OBJS = \
 	src/client/console.o \
 	src/client/keys.o \
 	src/client/snd_dma.o \
-	src/client/snd_mem.o \
 	src/client/snd_mix.o \
 	\
 	src/game/m_flash.o \
@@ -102,7 +113,7 @@ QUAKE2_OBJS = \
 	src/linux/rw_sdl.o \
 	src/linux/snd_sdl.o \
 	src/linux/sys_linux.o \
-	src/linux/vid_so.o \
+	src/client/vid_sdl.o \
 	\
 	src/qcommon/cmd.o \
 	src/qcommon/cmodel.o \
@@ -117,6 +128,7 @@ QUAKE2_OBJS = \
 	src/qcommon/q_msg.o \
 	\
 	src/ref_gl/gl_decal.o \
+	src/ref_gl/gl_decal_svg.o \
 	src/ref_gl/gl_draw.o \
 	src/ref_gl/gl_image.o \
 	src/ref_gl/gl_light.o \
@@ -161,16 +173,19 @@ bin/q2classic : $(QUAKE2_OBJS)
 	@echo "[LD] quake2"
 	@$(CC) -o $@ $(QUAKE2_OBJS) $(LDFLAGS)
 
+
 GAME_OBJS = \
 	src/game/g_ai.o \
 	src/game/g_chase.o \
 	src/game/g_cmds.o \
 	src/game/g_combat.o \
+	src/game/g_core_moves.o \
 	src/game/g_func.o \
 	src/game/g_items.o \
 	src/game/g_main.o \
 	src/game/g_misc.o \
 	src/game/g_monster.o \
+	src/game/g_move_reg.o \
 	src/game/g_phys.o \
 	src/game/g_save.o \
 	src/game/g_spawn.o \
@@ -214,7 +229,7 @@ GAME_OBJS = \
 # The game shared library.
 bin/q2game.so : $(GAME_OBJS)
 	@echo "[LD] game.so"
-	@$(CC) $(CFLAGS) -shared -o $@ $(GAME_OBJS)
+	@$(CC) $(CFLAGS) -shared -o $@ $(GAME_OBJS) -Wl,--no-as-needed
 
 # The install target
 install: targets

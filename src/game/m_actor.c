@@ -87,6 +87,7 @@ mmove_t actor_move_stand = {FRAME_stand101, FRAME_stand140, actor_frames_stand, 
 void actor_stand (edict_t *self)
 {
 	self->monsterinfo.currentmove = &actor_move_stand;
+	    self->monsterinfo.currentmove_name = "actor_move_stand";
 
 	// randomize on startup
 	if (level.time < 1.0)
@@ -113,6 +114,7 @@ mmove_t actor_move_walk = {FRAME_walk01, FRAME_walk08, actor_frames_walk, NULL};
 void actor_walk (edict_t *self)
 {
 	self->monsterinfo.currentmove = &actor_move_walk;
+	    self->monsterinfo.currentmove_name = "actor_move_walk";
 }
 
 
@@ -151,6 +153,7 @@ void actor_run (edict_t *self)
 	}
 
 	self->monsterinfo.currentmove = &actor_move_run;
+	    self->monsterinfo.currentmove_name = "actor_move_run";
 }
 
 
@@ -248,21 +251,33 @@ void actor_pain (edict_t *self, edict_t *other, float kick, int damage)
 		VectorSubtract (other->s.origin, self->s.origin, v);
 		self->ideal_yaw = vectoyaw (v);
 		if (random() < 0.5)
-			self->monsterinfo.currentmove = &actor_move_flipoff;
+		{	self->monsterinfo.currentmove = &actor_move_flipoff;
+			    self->monsterinfo.currentmove_name = "actor_move_flipoff";
+		}
 		else
-			self->monsterinfo.currentmove = &actor_move_taunt;
+		{ self->monsterinfo.currentmove = &actor_move_taunt;
+			    self->monsterinfo.currentmove_name = "actor_move_taunt";
 		name = actor_names[(self - g_edicts)%MAX_ACTOR_NAMES];
 		gi.cprintf (other, PRINT_CHAT, "%s: %s!\n", name, messages[rand()%3]);
+		}
 		return;
+
+
 	}
 
 	n = rand() % 3;
 	if (n == 0)
-		self->monsterinfo.currentmove = &actor_move_pain1;
+	{		self->monsterinfo.currentmove = &actor_move_pain1;
+		    self->monsterinfo.currentmove_name = "actor_move_pain1";
+	}
 	else if (n == 1)
-		self->monsterinfo.currentmove = &actor_move_pain2;
+	{	self->monsterinfo.currentmove = &actor_move_pain2;
+		    self->monsterinfo.currentmove_name = "actor_move_pain2";
+	}
 	else
-		self->monsterinfo.currentmove = &actor_move_pain3;
+	{	self->monsterinfo.currentmove = &actor_move_pain3;
+		    self->monsterinfo.currentmove_name = "actor_move_pain3";
+	}
 }
 
 
@@ -363,9 +378,13 @@ void actor_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage
 
 	n = rand() % 2;
 	if (n == 0)
-		self->monsterinfo.currentmove = &actor_move_death1;
+	{		self->monsterinfo.currentmove = &actor_move_death1;
+		    self->monsterinfo.currentmove_name = "actor_move_death1";
+	}
 	else
-		self->monsterinfo.currentmove = &actor_move_death2;
+	{	self->monsterinfo.currentmove = &actor_move_death2;
+		    self->monsterinfo.currentmove_name = "actor_move_death2";
+	}
 }
 
 
@@ -393,6 +412,7 @@ void actor_attack(edict_t *self)
 	int		n;
 
 	self->monsterinfo.currentmove = &actor_move_attack;
+	    self->monsterinfo.currentmove_name = "actor_move_attack";
 	n = (rand() & 15) + 3 + 7;
 	self->monsterinfo.pausetime = level.time + n * FRAMETIME;
 }
@@ -469,6 +489,7 @@ void SP_misc_actor (edict_t *self)
 	gi.linkentity (self);
 
 	self->monsterinfo.currentmove = &actor_move_stand;
+	    self->monsterinfo.currentmove_name = "actor_move_stand";
 	self->monsterinfo.scale = MODEL_SCALE;
 
 	walkmonster_start (self);

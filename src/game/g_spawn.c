@@ -526,6 +526,13 @@ void SpawnEntities (char *mapname, char *entities, char *spawnpoint)
 	const char	*com_token;
 	int			i;
 	float		skill_level;
+	// fixme delete debug login function
+	gi.dprintf("===== //Mentor Log: SpawnEntities Loading map '%s'. spawnpoint: '%s'. level.nextmap: '%s'. level.changemap: '%s' =====\n",
+	        mapname, spawnpoint, level.nextmap, level.changemap);
+
+	// ==
+
+
 
 	skill_level = floor (skill->value);
 	if (skill_level < 0)
