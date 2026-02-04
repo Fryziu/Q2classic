@@ -1023,6 +1023,7 @@ static void Com_Date_m( char *buffer, int bufferSize )
 
 static void OnChange_Timescale (cvar_t *self, const char *oldValue)
 {
+	(void)oldValue;
 	if(self->value > 400)
 		Cvar_Set(self->name, "400");
 }

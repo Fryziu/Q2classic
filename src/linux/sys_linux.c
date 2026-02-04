@@ -152,6 +152,7 @@ int	Sys_FileTime (char *path)
 
 void floating_point_exception_handler(int whatever)
 {
+	(void)whatever;
 //	Sys_Warn("floating point exception\n");
 	signal(SIGFPE, floating_point_exception_handler);
 }
@@ -312,7 +313,7 @@ void Sys_SendKeyEvents (void)
 /*****************************************************************************/
 
 
-#include <SDL/SDL.h>
+#include <SDL2/SDL.h>
 
 int main (int argc, char *argv[])
 {

@@ -704,6 +704,7 @@ int PowerArmorType (edict_t *ent)
 
 void Use_PowerArmor (edict_t *ent, gitem_t *item)
 {
+	(void)item;
 	int		index;
 
 	if (ent->flags & FL_POWER_ARMOR)
@@ -760,6 +761,8 @@ Touch_Item
 */
 void Touch_Item (edict_t *ent, edict_t *other, cplane_t *plane, csurface_t *surf)
 {
+	(void)plane;
+	(void)surf;
 	qboolean	taken;
 
 	if (!other->client)
@@ -891,6 +894,8 @@ edict_t *Drop_Item (edict_t *ent, gitem_t *item)
 
 void Use_Item (edict_t *ent, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	ent->svflags &= ~SVF_NOCLIENT;
 	ent->use = NULL;
 

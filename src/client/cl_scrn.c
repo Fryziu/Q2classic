@@ -439,6 +439,7 @@ static void SCR_Sky_f (void)
 
 static void OnChange_Conheight (cvar_t *self, const char *oldValue)
 {
+	(void)oldValue;
 	if(self->value < 0.1f)
 		Cvar_Set(self->name, "0.1");
 	else if(self->value > 1.0f)
@@ -447,6 +448,7 @@ static void OnChange_Conheight (cvar_t *self, const char *oldValue)
 
 static void OnChange_Viewsize (cvar_t *self, const char *oldValue)
 {
+	(void)oldValue;
 	// bound viewsize
 	if (self->integer < 40)
 		Cvar_Set(self->name, "40");

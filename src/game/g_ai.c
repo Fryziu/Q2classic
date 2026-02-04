@@ -769,6 +769,7 @@ used by ai_run and ai_stand
 */
 qboolean ai_checkattack (edict_t *self, float dist)
 {
+	(void)dist;
 	vec3_t		temp;
 	qboolean	hesDeadJim;
 

@@ -1760,6 +1760,7 @@ void CL_ParseAutoScreenshot (const char *s)
 
 static void OnChange_Color (cvar_t *self, const char *oldValue)
 {
+	(void)oldValue;
 	if(self->integer < 0)
 		Cvar_Set(self->name, "0");
 	else if(self->integer > 7)

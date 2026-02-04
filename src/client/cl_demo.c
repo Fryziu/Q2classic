@@ -317,6 +317,8 @@ void CL_StartAutoRecord(void)
 
 static void OnChange_AutoRecord(cvar_t *self, const char *oldValue)
 {
+	(void)self;
+	(void)oldValue;
 	CL_StartAutoRecord();
 }
 

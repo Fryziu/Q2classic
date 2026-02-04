@@ -427,6 +427,9 @@ void plat_blocked (edict_t *self, edict_t *other)
 
 void Use_Plat (edict_t *ent, edict_t *other, edict_t *activator)
 { 
+	(void)ent;
+	(void)other;
+	(void)activator;
 	if (ent->think)
 		return;		// already down
 	plat_go_down (ent);
@@ -435,6 +438,8 @@ void Use_Plat (edict_t *ent, edict_t *other, edict_t *activator)
 
 void Touch_Plat_Center (edict_t *ent, edict_t *other, cplane_t *plane, csurface_t *surf)
 {
+	(void)plane;
+	(void)surf;
 	if (!other->client)
 		return;
 		
@@ -599,12 +604,16 @@ void rotating_blocked (edict_t *self, edict_t *other)
 
 void rotating_touch (edict_t *self, edict_t *other, cplane_t *plane, csurface_t *surf)
 {
+	(void)plane;
+	(void)surf;
 	if (self->avelocity[0] || self->avelocity[1] || self->avelocity[2])
 		T_Damage (other, self, self, vec3_origin, other->s.origin, vec3_origin, self->dmg, 1, 0, MOD_CRUSH);
 }
 
 void rotating_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	if (!VectorCompare (self->avelocity, vec3_origin))
 	{
 		self->s.sound = 0;
@@ -736,12 +745,15 @@ void button_fire (edict_t *self)
 
 void button_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
 	self->activator = activator;
 	button_fire (self);
 }
 
 void button_touch (edict_t *self, edict_t *other, cplane_t *plane, csurface_t *surf)
 {
+	(void)plane;
+	(void)surf;
 	if (!other->client)
 		return;
 
@@ -754,6 +766,9 @@ void button_touch (edict_t *self, edict_t *other, cplane_t *plane, csurface_t *s
 
 void button_killed (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
+	(void)inflictor;
+	(void)damage;
+	(void)point;
 	self->activator = attacker;
 	self->health = self->max_health;
 	self->takedamage = DAMAGE_NO;
@@ -948,6 +963,7 @@ void door_go_up (edict_t *self, edict_t *activator)
 
 void door_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
 	edict_t	*ent;
 
 	if (self->flags & FL_TEAMSLAVE)
@@ -979,6 +995,8 @@ void door_use (edict_t *self, edict_t *other, edict_t *activator)
 
 void Touch_DoorTrigger (edict_t *self, edict_t *other, cplane_t *plane, csurface_t *surf)
 {
+	(void)plane;
+	(void)surf;
 	if (other->health <= 0)
 		return;
 
@@ -1112,6 +1130,9 @@ void door_blocked  (edict_t *self, edict_t *other)
 
 void door_killed (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
+	(void)inflictor;
+	(void)damage;
+	(void)point;
 	edict_t	*ent;
 
 	for (ent = self->teammaster ; ent ; ent = ent->teamchain)
@@ -1124,6 +1145,8 @@ void door_killed (edict_t *self, edict_t *inflictor, edict_t *attacker, int dama
 
 void door_touch (edict_t *self, edict_t *other, cplane_t *plane, csurface_t *surf)
 {
+	(void)plane;
+	(void)surf;
 	if (!other->client)
 		return;
 
@@ -1632,6 +1655,7 @@ void func_train_find (edict_t *self)
 
 void train_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
 	self->activator = activator;
 
 	if (self->spawnflags & TRAIN_START_ON)
@@ -1698,6 +1722,7 @@ void SP_func_train (edict_t *self)
 */
 void trigger_elevator_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)activator;
 	edict_t *target;
 
 	if (self->movetarget->nextthink)
@@ -1776,6 +1801,7 @@ void func_timer_think (edict_t *self)
 
 void func_timer_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
 	self->activator = activator;
 
 	// if on, turn it off
@@ -1824,6 +1850,8 @@ speed	default 100
 
 void func_conveyor_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	if (self->spawnflags & 1)
 	{
 		self->speed = 0;
@@ -1885,6 +1913,8 @@ void door_secret_done (edict_t *self);
 
 void door_secret_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	// make sure we're not already moving
 	if (!VectorCompare(self->s.origin, vec3_origin))
 		return;
@@ -1959,6 +1989,9 @@ void door_secret_blocked  (edict_t *self, edict_t *other)
 
 void door_secret_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
+	(void)inflictor;
+	(void)damage;
+	(void)point;
 	self->takedamage = DAMAGE_NO;
 	door_secret_use (self, attacker, attacker);
 }
@@ -2036,6 +2069,8 @@ Kills everything inside when fired, irrespective of protection.
 */
 void use_killbox (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	KillBox (self);
 }
 

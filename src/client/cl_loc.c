@@ -321,6 +321,7 @@ static void CL_LocThere_m( char *buffer, int bufferSize )
 
 static void OnChange_LocDir(cvar_t *self, const char *oldValue)
 {
+	(void)oldValue;
 	Q_strncpyz(locDir, self->string, sizeof(locDir));
 	COM_FixPath(locDir);
 

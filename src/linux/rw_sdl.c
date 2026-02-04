@@ -379,6 +379,8 @@ void *GLimp_GetProcAddress(const char *func)
 
 int GLimp_Init( void *hInstance, void *wndProc )
 {
+	(void)hInstance;
+	(void)wndProc;
 	// Call the main SDL/input initialization function
 	SWimp_Init();
 
@@ -484,6 +486,7 @@ static unsigned char *SDLimp_InitGraphics( viddef_t *vid )
 #ifdef GL_QUAKE
 void GLimp_BeginFrame( float camera_seperation )
 {
+	(void)camera_seperation;
 }
 #endif
 
@@ -516,6 +519,7 @@ rserr_t GLimp_SetMode( int *pwidth, int *pheight, int mode, qboolean fullscreen 
 rserr_t SWimp_SetMode( int *pwidth, int *pheight, int mode, qboolean fullscreen )
 #endif
 {
+	(void)fullscreen;
 	viddef_t vid; // Create our temporary struct
 
 	Com_Printf("setting mode %d:", mode );

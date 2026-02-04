@@ -341,6 +341,7 @@ cvar_t *cl_chathudy;
 
 static void OnChange_Chathudlines (cvar_t *self, const char *oldValue)
 {
+	(void)oldValue;
 	if (self->integer > MAX_CHAT_LINES)
 		Cvar_SetValue (self->name, MAX_CHAT_LINES);
 	else if (self->integer < 1)

@@ -167,7 +167,7 @@ void Com_Printf (const char *msg, ...)
 }
 
 void Com_Error(int code, const char *fmt, ...){
-	
+	(void)code;
 	va_list argptr;
 	char text[1024];
 

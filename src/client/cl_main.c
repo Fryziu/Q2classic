@@ -1862,12 +1862,14 @@ void CL_Precache_f (void)
 
 static void OnChange_MaxFps(cvar_t *self, const char *oldValue)
 {
+	(void)oldValue;
 	if (self->integer < 5)
 		Cvar_Set(self->name, "5");
 }
 
 static void OnChange_Protocol(cvar_t *self, const char *oldValue)
 {
+	(void)oldValue;
 	//force reparsing of cl_protocol
 	if (cls.state == ca_disconnected)
 		cls.serverProtocol = 0;
@@ -1885,6 +1887,7 @@ static void OnChange_Protocol(cvar_t *self, const char *oldValue)
 
 static void OnChange_Gun(cvar_t *self, const char *oldValue)
 {
+	(void)oldValue;
 	if (cls.state >= ca_connected && cls.serverProtocol > PROTOCOL_VERSION_DEFAULT) {
 		MSG_WriteByte (&cls.netchan.message, clc_setting);
 		MSG_WriteShort(&cls.netchan.message, CLSET_NOGUN);
@@ -1895,6 +1898,7 @@ static void OnChange_Gun(cvar_t *self, const char *oldValue)
 #ifdef USE_CURL
 void OnChange_http_max_connections (cvar_t *self, const char *oldValue)
 {
+	(void)oldValue;
 	if (self->integer > 4)
 		Cvar_Set (self->name, "4");
 	else if (self->integer < 1)
@@ -1907,6 +1911,7 @@ void OnChange_http_max_connections (cvar_t *self, const char *oldValue)
 
 static void OnChange_Name(cvar_t *self, const char *oldValue)
 {
+	(void)oldValue;
 	if (strlen(self->string) >= 16)
 		self->string[15] = 0;
 	else if (!*self->string)
@@ -1915,6 +1920,7 @@ static void OnChange_Name(cvar_t *self, const char *oldValue)
 
 static void OnChange_StereoSeparation (cvar_t *self, const char *oldValue)
 {
+	(void)oldValue;
 	// range check cl_camera_separation so we don't inadvertently fry someone's brain
 	if ( self->value > 1.0f )
 		Cvar_Set( self->name, "1" );

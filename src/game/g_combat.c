@@ -369,8 +369,10 @@ void M_ReactToDamage (edict_t *targ, edict_t *attacker)
 
 qboolean CheckTeamDamage (edict_t *targ, edict_t *attacker)
 {
-		//FIXME make the next line real and uncomment this block
-		// if ((ability to damage a teammate == OFF) && (targ's team == attacker's team))
+	(void)targ;
+	(void)attacker;
+	//FIXME make the next line real and uncomment this block
+	// if ((ability to damage a teammate == OFF) && (targ's team == attacker's team))
 	return false;
 }
 

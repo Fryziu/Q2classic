@@ -98,28 +98,6 @@ typedef struct
 	byte		*buffer;
 } dma_t;
 
-// !!! if this is changed, the asm code must change !!!
-/*
-typedef struct
-{
-	sfx_t		*sfx;
-	int			leftvol;
-	int			rightvol;
-	int			end;
-	int 		pos;
-	// --- THESE MUST EXIST for s_quality ---
-	int         occlusion;     // 0 = clear, 255 = fully muffled
-	int         last_sample_l; // State for the low-pass filter
-	int         last_sample_r; // State for the low-pass fi
-	int			entnum;
-	int			entchannel;
-	vec3_t		origin;
-	vec_t		dist_mult;
-	int			master_vol;
-	qboolean	fixed_origin;
-	qboolean	autosound;
-} channel_t;
-*/
 
 typedef struct
 {
@@ -138,6 +116,17 @@ typedef struct
 	qboolean	autosound;		// from an entity->sound, cleared each frame
 } channel_t;
 
+//HRTF
+typedef struct {
+    const char *name;
+    void (*Init)(void);
+    void (*Shutdown)(void);
+    void (*Update)(const vec3_t origin, const vec3_t forward, const vec3_t right, const vec3_t up);
+    void (*StartSound)(const vec3_t origin, int entnum, int entchannel, sfx_t *sfx, float vol, float attenuation, float timeofs);
+    void (*StopAllSounds)(void);
+} sound_export_t;
+
+
 /*
 ====================================================================
 Shared Global Variables
@@ -154,16 +143,34 @@ extern	playsound_t	s_pendingplays;
 extern cvar_t	*s_volume;
 extern cvar_t	*s_show;
 extern cvar_t	*s_loadas8bit;
-extern cvar_t	*s_quality;
+extern cvar_t	*s_quality;	//unused - to remove?
+extern cvar_t	*s_mixahead;
 
 extern qboolean sound_started;
 extern SDL_mutex *s_sound_mutex;
 
+///
+
+extern cvar_t *s_ambient;
+extern cvar_t *s_volume;
+extern cvar_t *s_show;
+
+extern vec3_t listener_origin;
+extern vec3_t listener_forward;
+extern vec3_t listener_right;
+extern vec3_t listener_up;
+
+// HRTF
+extern sound_export_t *snd_backend;
+extern sound_export_t snd_soft_export; // z snd_mix.c
+extern sound_export_t snd_hrtf_export;  // z snd_hrtf.c
 /*
 ====================================================================
 Shared Function Prototypes
 ====================================================================
 */
+
+void S_StopAllSounds(void);
 
 // ZMIANA: Prototypy dla funkcji obsługi kolejki pierścieniowej
 int  S_Audio_AvailableToRead(void);
@@ -171,6 +178,9 @@ void S_Audio_Read(void* dest, int count);
 // ZMIANA: Dodaj brakujące prototypy
 int  S_Audio_AvailableToWrite(void);
 void S_Audio_Write(const void* src, int count);
+
+void S_AddLoopSounds(void);
+void S_Spatialize(channel_t *ch);
 
 // System specific functions
 qboolean SNDDMA_Init(void);

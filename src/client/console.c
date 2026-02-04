@@ -388,12 +388,14 @@ void Con_CheckResize (void)
 
 static void OnChange_scrlines (cvar_t *self, const char *oldValue)
 {
+	(void)oldValue;
 	if (self->integer < 1)
 		Cvar_Set(self->name, "1");
 }
 
 static void OnChange_notifyLines (cvar_t *self, const char *oldValue)
 {
+	(void)oldValue;
 	if(self->integer < 0)
 		Cvar_Set(self->name, "0");
 	else if (self->integer > CON_TIMES)
