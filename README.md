@@ -9,7 +9,7 @@ REQUIRED Steam Audio `libphonon.so` library in the .quake2 directory!
 Download C API(ZIP) from:
 [https://valvesoftware.github.io/steam-audio/downloads.html](https://valvesoftware.github.io/steam-audio/downloads.html)
 
-Extract `libphonon.so` library in the .quake2 directory!
+Extract `libphonon.so` library from the zip file `steamaudio/lib/linux-x64/libphonon.so` into the .quake2 directory!
 
 * In the console type *s_hrtf 1*
 
