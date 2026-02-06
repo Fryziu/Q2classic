@@ -11,6 +11,8 @@ Download C API(ZIP) from:
 
 Extract `libphonon.so` library from the zip file `steamaudio/lib/linux-x64/libphonon.so` into the .quake2 directory!
 
+Or extract from the included file `libphonon.so.zip` that you can find in the `linux/libphonon.so.zip` in this project.
+
 * In the console type *s_hrtf 1*
 
 ## Acknowledgement
