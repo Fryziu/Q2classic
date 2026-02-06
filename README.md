@@ -1,4 +1,4 @@
-# Quake II Classic Client for GNU/Linux
+# Quake II Classic Client for GNU/Linux with binaural Steam Audio support
 
 ![Quake II classic for Linux](github-screenshot.jpg)
 
@@ -20,6 +20,12 @@ This version introduces a robust, thread-safe sound mixer that resolves these cr
 *   Ensured stable operation on modern Linux distributions using PulseAudio and PipeWire.
 
 ## Downloads
+
+REQUIRED Steam Audio `libphonon.so` library in the .quake2 directory!
+Download C API(ZIP) from:
+[https://valvesoftware.github.io/steam-audio/downloads.html](https://valvesoftware.github.io/steam-audio/downloads.html)
+Extract `libphonon.so` library in the .quake2 directory!
+In the console type *s_hrtf 1*
 
 If you do not own the full version of Quake II, you can download the shareware game data (v3.14), which includes the first single-player unit and several multiplayer maps. This is enough to get the game running.
 
