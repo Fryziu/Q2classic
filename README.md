@@ -1,4 +1,4 @@
-# Quake II Classic Client for GNU/Linux with binaural Steam Audio support
+# Quake II Classic Client for GNU/Linux with Steam Audio support (binaural sound)
 
 ![Quake II classic for Linux](github-screenshot.jpg)
 
