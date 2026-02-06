@@ -1,5 +1,8 @@
 ### New cvars - effects that can be changed
 
+### `s_hrtf 1` : Steam Audio binaural sound
+*   **Description:** Binaural sound engine HRTF - requires a library *libphonon.so* from Steam Audio project
+
 #### `s_sound_overlap 0`: Classic Mode
 *   **Description:** The original, untouched Quake II sound experience. This mode is for purists who want the game to sound exactly as it did in 1997.
 
