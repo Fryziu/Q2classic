@@ -14,7 +14,7 @@ set -e # Przerwij działanie skryptu w przypadku pierwszego błędu
 # --- Konfiguracja ---
 readonly DEMO_URL="http://tastyspleen.net/quake/downloads/q2-314-demo-x86.exe"
 readonly FULL_URL="http://tastyspleen.net/quake/downloads/q2-3.20-x86-full-ctf.exe"
-readonly INSTALL_DIR="$HOME/.q2classic"
+readonly INSTALL_DIR="$HOME/.quake2"
 # NOWOŚĆ: Katalog do przechowywania pobranych plików
 readonly DOWNLOAD_DIR="download_cache"
 

@@ -82,7 +82,7 @@ The compiled files will be located in the `bin/` directory.
 Quake II expects its files to be in a specific location. Create the necessary directories in your home folder:
 
 ```bash
-mkdir -p ~/.q2classic/baseq2
+mkdir -p ~/.quake2/baseq2
 ```
 
 #### 2. Copy Game Binaries
@@ -90,8 +90,8 @@ mkdir -p ~/.q2classic/baseq2
 Copy the compiled executable and game library to their respective locations:
 
 ```bash
-cp bin/q2classic ~/.q2classic/
-cp bin/q2game.so ~/.q2classic/baseq2/
+cp bin/q2classic ~/.quake2/
+cp bin/q2game.so ~/.quake2/baseq2/
 ```
 
 #### 3. Add Game Data
@@ -103,9 +103,9 @@ To play, you need the game data files (`.pak` files).
 
 #### 4. Run the Game
 
-Navigate to your `.q2classic` directory and execute the game:
+Navigate to your `.quake2` directory and execute the game:
 
 ```bash
-cd ~/.q2classic
+cd ~/.quake2
 ./q2classic
 ```

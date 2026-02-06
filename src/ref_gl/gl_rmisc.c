@@ -102,21 +102,7 @@ void GL_ScreenShot_f (void)
 	Z_Free( buffer );
 } 
 
-/* 
-================== 
-GLAVI_ReadFrameData - Grabs a frame for exporting to AVI EXPORT
-By Robert 'Heffo' Heffernan
-================== 
-*/
-#ifdef AVI_EXPORT
-void GLAVI_ReadFrameData (byte *buffer)
-{
-	if(!buffer)
-		return;
 
-	qglReadPixels(0, 0, vid.width, vid.height, GL_BGR_EXT, GL_UNSIGNED_BYTE, buffer);
-}
-#endif
 /*
 ** GL_Strings_f
 */

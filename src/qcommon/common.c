@@ -505,8 +505,8 @@ static zstats_t z_stats[TAG_MAX_TAGS] =
 	{"X86CACHE", 0, 0},
 	{"SYS_Clipboard", 0, 0},
 	{"MENU", 0, 0},
-	{"MP3_List", 0, 0},
-	{"AVI_Framebuffer", 0, 0},
+	{"MP3_List", 0, 0},	// to remove
+	{"AVI_Framebuffer", 0, 0},	// to remove
 
 	{"R_Models", 0, 0},
 	{"R_Images", 0, 0},

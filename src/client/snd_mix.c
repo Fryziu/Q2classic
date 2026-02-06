@@ -18,59 +18,49 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 // snd_mix.c -- portable code to mix sounds for snd_dma.c
+// Gemini 3 Flash [X-JC-STRICTOR-V2] 2026-02-04
 #include "client.h"
 #include "snd_loc.h"
 #include "SDL2/SDL.h"
 
 #define	PAINTBUFFER_SIZE	2048
 static portable_samplepair_t paintbuffer[PAINTBUFFER_SIZE];
-static int		snd_scaletable[32][256];
 
-/*
-====================================================================
-Mixing and Transfer Functions
-====================================================================
-*/
-// ZMIANA: Ta funkcja nie pisze już do dma.buffer, ale pcha dane do naszej kolejki.
+/// Mixing and Transfer Functions
+
 void S_TransferPaintBuffer(int endtime)
 {
     int count = endtime - paintedtime;
     if (count <= 0) return;
+    if (count > PAINTBUFFER_SIZE) count = PAINTBUFFER_SIZE;
 
-	// Maksymalny rozmiar bufora malowania to PAINTBUFFER_SIZE.
-    if (count > PAINTBUFFER_SIZE)
-	{
-		Com_Printf("S_TransferPaintBuffer: count > PAINTBUFFER_SIZE\n");
-		return;
-	}
+    static short pcm_buffer[PAINTBUFFER_SIZE * 2];
+    
+    // Wskaźniki z restrict
+    const portable_samplepair_t * restrict in = paintbuffer;
+    short * restrict out = pcm_buffer;
+    
+    for (int i = 0; i < count; i++)
+    {
+        // Przesunięcie bitowe >> 8 jest szybkie i zgodne z tablicą głośności (x256).
+        // Ręczny clamping jest bardziej czytelny dla kompilatora niż generyczne makro bound().
+        
+        int l = in[i].left >> 8;
+        int r = in[i].right >> 8;
 
-	// Bufor `paintbuffer` zawiera teraz `count` zmiksowanych próbek (samples).
-	// Musimy je przekonwertować z powrotem do formatu docelowego (np. 16-bit)
-	// i zapisać do kolejki pierścieniowej.
+        if (l > 32767) l = 32767;
+        else if (l < -32768) l = -32768;
 
-	// Tworzymy tymczasowy bufor na dane do zapisu.
-	static short pcm_buffer[PAINTBUFFER_SIZE * 2];
+        if (r > 32767) r = 32767;
+        else if (r < -32768) r = -32768;
 
-	portable_samplepair_t *in = paintbuffer;
-	short *out = pcm_buffer;
+        out[i * 2]     = (short)l;
+        out[i * 2 + 1] = (short)r;
+    }   
 
-	// Konwersja z formatu wewnętrznego (32-bit) na 16-bit PCM.
-	for (int i = 0; i < count; i++)
-	{
-		out[i * 2]     = bound(-32768, in[i].left >> 8, 32767);
-		out[i * 2 + 1] = bound(-32768, in[i].right >> 8, 32767);
-	}
-
-	// Oblicz, ile to bajtów i zapisz do kolejki.
-	int bytes_to_write = count * dma.channels * (dma.samplebits / 8);
-	S_Audio_Write(pcm_buffer, bytes_to_write);
-}
-///
-void S_InitScaletable (void)
-{
-	for (int i = 0; i < 32; i++)
-		for (int j = 0; j < 256; j++)
-			snd_scaletable[i][j] = ((signed char)(j - 128)) * (i * 8 * 256);
+    // Zakładamy 16-bit, bo tak ustawiliśmy w snd_sdl.c
+    int bytes_to_write = count * 2 * sizeof(short); 
+    S_Audio_Write(pcm_buffer, bytes_to_write);
 }
 
 void S_PaintChannelFrom8 (channel_t *ch, sfxcache_t *sc, int count, int offset)
@@ -82,57 +72,59 @@ void S_PaintChannelFrom8 (channel_t *ch, sfxcache_t *sc, int count, int offset)
 	/* Implement if needed */
 }
 
-// ====================================================================
-// FINAL, CORRECTED S_PaintChannelFrom16 handling both Mono and Stereo
-// ====================================================================
+
+/// S_PaintChannelFrom16 handling both Mono and Stereo
+
 void S_PaintChannelFrom16 (channel_t *ch, sfxcache_t *sc, int count, int offset)
 {
-	// Wyliczamy głośność raz dla całego bloku
-	float vol = s_volume->value;
-	int leftvol = (int)(ch->leftvol * vol);
-	int rightvol = (int)(ch->rightvol * vol);
+    float vol = s_volume->value;
+    int leftvol = (int)(ch->leftvol * vol);
+    int rightvol = (int)(ch->rightvol * vol);
 
-	// Jeśli kanał jest niemy, tylko przesuwamy wskaźnik pozycji
-	if (leftvol <= 0 && rightvol <= 0)
-	{
-		ch->pos += count;
-		return;
-	}
+    // Optymalizacja: Pomiń ciszę
+    if (leftvol <= 0 && rightvol <= 0)
+    {
+        ch->pos += count;
+        return;
+    }
 
-	portable_samplepair_t *samp = &paintbuffer[offset];
+    // Użycie 'restrict' informuje kompilator, że te obszary pamięci się nie nakładają.
+    // Umożliwia to agresywną wektoryzację (SSE/AVX).
+    portable_samplepair_t * restrict samp = &paintbuffer[offset];
+    
+    // Pobieramy wskaźnik na dane
+    const short * restrict sfx_data = (const short *)sc->data;
 
-	if (sc->channels == 1) // Mono
-	{
-		short *sfx = (short *)sc->data + ch->pos;
-		for (int i=0; i < count; i++) {
-			int sample = sfx[i];
-			samp[i].left += (sample * leftvol);
-			samp[i].right += (sample * rightvol);
-		}
-	}
-	else // Stereo
-	{
-		short *sfx = (short *)sc->data + (ch->pos * 2);
-		for (int i=0; i < count; i++) {
-			samp[i].left += (sfx[i*2] * leftvol);
-			samp[i].right += (sfx[i*2+1] * rightvol);
-		}
-	}
-	ch->pos += count;
+    int pos = ch->pos;
+
+    if (sc->channels == 1) // Mono
+    {
+        for (int i = 0; i < count; i++) {
+            int sample = sfx_data[pos + i];
+            samp[i].left  += (sample * leftvol);
+            samp[i].right += (sample * rightvol);
+        }
+    }
+    else // Stereo
+    {
+        for (int i = 0; i < count; i++) {
+            int idx = (pos + i) * 2;
+            samp[i].left  += (sfx_data[idx] * leftvol);
+            samp[i].right += (sfx_data[idx+1] * rightvol);
+        }
+    }
+    ch->pos += count;
 }
-/*
-====================================================================
-S_PaintChannels: The Heart of the Mixer (Final, Robust Version)
-====================================================================
-*/
+
+/// S_PaintChannels: The Heart of the Mixer 
+
 void S_PaintChannels(int endtime)
 {
     if (!sound_started || paintedtime >= endtime)
         return;
 
     while (paintedtime < endtime)
-    {
-        // 1. Obsłuż oczekujące dźwięki
+    {        
         SDL_LockMutex(s_sound_mutex);
         while (s_pendingplays.next != &s_pendingplays && s_pendingplays.next->begin <= paintedtime)
         {
@@ -140,7 +132,6 @@ void S_PaintChannels(int endtime)
         }
         SDL_UnlockMutex(s_sound_mutex);
 
-        // 2. Oblicz krok (nie więcej niż do następnego dźwięku lub końca bufora)
         int paint_count = endtime - paintedtime;
         if (paint_count > PAINTBUFFER_SIZE)
             paint_count = PAINTBUFFER_SIZE;
@@ -154,9 +145,8 @@ void S_PaintChannels(int endtime)
         }
         SDL_UnlockMutex(s_sound_mutex);
 
-        if (paint_count <= 0) break; // Powinno być niemożliwe, ale bezpieczeństwo przede wszystkim
+        if (paint_count <= 0) break;
 
-        // 3. Miksujemy
         memset(paintbuffer, 0, paint_count * sizeof(portable_samplepair_t));
         
         for (int i = 0; i < MAX_CHANNELS; i++)
@@ -175,7 +165,6 @@ void S_PaintChannels(int endtime)
                 S_PaintChannelFrom16(ch, sc, count, 0);
         }
 
-        // 4. Zarządzanie pętlami i zwalnianie kanałów
         for(int i = 0; i < MAX_CHANNELS; i++)
         {
             channel_t *ch = &channels[i];
@@ -195,22 +184,17 @@ void S_PaintChannels(int endtime)
         paintedtime += paint_count;
     }
 }
-/*
-====================================================================
-ZMIANA: Główna funkcja "Producenta" - miksuje audio i pcha do kolejki
-====================================================================
-*/
+
+// Producer - mixing and pushing
+
 void S_MixAudio(void)
 {
 	if (!sound_started)
 		return;
 
-	int bytes_per_sample = dma.channels * (dma.samplebits / 8);
-	
-	// Używamy s_mixahead (np. 0.1 = 100ms) zamiast sztywnej wartości 2048
+	int bytes_per_sample = dma.channels * (dma.samplebits / 8);	
 	int target_buffer_level_samples = (int)(s_mixahead->value * dma.speed);
 	
-	// Zabezpieczenie: minimalny i maksymalny bufor (0.01s - 0.5s)
 	if (target_buffer_level_samples < 512) target_buffer_level_samples = 512;
 	
 	int target_buffer_level_bytes = target_buffer_level_samples * bytes_per_sample;
@@ -221,7 +205,6 @@ void S_MixAudio(void)
 
 	int samples_to_mix = (target_buffer_level_bytes - available_to_read_bytes) / bytes_per_sample;
 
-	// Sprawdź miejsce w kolejce
 	int available_to_write_samples = S_Audio_AvailableToWrite() / bytes_per_sample;
 	if (samples_to_mix > available_to_write_samples)
 		samples_to_mix = available_to_write_samples;
@@ -232,11 +215,10 @@ void S_MixAudio(void)
 	int endtime = paintedtime + samples_to_mix;
 
 	dma.buffer = NULL; 
-	S_PaintChannels(endtime); 
-	// paintedtime jest aktualizowane wewnątrz S_PaintChannels
+	S_PaintChannels(endtime);	
 }
 
-// HRTF
+/// HRTF
 
 static void S_Soft_Update(const vec3_t origin, const vec3_t v_forward, const vec3_t v_right, const vec3_t v_up) {
 	if (!sound_started) return;
@@ -244,7 +226,7 @@ static void S_Soft_Update(const vec3_t origin, const vec3_t v_forward, const vec
 	S_MixAudio();
 
 	if (cls.disable_screen) return;
-	if (s_volume->modified) { S_InitScaletable(); s_volume->modified = false; }
+	s_volume->modified = false; 
 
 	VectorCopy(origin, listener_origin);
 	VectorCopy(v_forward, listener_forward);

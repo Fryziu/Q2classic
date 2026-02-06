@@ -860,7 +860,8 @@ void R_DrawBrushModel (bspSubmodel_t *subModel)
 		modelorg[1] = DotProduct(temp, currententity->axis[1]);
 		modelorg[2] = DotProduct(temp, currententity->axis[2]);
 
-		R_RotateForEntity(currententity->origin, currententity->axis);
+		//R_RotateForEntity(currententity->origin, currententity->axis); // gived warning
+		R_RotateForEntity(currententity->origin, &currententity->axis[0]);
 	}
 	else {
 		R_TranslateForEntity(currententity->origin);

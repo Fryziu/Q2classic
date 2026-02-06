@@ -18,14 +18,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 // snd_dma.c -- main control for any streaming sound output device
+// Gemini 3 Flash [X-JC-STRICTOR-V2] 2026-02-04
 #include "client.h"
 #include "../qcommon/qcommon.h"
 #include "snd_loc.h"
 #include "SDL2/SDL.h"
 
-//===========================================================
-// RING BUFFER IMPLEMENTATION
-//===========================================================
+/// RING BUFFER IMPLEMENTATION
 
 ring_buffer_t s_ringbuffer;
 
@@ -86,9 +85,7 @@ void S_Audio_Write(const void* src, int count)
 	atomic_store(&s_ringbuffer.tail, (tail + count) & (AUDIO_RING_BUFFER_SIZE - 1));
 }
 
-//===========================================================
-// CONSTANTS & GLOBALS
-//===========================================================
+/// CONSTANTS & GLOBALS
 
 #define		SOUND_FULLVOLUME	80
 #define		MAX_SFX				(MAX_SOUNDS*2)
@@ -131,9 +128,8 @@ static sfx_t *S_AliasName (const char *aliasname, const char *truename);
 sound_export_t *snd_backend = &snd_soft_export;
 cvar_t *s_hrtf;
 
-//===========================================================
-// SYSTEM FUNCTIONS
-//===========================================================
+
+/// SYSTEM FUNCTIONS
 
 static void OnChange_SoundRestart(cvar_t *self, const char *oldValue)
 {
@@ -147,6 +143,7 @@ void S_Init(void)
 	Com_Printf("\n------- sound initialization -------\n");
 
 	cvar_t *cv = Cvar_Get ("s_initsound", "1", CVAR_LATCHED);
+	s_hrtf = Cvar_Get("s_hrtf", "0", CVAR_ARCHIVE | CVAR_LATCHED);
 	if (!cv->integer) { Com_Printf ("not initializing.\n------------------------------------\n"); return; }
 
 	if (!s_sound_mutex) s_sound_mutex = SDL_CreateMutex();
@@ -169,23 +166,35 @@ void S_Init(void)
 	s_sdl_resample->OnChange = OnChange_SoundRestart;
 	s_force_mono->OnChange = OnChange_SoundRestart;
 
+	// Wybór backendu przed uruchomieniem DMA
+    if (s_hrtf->integer) {
+        snd_backend = &snd_hrtf_export;
+    } else {
+        snd_backend = &snd_soft_export;
+    }
+
 	if (SNDDMA_Init()) {
-		S_InitScaletable ();
 		sound_started = true;
+	 // Inicjalizacja wybranego backendu (np. Steam Audio Context)
+        if (snd_backend->Init) {
+            snd_backend->Init();
+        }
+
 		s_registration_sequence = 1;
 		num_sfx = 0;
 		paintedtime = 0;
 		
-		S_StopAllSounds(); // This initializes the lists
+		S_StopAllSounds();
 
 		Cmd_AddCommand("play", S_Play_f);
 		Cmd_AddCommand("stopsound", S_StopAllSounds);
 		Cmd_AddCommand("soundlist", S_SoundList_f);
 		Cmd_AddCommand("soundinfo", S_SoundInfo_f);
 	}
+
 	
 	// HRTF
-snd_backend = &snd_soft_export; // unfinished bussiness :-)
+//snd_backend = &snd_soft_export; // unfinished bussiness :-)
 	/*
 	    s_hrtf = Cvar_Get("s_hrtf", "0", CVAR_LATCHED);
     
@@ -197,13 +206,33 @@ snd_backend = &snd_soft_export; // unfinished bussiness :-)
 */
     Com_Printf("Sound backend: %s\n", snd_backend->name);
 }
-	
+
+void S_Activate(qboolean active)
+{
+    (void)active;
+}
+
+void S_FreeAllSounds(void)
+{
+	for (int i=0; i < num_sfx; i++) {
+		if (known_sfx[i].cache) Z_Free(known_sfx[i].cache);
+		if (known_sfx[i].truename) Z_Free(known_sfx[i].truename);
+	}
+	memset(known_sfx, 0, sizeof(known_sfx));
+	memset(sfx_hash, 0, sizeof(sfx_hash));
+	num_sfx = 0;
+}
+
 
 void S_Shutdown(void)
 {
 	if (!sound_started) return;
 
-	SNDDMA_Shutdown();
+    if (snd_backend->Shutdown) {
+        snd_backend->Shutdown();
+    }
+
+    SNDDMA_Shutdown();
 	
 	if (s_sound_mutex) { 
 		SDL_DestroyMutex(s_sound_mutex); 
@@ -215,21 +244,12 @@ void S_Shutdown(void)
 	Cmd_RemoveCommand("soundlist");
 	Cmd_RemoveCommand("soundinfo");
 
-	// Free all sounds
-	for (int i=0; i < num_sfx; i++) {
-		if (known_sfx[i].cache) Z_Free(known_sfx[i].cache);
-		if (known_sfx[i].truename) Z_Free(known_sfx[i].truename);
-	}
-	memset(known_sfx, 0, sizeof(known_sfx));
-	memset(sfx_hash, 0, sizeof(sfx_hash));
-	num_sfx = 0;
+	S_FreeAllSounds();
 	
 	sound_started = false;
 }
 
-//===========================================================
-// SOUND LOADING
-//===========================================================
+/// SOUND LOADING
 
 sfxcache_t *S_LoadSound(sfx_t *s)
 {
@@ -258,8 +278,7 @@ sfxcache_t *S_LoadSound(sfx_t *s)
 		return NULL;
 	}
 	FS_FreeFile(raw_data);
-
-	// Przygotowanie konwersji (zawsze do formatu natywnego silnika)
+	
 	SDL_AudioCVT cvt;
 	SDL_BuildAudioCVT(&cvt, spec.format, spec.channels, spec.freq, 
 	                        AUDIO_S16LSB, dma.channels, dma.speed);
@@ -289,9 +308,7 @@ sfxcache_t *S_LoadSound(sfx_t *s)
 	return sc;
 }
 
-//===========================================================
-// PLAYBACK CONTROL
-//===========================================================
+/// PLAYBACK CONTROL
 
 static playsound_t *S_AllocPlaysound(void)
 {
@@ -314,10 +331,8 @@ void S_FreePlaysound(playsound_t *ps)
 
 void S_StopAllSounds(void)
 {
-	// 1. Zablokuj mikser
 	SDL_LockMutex(s_sound_mutex);
 
-	// 2. Resetuj kanały i kolejki
 	memset(channels, 0, sizeof(channels));
 	s_freeplays.next = s_freeplays.prev = &s_freeplays;
 	s_pendingplays.next = s_pendingplays.prev = &s_pendingplays;
@@ -330,12 +345,9 @@ void S_StopAllSounds(void)
 		s_playsounds[i].next->prev = &s_playsounds[i];
 	}
 
-	// 3. NATYCHMIASTOWY FLUSH BUFORA (Thread-safe)
-	// Przesuwamy wskaźnik head do tail, co czyni bufor pustym dla callbacku
 	int current_tail = atomic_load(&s_ringbuffer.tail);
-	atomic_store(&s_ringbuffer.head, current_tail);
+	atomic_store(&s_ringbuffer.head, current_tail);	
 	
-	// Czyścimy fizyczną zawartość dla pewności (cisza)
 	memset(s_ringbuffer.buffer, 0, AUDIO_RING_BUFFER_SIZE);
 
 	SDL_UnlockMutex(s_sound_mutex);
@@ -378,7 +390,7 @@ void S_StartSound(const vec3_t origin, int entnum, int entchannel, sfx_t *sfx, f
 	ps->next->prev = ps;
 	ps->prev->next = ps;
 	SDL_UnlockMutex(s_sound_mutex);
-	// ZMIANA: Debug startu dźwięku
+	// Debug
     if (s_show->integer)
         Com_Printf("S_StartSound: %s (vol: %.2f)\n", sfx->name, fvol);
 }
@@ -391,9 +403,7 @@ void S_StartLocalSound (const char *sound)
 	S_StartSound (NULL, cl.playernum+1, 0, sfx, 1, ATTN_NONE, 0);
 }
 
-//===========================================================
-// UPDATES & SPATIALIZATION
-//===========================================================
+/// UPDATES & SPATIALIZATION
 
 void S_AddLoopSounds (void)
 {
@@ -432,7 +442,7 @@ void S_AddLoopSounds (void)
         }
 
         ch->autosound = true;
-        ch->master_vol = 127; // Oryginalna wartość dla loopów w Q2
+        ch->master_vol = 127;
 
         // FIX DLA RAKIET: 
         // 1. fixed_origin = false zmusza S_Spatialize do wołania CL_GetEntitySoundOrigin
@@ -445,11 +455,10 @@ void S_AddLoopSounds (void)
     }
 }
 
-// HRTF
+/// HRTF
 void S_Update(const vec3_t origin, const vec3_t v_forward, const vec3_t v_right, const vec3_t v_up) {
     if (!sound_started) return;
-    
-    // Cała ciężka praca idzie do wybranego silnika
+   
     snd_backend->Update(origin, v_forward, v_right, v_up);
 }
 
@@ -532,9 +541,7 @@ static void S_SpatializeOrigin (vec3_t origin, float master_vol, float dist_mult
     *left_vol  = (int)(master_vol * scale * lscale);
 }
 
-//===========================================================
-// REGISTRATION
-//===========================================================
+/// REGISTRATION
 
 void S_BeginRegistration(void) { s_registration_sequence++; s_registering = true; }
 
@@ -646,9 +653,7 @@ static struct sfx_s *S_RegisterSexedSound(int entnum, const char *base)
 	return sfx;
 }
 
-//===========================================================
-// CONSOLE COMMANDS
-//===========================================================
+/// CONSOLE COMMANDS
 
 static void S_Play_f (void)
 {
@@ -718,27 +723,23 @@ void S_IssuePlaysound(playsound_t *ps) {
     S_FreePlaysound(ps);
 }
 
-//=============================================================================
+
 // S_RawSamples
-//
 // Wymagana przez cl_cin.c do odtwarzania dźwięku z plików wideo (.cin).
 // Sygnatura musi pasować do tej z client/sound.h (bez const).
-//=============================================================================
+
 void S_RawSamples(int samples, int rate, int width, int nchannels, byte *data)
 {
 	if (!sound_started) return;
 
-	// Oblicz rozmiar danych w bajtach
-	int len = samples * width * nchannels;
-	
-	// Zabezpieczenie przed przepełnieniem bufora
+	int len = samples * width * nchannels;	
+
 	int avail = S_Audio_AvailableToWrite();
 	if (len > avail)
 		len = avail;
 
 	if (len > 0)
-	{
-		// S_Audio_Write przyjmuje const void*, więc rzutowanie jest bezpieczne
+	{		
 		S_Audio_Write(data, len);
 	}
 }

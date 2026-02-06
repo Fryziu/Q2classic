@@ -14,7 +14,7 @@ set -e # Exit the script on the first error
 # --- Configuration ---
 readonly DEMO_URL="http://tastyspleen.net/quake/downloads/q2-314-demo-x86.exe"
 readonly FULL_URL="http://tastyspleen.net/quake/downloads/q2-3.20-x86-full-ctf.exe"
-readonly INSTALL_DIR="$HOME/.q2classic"
+readonly INSTALL_DIR="$HOME/.quake2"
 # Directory for storing downloaded files
 readonly DOWNLOAD_DIR="download_cache"
 

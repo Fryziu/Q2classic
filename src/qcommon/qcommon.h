@@ -19,20 +19,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 // qcommon.h -- definitions common between client and server, but not game.dll
+
 #ifndef QCOMMON_H
 #define QCOMMON_H
 
 #include "../game/q_shared.h"
 
-
 #define APPLICATION "Q2classic for Linux"
 
-#define	VERSION		"2026.02.03"
-
+#define	VERSION		"2026.02.06"
 
 #define	BASEDIRNAME	"baseq2"
 
-//============================================================================
+///
 
 typedef struct sizebuf_s
 {
@@ -51,7 +50,7 @@ void *SZ_GetSpace (sizebuf_t *buf, int length);
 void SZ_Write (sizebuf_t *buf, const void *data, int length);
 void SZ_Print (sizebuf_t *buf, const char *data);	// strcats onto the sizebuf
 
-//============================================================================
+///
 
 struct usercmd_s;
 struct entity_state_s;
@@ -102,8 +101,7 @@ void MSG_ParseDeltaPlayerstate_Enhanced( sizebuf_t *msg, const player_state_t *f
 int ZLibCompressChunk(byte *in, int len_in, byte *out, int len_out, int method, int wbits);
 int ZLibDecompress (byte *in, int inlen, byte /*@out@*/*out, int outlen, int wbits);
 
-//============================================================================
-
+///
 
 int	COM_Argc (void);
 char *COM_Argv (int arg);	// range and null checked
@@ -114,28 +112,19 @@ void COM_AddParm (char *parm);
 void COM_Init (void);
 void COM_InitArgv (int argc, char **argv);
 
-
-//============================================================================
+///
 
 void Info_Print (const char *s);
 
 
-/* crc.h */
+/// crc.h
 
 void CRC_Init(uint16 *crcvalue);
 void CRC_ProcessByte(uint16 *crcvalue, byte data);
 uint16 CRC_Value(uint16 crcvalue);
 uint16 CRC_Block (byte *start, int count);
 
-
-
-/*
-==============================================================
-
-PROTOCOL
-
-==============================================================
-*/
+/// PROTOCOL
 
 // protocol.h -- communications protocols
 
@@ -149,13 +138,13 @@ PROTOCOL
 #define PROTOCOL_VERSION_R1Q2_SOLID		1905
 #define PROTOCOL_VERSION_R1Q2_CURRENT	1905
 
-//=========================================
+///
 
 #define	PORT_MASTER	27900
 #define	PORT_CLIENT	27901
 #define	PORT_SERVER	27910
 
-//=========================================
+///
 
 #define	UPDATE_BACKUP	16	// copies of entity_state_t to keep buffered must be power of two
 #define	UPDATE_MASK		(UPDATE_BACKUP-1)
@@ -174,13 +163,10 @@ PROTOCOL
 #define SURPRESSCOUNT_BITS		4
 #define SURPRESSCOUNT_MASK		( ( 1 << SURPRESSCOUNT_BITS ) - 1 )
 
-//==================
-// the svc_strings[] array in cl_parse.c should mirror this
-//==================
+/// the svc_strings[] array in cl_parse.c should mirror this
 
-//
 // server to client
-//
+
 enum svc_ops_e
 {
 	svc_bad,
@@ -209,12 +195,12 @@ enum svc_ops_e
 	svc_deltapacketentities,	// [...]
 	svc_frame,
 
-	// ********** r1q2 specific ***********
+	// r1q2 specific 
 	svc_zpacket,
 	svc_zdownload,
 	svc_playerupdate,
 	svc_setting,
-	// ********** end r1q2 specific *******
+	// end r1q2 specific 
 
 	svc_max_enttypes
 };
@@ -243,11 +229,10 @@ typedef enum
 	SVSET_MAX
 } serversetting_t;
 
-//==============================================
+///
 
-//
 // client to server
-//
+
 enum clc_ops_e
 {
 	clc_bad,
@@ -258,7 +243,7 @@ enum clc_ops_e
 	clc_setting				// [setting][value] R1Q2 settings support.
 };
 
-//==============================================
+///
 
 // plyer_state_t communication
 
@@ -283,14 +268,14 @@ enum clc_ops_e
 #define PS_BITS				16
 #define PS_MASK				( ( 1 << PS_BITS ) - 1 )
 
-/* r1q2 protocol specific extra flags */
+// r1q2 protocol specific extra flags
 #define	EPS_GUNOFFSET		(1<<0)
 #define	EPS_GUNANGLES		(1<<1)
 #define	EPS_VELOCITY2		(1<<2)
 #define	EPS_ORIGIN2			(1<<3)
 #define	EPS_VIEWANGLE2		(1<<4)
 #define	EPS_STATS			(1<<5)
-//==============================================
+//
 
 // user_cmd_t communication
 
@@ -304,7 +289,7 @@ enum clc_ops_e
 #define	CM_BUTTONS	(1<<6)
 #define	CM_IMPULSE	(1<<7)
 
- // r1q2 button byte hacks
+// r1q2 button byte hacks
 #define BUTTON_MASK (BUTTON_ATTACK|BUTTON_USE|BUTTON_ANY)
 #define BUTTON_FORWARD  4
 #define BUTTON_SIDE     8
@@ -318,7 +303,7 @@ enum clc_ops_e
 #define BUTTON_UCMD_DBL_ANGLE1	32
 #define BUTTON_UCMD_DBL_ANGLE2	64
 
-//==============================================
+///
 
 // a sound without an ent or pos will be a local only sound
 #define	SND_VOLUME		(1<<0)		// a byte
@@ -330,11 +315,11 @@ enum clc_ops_e
 #define DEFAULT_SOUND_PACKET_VOLUME	1.0f
 #define DEFAULT_SOUND_PACKET_ATTENUATION 1.0f
 
-//==============================================
+///
 
 // entity_state_t communication
-
 // try to pack the common update flags into the first byte
+
 #define	U_ORIGIN1	(1<<0)
 #define	U_ORIGIN2	(1<<1)
 #define	U_ANGLE2	(1<<2)
@@ -370,27 +355,19 @@ enum clc_ops_e
 #define	U_SOLID		(1<<27)
 
 
-/*
-==============================================================
 
-CMD
+/// CMD
+// Command text buffering and command execution
 
-Command text buffering and command execution
 
-==============================================================
-*/
+// Any number of commands can be added in a frame, from several different sources.
+// Most commands come from either keybindings or console line input, but remote
+// servers can also send across commands and entire text files can be execed.
 
-/*
+// The + command line options are also added to the command buffer.
 
-Any number of commands can be added in a frame, from several different sources.
-Most commands come from either keybindings or console line input, but remote
-servers can also send across commands and entire text files can be execed.
+// The game starts with a Cbuf_AddText ("exec quake.rc\n"); Cbuf_Execute ();
 
-The + command line options are also added to the command buffer.
-
-The game starts with a Cbuf_AddText ("exec quake.rc\n"); Cbuf_Execute ();
-
-*/
 
 void Cbuf_Init (void);
 // allocates an initial text buffer that will grow as needed
@@ -426,14 +403,11 @@ void Cbuf_InsertFromDefer (void);
 // These two functions are used to defer any pending commands while a map
 // is being loaded
 
-//===========================================================================
+///
 
-/*
+/// Command execution takes a null terminated string, breaks it into tokens,
+/// then searches for a command or variable that matches the first token.
 
-Command execution takes a null terminated string, breaks it into tokens,
-then searches for a command or variable that matches the first token.
-
-*/
 
 typedef void ( *xcommand_t ) ( void );
 typedef void ( *xmacro_t )( char *, int );
@@ -487,26 +461,19 @@ void Cmd_AddMacro( const char *name, xmacro_t function );
 xmacro_t Cmd_FindMacroFunction( const char *name );
 void Cmd_ExecTrigger( const char *string );
 
-/*
-==============================================================
 
-CVAR
+/// CVAR
 
-==============================================================
-*/
+// cvar_t variables are used to hold scalar or string variables that can be changed or displayed at the console or prog code as well as accessed directly
+// in C code.
 
-/*
+// The user can access cvars from the console in three ways:
+// r_draworder			prints the current value
+// r_draworder 0		sets the current value to 0
+// set r_draworder 0	as above, but creates the cvar if not present
+// Cvars are restricted from having the same names as commands to keep this
+// interface from being ambiguous.
 
-cvar_t variables are used to hold scalar or string variables that can be changed or displayed at the console or prog code as well as accessed directly
-in C code.
-
-The user can access cvars from the console in three ways:
-r_draworder			prints the current value
-r_draworder 0		sets the current value to 0
-set r_draworder 0	as above, but creates the cvar if not present
-Cvars are restricted from having the same names as commands to keep this
-interface from being ambiguous.
-*/
 
 #define CVAR_LATCHED	32	// save changes until restarting its subsystem
 #define CVAR_CHEAT		128	// will be reset to default unless cheats are enabled
@@ -516,7 +483,7 @@ interface from being ambiguous.
 #define CVAR_INFOMASK		(CVAR_USERINFO|CVAR_SERVERINFO)
 #define CVAR_EXTENDED_MASK	(~31)
 
-/* bits 12 - 14, enum */
+// bits 12 - 14, enum 
 #define	CVAR_SYSTEM_GENERIC		0x00000000
 #define	CVAR_SYSTEM_GAME		0x00001000
 #define	CVAR_SYSTEM_VIDEO		0x00002000
@@ -584,13 +551,8 @@ extern	qboolean	userinfo_modified;
 
 void Cvar_Subsystem( int subsystem );
 
-/*
-==============================================================
 
-NET
-
-==============================================================
-*/
+/// NET
 
 // net.h -- quake's interface to the networking layer
 
@@ -631,7 +593,7 @@ void		NET_Sleep (int msec);
 qboolean	NET_IsLANAddress (const netadr_t *adr);
 #define		NET_IsLocalAddress( adr )	( (adr)->type == NA_LOOPBACK || ((adr)->ip[0] == 127 && (adr)->ip[1] == 0 && (adr)->ip[2] == 0 && (adr)->ip[3] == 1))
 
-//============================================================================
+///
 
 #define	OLD_AVG		0.99		// total = oldtotal*OLD_AVG + new*(1-OLD_AVG)
 
@@ -690,14 +652,7 @@ qboolean Netchan_Process (netchan_t *chan, sizebuf_t *msg);
 //qboolean Netchan_CanReliable (netchan_t *chan);
 
 
-/*
-==============================================================
-
-CMODEL
-
-==============================================================
-*/
-
+/// CMODEL
 
 #include "../qcommon/qfiles.h"
 
@@ -747,15 +702,9 @@ qboolean	CM_HeadnodeVisible (int headnode, const byte *visbits);
 void		CM_WritePortalState (fileHandle_t f);
 void		CM_ReadPortalState (fileHandle_t f);
 
-/*
-==============================================================
+/// PLAYER MOVEMENT CODE
 
-PLAYER MOVEMENT CODE
-
-Common between server and client so prediction matches
-
-==============================================================
-*/
+// Common between server and client so prediction matches
 
 typedef struct {
 	qboolean	airaccelerate;
@@ -765,55 +714,51 @@ typedef struct {
 
 void Pmove ( pmove_t *pmove, pmoveParams_t *params );
 
-/*
-==============================================================
 
-FILESYSTEM
+/// FILESYSTEM
 
-==============================================================
-*/
 #define MAX_LISTED_FILES	4096
 
-/* bits 0 - 1, enum */
+// bits 0 - 1, enum
 #define		FS_MODE_APPEND			0x00000000
 #define		FS_MODE_READ			0x00000001
 #define		FS_MODE_WRITE			0x00000002
 #define		FS_MODE_RDWR			0x00000003
 #define		FS_MODE_MASK			0x00000003
 
-/* bits 0 - 1, enum */
+// bits 0 - 1, enum
 #define		FS_SEARCHDIRS_NO			0x00000000
 #define		FS_SEARCHDIRS_YES			0x00000001
 #define		FS_SEARCHDIRS_ONLY			0x00000002
 #define		FS_SEARCHDIRS_RESERVED		0x00000003
 #define		FS_SEARCHDIRS_MASK			0x00000003
 
-/* bit 2, enum */
+// bit 2, enum
 #define FS_FLUSH_NONE			0x00000000
 #define FS_FLUSH_SYNC			0x00000004
 #define	FS_FLUSH_MASK			0x00000004
 
-/* bits 3 - 4, enum */
+// bits 3 - 4, enum
 #define	FS_TYPE_ANY			0x00000000
 #define	FS_TYPE_REAL		0x00000008
 #define	FS_TYPE_PAK			0x00000010
 #define	FS_TYPE_RESERVED	0x00000018
 #define	FS_TYPE_MASK		0x00000018
 
-/* bits 5 - 6, enum */
+// bits 5 - 6, enum
 #define	FS_PATH_ANY			0x00000000
 #define	FS_PATH_INIT		0x00000020
 #define	FS_PATH_BASE		0x00000040
 #define	FS_PATH_GAME		0x00000060
 #define	FS_PATH_MASK		0x00000060
 
-/* bits 7 - 10, flag */
+// bits 7 - 10, flag
 #define	FS_SEARCH_BYFILTER		0x00000080
 #define	FS_SEARCH_SAVEPATH		0x00000100
 #define	FS_SEARCH_EXTRAINFO		0x00000200
 #define	FS_SEARCH_RESERVED		0x00000400
 
-/* bits 7 - 8, flag */
+// bits 7 - 8, flag
 #define	FS_FLAG_RAW				0x00000080
 #define	FS_FLAG_CACHE			0x00000100
 
@@ -852,14 +797,8 @@ qboolean FS_NeedRestart ( void );
 void FS_Restart( void );
 char **FS_FindMaps( void );
 
-/*
-==============================================================
 
-MISC
-
-==============================================================
-*/
-
+/// MISC
 
 #define	ERR_FATAL	0		// exit the entire game with a popup window
 #define	ERR_DROP	1		// print to console and disconnect from game
@@ -979,13 +918,7 @@ void Qcommon_Shutdown (void);
 void SCR_DebugGraph (float value, int color);
 
 
-/*
-==============================================================
-
-NON-PORTABLE SYSTEM SERVICES
-
-==============================================================
-*/
+/// NON-PORTABLE SYSTEM SERVICES
 
 void	Sys_Init (void);
 
@@ -1003,13 +936,8 @@ void	Sys_Quit (void);
 char	*Sys_GetClipboardData( void );
 void	Sys_CopyProtect (void);
 
-/*
-==============================================================
 
-CLIENT / SERVER SYSTEMS
-
-==============================================================
-*/
+/// CLIENT / SERVER SYSTEMS
 
 void CL_Init (void);
 void CL_Drop (void);

@@ -2190,9 +2190,7 @@ void CL_InitLocal (void)
 	CL_InitDemos();
 	CL_InitLocs();
 	CL_InitParse();
-#ifdef AVI_EXPORT
-	CL_InitAVIExport(); //AVI EXPORT
-#endif
+
 	cl_hudalpha = Cvar_Get ("cl_hudalpha",  "1", CVAR_ARCHIVE);
 	cl_gunalpha = Cvar_Get("cl_gunalpha", "1", 0);
 	Cmd_AddCommand ("serverstatus", CL_ServerStatus_f);
@@ -2592,9 +2590,7 @@ void CL_Shutdown(void)
 #ifdef USE_CURL
 	CL_HTTP_Cleanup (true);
 #endif
-#ifdef AVI_EXPORT
-	CL_ShutdownAVIExport();
-#endif
+
 	CL_FreeLocs ();
 	CL_WriteConfiguration (); 
 

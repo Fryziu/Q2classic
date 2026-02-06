@@ -238,9 +238,7 @@ typedef uint16_t uint16;
 #ifdef GL_QUAKE
 # define R_AppActivate GLimp_AppActivate
 //# define R_EndFrame GLimp_EndFrame
-# ifdef _WIN32
-#  define AVI_EXPORT
-# endif
+
 #else //software
 # define R_AppActivate SWimp_AppActivate
 # define R_EndFrame SWimp_EndFrame

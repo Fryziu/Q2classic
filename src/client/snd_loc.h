@@ -18,18 +18,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 // snd_loc.h -- private sound functions
+// Gemini 3 Flash [X-JC-STRICTOR-V2] 2026-02-04
 
 #ifndef SND_LOC_H
 #define SND_LOC_H
 
 #include <SDL2/SDL_mutex.h>
-#include <stdatomic.h> // ZMIANA: Dodajemy nagłówek dla operacji atomowych
+#include <stdatomic.h> // Dodajemy nagłówek dla operacji atomowych
 
-/*
-====================================================================
-ZMIANA: Definicja bezblokadowej kolejki pierścieniowej (Ring Buffer)
-====================================================================
-*/
+
+/// Definicja bezblokadowej kolejki pierścieniowej (Ring Buffer)
+
 #define AUDIO_RING_BUFFER_SIZE 65536 // 64KB, musi być potęgą dwójki!
 
 typedef struct
@@ -39,14 +38,9 @@ typedef struct
 	_Atomic int tail; // Indeks zapisu (producent: wątek gry)
 } ring_buffer_t;
 
-// Deklaracja globalnej instancji naszej kolejki
 extern ring_buffer_t s_ringbuffer;
 
-/*
-====================================================================
-Data Structures
-====================================================================
-*/
+/// Data Structures
 
 // !!! if this is changed, the asm code must change !!!
 typedef struct
@@ -105,8 +99,7 @@ typedef struct
 	int			leftvol;		// 0-255 volume
 	int			rightvol;		// 0-255 volume
 	int			end;			// end time in global paintsamples
-	int 		pos;			// sample position in sfx
-	// Usunęliśmy: looping (było przestarzałe nawet w oryginale)
+	int 		pos;			// sample position in sfx	
 	int			entnum;			// to allow overriding a specific sound
 	int			entchannel;		//
 	vec3_t		origin;			// only use if fixed_origin is set
@@ -126,12 +119,7 @@ typedef struct {
     void (*StopAllSounds)(void);
 } sound_export_t;
 
-
-/*
-====================================================================
-Shared Global Variables
-====================================================================
-*/
+/// Shared Global Variables
 
 #define	MAX_CHANNELS 32
 extern	channel_t   channels[MAX_CHANNELS];
@@ -149,8 +137,6 @@ extern cvar_t	*s_mixahead;
 extern qboolean sound_started;
 extern SDL_mutex *s_sound_mutex;
 
-///
-
 extern cvar_t *s_ambient;
 extern cvar_t *s_volume;
 extern cvar_t *s_show;
@@ -164,18 +150,14 @@ extern vec3_t listener_up;
 extern sound_export_t *snd_backend;
 extern sound_export_t snd_soft_export; // z snd_mix.c
 extern sound_export_t snd_hrtf_export;  // z snd_hrtf.c
-/*
-====================================================================
-Shared Function Prototypes
-====================================================================
-*/
+
+/// Shared Function Prototypes
 
 void S_StopAllSounds(void);
 
-// ZMIANA: Prototypy dla funkcji obsługi kolejki pierścieniowej
+// Prototypy dla funkcji obsługi kolejki pierścieniowej
 int  S_Audio_AvailableToRead(void);
 void S_Audio_Read(void* dest, int count);
-// ZMIANA: Dodaj brakujące prototypy
 int  S_Audio_AvailableToWrite(void);
 void S_Audio_Write(const void* src, int count);
 
@@ -196,8 +178,6 @@ void Snd_Memset (void* dest, const int val, const size_t count);
 #endif
 
 // Mixer functions
-void S_InitScaletable (void);
-// ZMIANA: Dodajemy prototyp naszej nowej funkcji miksującej
 void S_MixAudio(void);
 sfxcache_t *S_LoadSound (sfx_t *s);
 void S_IssuePlaysound (playsound_t *ps);
@@ -207,4 +187,4 @@ void S_TransferPaintBuffer(int endtime);
 void S_PaintChannelFrom8 (channel_t *ch, sfxcache_t *sc, int count, int offset);
 void S_PaintChannelFrom16 (channel_t *ch, sfxcache_t *sc, int count, int offset);
 
-#endif // SND_LOC_H
+#endif

@@ -742,14 +742,8 @@ void CL_LoadLoc(void);
 void CL_AddViewLocs(void);
 void CL_InitLocs(void);
 
-//AVI EXPORT
-#ifdef AVI_EXPORT
-#include "avi_export.h"
-#endif
-
 // M-AI-812: Prototyp nowej funkcji pomocniczej
 byte CL_FindBestColorIndex(float r, float g, float b);
 
 
-#include "mp3.h"
 
