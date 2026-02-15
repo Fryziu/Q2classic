@@ -1,4 +1,4 @@
-# Quake II Classic Client for GNU/Linux
+# Quake II Classic Client for GNU/Linux (with binaural sound)
 
 ![Quake II classic for Linux](github-screenshot.jpg)
 
