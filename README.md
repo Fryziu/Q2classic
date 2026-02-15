@@ -3,12 +3,12 @@
 ![Quake II classic for Linux](github-screenshot.jpg)
 
 
-## Required Steam audio library `libphonon.so`, 
+# Required - Steam audio library `libphonon.so`, 
 It can be found in the /deps directory of this project, should be placed in the game's main directory. By default, it's .quake2 in the /home directory.
 
 ## Acknowledgement
 
-This repository is a streamlined fork of [jdolan/quake2](https://github.com/jdolan/quake2). It includes only the essential source code, excluding the large `.pack` data file for a more lightweight repository. Credit is due to jdolan for their work, which provided a modern, compilable Linux base that made these fixes and improvements possible.
+This repository is a streamlined fork of [jdolan/quake2](https://github.com/jdolan/quake2). It includes only the essential source code, excluding the large `.pack` data file for a more lightweight repository. Credit is due to jdolan for their work, which provided a Linux-compatible base that made these fixes and improvements possible.
 
 ## Overview
 
