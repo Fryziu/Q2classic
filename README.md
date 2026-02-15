@@ -53,7 +53,7 @@ git – version control system used to clone the repository and manage source co
 Next, install the libraries required by the game:
 
 ```bash
-sudo apt-get install libpng-dev libjpeg-dev libcurl4-openssl-dev libsdl1.2-dev libsdl2-dev -y
+sudo apt-get install libpng-dev libjpeg-dev libcurl4-openssl-dev libsdl2-dev -y
 ```
 Dependencies overview
 
