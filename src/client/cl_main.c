@@ -110,7 +110,6 @@ extern	cvar_t *allow_download_models;
 extern	cvar_t *allow_download_sounds;
 extern	cvar_t *allow_download_maps;
 
-//======================================================================
 
 typedef enum {
 	REQ_FREE,
@@ -150,15 +149,11 @@ static request_t *CL_AddRequest( const netadr_t *adr, requestType_t type ) {
 	return r;
 }
 
-/*
-===================
-Cmd_ForwardToServer
 
-adds the current command line as a clc_stringcmd to the client message.
-things like godmode, noclip, etc, are commands directed to the server,
-so when they are typed in at the console, they will need to be forwarded.
-===================
-*/
+/// Cmd_ForwardToServer //adds the current command line as a clc_stringcmd to the client message.
+// things like godmode, noclip, etc, are commands directed to the server,
+// so when they are typed in at the console, they will need to be forwarded.
+
 void Cmd_ForwardToServer (void)
 {
 	char	*cmd;
@@ -206,11 +201,9 @@ void Cmd_ForwardToServer (void)
 	}
 }*/
 
-/*
-==================
-CL_ForwardToServer_f
-==================
-*/
+
+/// CL_ForwardToServer_f
+
 void CL_ForwardToServer_f (void)
 {
 	if(cls.demoplaying)
@@ -229,12 +222,8 @@ void CL_ForwardToServer_f (void)
 	}
 }
 
+/// CL_Pause_f
 
-/*
-==================
-CL_Pause_f
-==================
-*/
 void CL_Pause_f (void)
 {
 	// never pause in multiplayer
@@ -246,24 +235,18 @@ void CL_Pause_f (void)
 	Cvar_SetValue ("paused", !cl_paused->integer);
 }
 
-/*
-==================
-CL_Quit_f
-==================
-*/
+
+/// CL_Quit_f
+
 void CL_Quit_f (void)
 {
 	CL_Disconnect();
 	Com_Quit();
 }
 
-/*
-================
-CL_Drop
 
-Called after an ERR_DROP was thrown
-================
-*/
+/// CL_Drop // Called after an ERR_DROP was thrown
+
 void CL_Drop (void)
 {
 	if (cls.state <= ca_disconnected)
@@ -279,14 +262,8 @@ void CL_Drop (void)
 }
 
 
-/*
-=======================
-CL_SendConnectPacket
+/// CL_SendConnectPacket // We have gotten a challenge from the server, so try and connect.
 
-We have gotten a challenge from the server, so try and
-connect.
-======================
-*/
 static void CL_SendConnectPacket (int useProtocol)
 {
 	netadr_t	adr = { 0 };
@@ -319,13 +296,9 @@ static void CL_SendConnectPacket (int useProtocol)
 		Netchan_OutOfBandPrint (NS_CLIENT, &adr, "connect %i %i %i \"%s\"\n", cls.serverProtocol, port, cls.challenge, Cvar_Userinfo());
 }
 
-/*
-=================
-CL_CheckForResend
 
-Resend a connect message if the last one has timed out
-=================
-*/
+/// CL_CheckForResend // Resend a connect message if the last one has timed out
+
 static void CL_CheckForResend (void)
 {
 	netadr_t	adr;
@@ -366,12 +339,10 @@ static void CL_CheckForResend (void)
 }
 
 
-/*
-================
-CL_Connect_f
 
-================
-*/
+/// CL_Connect_f
+
+
 static void CL_Connect_f (void)
 {
 	char	*server, *p;
@@ -425,76 +396,53 @@ static void CL_Connect_f (void)
 }
 
 
-/*
-=====================
-CL_Rcon_f
 
-  Send the rest of the command line over as
-  an unconnected command.
-=====================
-*/
+/// CL_Rcon_f
+
+///  Send the rest of the command line over as
+///  an unconnected command.
 static void CL_Rcon_f (void)
 {
-	char	message[1024], *s;
-	netadr_t	to = {0};
+    char    message[1024];
+    char    *s;
+    netadr_t to = {0};
 
-	if( Cmd_Argc() < 2 ) {
-		Com_Printf( "Usage: %s <command>\n", Cmd_Argv( 0 ) );
-		return;
-	}
+    if( Cmd_Argc() < 2 ) {
+        Com_Printf( "Usage: %s <command>\n", Cmd_Argv( 0 ) );
+        return;
+    }
 
-	if (!rcon_client_password->string[0]) {
-		Com_Printf ("You must set 'rcon_password' before issuing an rcon command.\n");
-		return;
-	}
+    if (!rcon_client_password->string[0]) {
+        Com_Printf ("You must set 'rcon_password' before issuing an rcon command.\n");
+        return;
+    }
 
-	s = Cmd_ArgsFrom(1);
-	if ((strlen(s) + strlen(rcon_client_password->string) + 16) >= sizeof(message)) {
-		Com_Printf ("Length of password + command exceeds maximum allowed length.\n");
-		return;
-	}
+    s = Cmd_ArgsFrom(1);
+    
+    // Budowanie pakietu OOB Carmack-style: bezpośrednio i bezpiecznie
+    message[0] = message[1] = message[2] = message[3] = -1;
+    Com_sprintf(message + 4, sizeof(message) - 4, "rcon %s %s", 
+                rcon_client_password->string, s);
 
-	message[0] = message[1] = message[2] = message[3] = -1;
-	message[4] = 0;
+    NET_Config(NET_CLIENT);
 
-	NET_Config(NET_CLIENT);		// allow remote
-
-	strcat (message, "rcon ");
-	if (rcon_client_password->string[0]) {
-		strcat (message, rcon_client_password->string);
-		strcat (message, " ");
-	}
-
-	strcat (message, s);
-
-	if (cls.state >= ca_connected)
-		to = cls.netchan.remote_address;
-	else
-	{
-		if (!rcon_address->string[0])
-		{
-			Com_Printf ("You must either be connected,\n"
-						"or set the 'rcon_address' cvar\n"
-						"to issue rcon commands\n");
-
-			return;
-		}
-		NET_StringToAdr (rcon_address->string, &to);
-		if (to.port == 0)
-			to.port = BigShort (PORT_SERVER);
-	}
-	
-	CL_AddRequest( &to, REQ_RCON );
-	NET_SendPacket (NS_CLIENT, strlen(message)+1, message, &to);
+    if (cls.state >= ca_connected)
+        to = cls.netchan.remote_address;
+    else {
+        if (!rcon_address->string[0]) {
+            Com_Printf ("You must be connected or set 'rcon_address'.\n");
+            return;
+        }
+        NET_StringToAdr (rcon_address->string, &to);
+        if (to.port == 0) to.port = BigShort (PORT_SERVER);
+    }
+    
+    CL_AddRequest( &to, REQ_RCON );
+    NET_SendPacket (NS_CLIENT, strlen(message + 4) + 5, message, &to);
 }
 
+/// CL_ClearState
 
-/*
-=====================
-CL_ClearState
-
-=====================
-*/
 void CL_ClearState (void)
 {
 	S_StopAllSounds ();
@@ -512,15 +460,12 @@ void CL_ClearState (void)
 	cl.demoBuff.allowoverflow = true;
 }
 
-/*
-=====================
-CL_Disconnect
+/// CL_Disconnect
 
-Goes from a connected state to full screen console state
-Sends a disconnect message to the server
-This is also called on Com_Error, so it shouldn't cause any errors
-=====================
-*/
+/// Goes from a connected state to full screen console state
+/// Sends a disconnect message to the server
+/// This is also called on Com_Error, so it shouldn't cause any errors
+
 void CL_StopDemoFile( void );
 
 void CL_Disconnect (void)
@@ -593,11 +538,8 @@ void CL_Disconnect_f (void)
 	}
 }
 
-/*
-================
-CL_ServerStatus_f
-================
-*/
+/// CL_ServerStatus_f
+
 #define PRINT_STATUS 1
 #define PRINT_SCORES 2
 
@@ -639,11 +581,9 @@ static void CL_ServerStatus_f( void )
 	Netchan_OutOfBandPrint( NS_CLIENT, &adr, "status" );
 }
 
-/*
-====================
-CL_ServerStatusResponse
-====================
-*/
+
+/// CL_ServerStatusResponse
+
 static int SortPlayers( const playerStatus_t *p1, const playerStatus_t *p2 )
 {
 
@@ -656,52 +596,47 @@ static int SortPlayers( const playerStatus_t *p1, const playerStatus_t *p2 )
 	return strcmp(p1->name, p2->name);
 }
 
-
 static qboolean CL_ServerStatusResponse( const char *status, const netadr_t *from, serverStatus_t *dest )
 {
-	char *s;
-	playerStatus_t *player;
-	int length;
+    char *s;
+    playerStatus_t *player;
+    int length;
 
-	memset( dest, 0, sizeof( *dest ) );
+    memset( dest, 0, sizeof( *dest ) );
 
-	s = strchr( status, '\n' );
-	if( !s )
-		return false;
+    s = strchr( status, '\n' );
+    if( !s ) return false;
 
-	length = s - status;
-	if( length > sizeof(dest->infostring) - 1 )
-		return false;
+    length = s - status;
+    // Zapewnienie miejsca na terminator
+    if( length >= sizeof(dest->infostring) )
+        length = sizeof(dest->infostring) - 1;
 
-    strcpy( dest->address, NET_AdrToString( from ) );
-    strncpy( dest->infostring, status, length );
+    Q_strncpyz( dest->address, NET_AdrToString( from ), sizeof(dest->address) );
+    memcpy( dest->infostring, status, length );
+    dest->infostring[length] = 0;
     
-    // HACK: check if this is a status response
-	if( !strstr( dest->infostring, "\\hostname\\" ) )
-		return false;
+    if( !strstr( dest->infostring, "\\hostname\\" ) )
+        return false;
 
-	s++;
-		if( *s < 32 )
-			return true;
+    s++;
+    if( *s < 32 ) return true;
  
-	do {
-		player = &dest->players[dest->numPlayers];
-		player->score = atoi( COM_Parse( &s ) );
-		player->ping = atoi( COM_Parse( &s ) );
-		if( !s )
-			break;
+    while( s && *s ) {
+        player = &dest->players[dest->numPlayers];
+        player->score = atoi( COM_Parse( &s ) );
+        player->ping = atoi( COM_Parse( &s ) );
+        
+        if( !s ) break;
 
-		Q_strncpyz(player->name, COM_Parse( &s ), sizeof( player->name ));
+        Q_strncpyz(player->name, COM_Parse( &s ), sizeof( player->name ));
 
-		if( ++dest->numPlayers == MAX_PLAYERSTATUS )
-			break;
+        if( ++dest->numPlayers == MAX_PLAYERSTATUS )
+            break;
+    }
 
-	} while( s );
-
-	qsort( dest->players, dest->numPlayers, sizeof( dest->players[0] ), (int (*)(const void *, const void *))SortPlayers );
-
-	return true;
-
+    qsort( dest->players, dest->numPlayers, sizeof( dest->players[0] ), (int (*)(const void *, const void *))SortPlayers );
+    return true;
 }
 
 void CL_DumpServerInfo( const serverStatus_t *status )
@@ -724,11 +659,8 @@ void CL_DumpServerInfo( const serverStatus_t *status )
 	}
 }
 
-/*
-====================
-CL_ParsePrintMessage
-====================
-*/
+/// CL_ParsePrintMessage
+
 static void CL_ParsePrintMessage( sizebuf_t *msg, netadr_t	*remoteAdr )
 {
 	request_t *r;
@@ -804,14 +736,11 @@ static void CL_ParsePrintMessage( sizebuf_t *msg, netadr_t	*remoteAdr )
 	}
 }
 
-/*
-=================
-CL_Changing_f
 
-Just sent as a hint to the client that they should
-drop to full console
-=================
-*/
+/// CL_Changing_f
+
+/// Just sent as a hint to the client that they should drop to full console
+
 void CL_Changing_f (void)
 {
 	//ZOID
@@ -830,13 +759,11 @@ void CL_Changing_f (void)
 }
 
 
-/*
-=================
-CL_Reconnect_f
 
-The server is changing levels
-=================
-*/
+/// CL_Reconnect_f
+
+/// The server is changing levels
+
 void CL_Reconnect_f (void)
 {
 	//ZOID
@@ -882,13 +809,11 @@ void CL_Reconnect_f (void)
 	}
 }
 
-/*
-=================
-CL_ParseStatusMessage
 
-Handle a reply from a ping
-=================
-*/
+/// CL_ParseStatusMessage
+
+/// Handle a reply from a ping
+
 static void CL_ParseStatusMessage (sizebuf_t *msg)
 {
 	char	*s;
@@ -902,12 +827,8 @@ static void CL_ParseStatusMessage (sizebuf_t *msg)
 	//M_AddToServerList (net_from, s);
 }
 
+/// CL_PingServers_f
 
-/*
-=================
-CL_PingServers_f
-=================
-*/
 void CL_PingServers_f (void)
 {
 	int			i;
@@ -944,13 +865,10 @@ void CL_PingServers_f (void)
 }
 
 
-/*
-=================
-CL_Skins_f
 
-Load or download any custom player skins and models
-=================
-*/
+/// CL_Skins_f
+/// Load or download any custom player skins and models
+
 void CL_Skins_f (void)
 {
 	int		i;
@@ -966,14 +884,83 @@ void CL_Skins_f (void)
 	}
 }
 
+//  parser binarny, który wyciągnie adresy IP z odpowiedzi Master Serwera
+
+extern void M_AddAddressToList(const char *address); 
+
+///// testing new function
+
+// W cl_main.c, funkcja CL_ParseServersResponse
+// W cl_main.c, poprawka w CL_ParseServersResponse
+static void CL_ParseServersResponse(sizebuf_t *msg)
+{
+	byte	*data;
+	int		i;
+	char	adrstr[64];
+	netadr_t adr;
+
+	// Master Q2 zazwyczaj wysyła: [FF FF FF FF] getserversResponse [DATA...]
+	// Nagłówek "getserversResponse" ma 18 znaków.
+	// Omijamy nagłówek ręcznie, by nie polegać na MSG_ReadString (bezpieczeństwo Carmacka)
+	
+	msg->readcount += strlen("getserversResponse"); 
+    // Omijamy ewentualną spację/separator za napisem
+	while (msg->readcount < msg->cursize && msg->data[msg->readcount] <= 32) {
+		msg->readcount++;
+	}
+
+	data = msg->data + msg->readcount;
+	int count = 0;
+	
+	for (i = 0; (msg->readcount + i + 6) <= msg->cursize; i += 6)
+	{
+		adr.type = NA_IP;
+		memcpy(adr.ip, data + i, 4);
+		memcpy(&adr.port, data + i + 4, 2);
+
+		Com_sprintf(adrstr, sizeof(adrstr), "%i.%i.%i.%i:%i", 
+			adr.ip[0], adr.ip[1], adr.ip[2], adr.ip[3], BigShort(adr.port));
+		
+		M_AddAddressToList(adrstr);
+		count++;
+	}
+	Com_Printf("Browser: Successfully parsed %i servers from master.\n", count);
+}
+
 
 /*
-=================
-CL_ConnectionlessPacket
+static void CL_ParseServersResponse(sizebuf_t *msg)
+{
+	byte	*data;
+	int		i;
+	char	adrstr[64];
+	netadr_t adr;
 
-Responses to broadcasts, etc
-=================
+	// msg->readcount jest ustawiony zaraz po "getserversResponse"
+	data = msg->data + msg->readcount;
+	int count = 0;
+	
+	// Każdy serwer to 6 bajtów (4 bajty IP + 2 bajty Portu)
+	for (i = 0; (msg->readcount + i + 6) <= msg->cursize; i += 6)
+	{
+		adr.type = NA_IP;
+		memcpy(adr.ip, data + i, 4);
+		memcpy(&adr.port, data + i + 4, 2);
+
+		Com_sprintf(adrstr, sizeof(adrstr), "%i.%i.%i.%i:%i", 
+			adr.ip[0], adr.ip[1], adr.ip[2], adr.ip[3], BigShort(adr.port));
+		
+		M_AddAddressToList(adrstr);
+		count++;
+	}
+	Com_Printf("Browser: Received %i servers from master.\n", count);
+}
 */
+
+
+/// CL_ConnectionlessPacket
+/// Responses to broadcasts, etc
+
 static void CL_ConnectionlessPacket (sizebuf_t *msg)
 {
 	char		*s, *c;
@@ -990,10 +977,22 @@ static void CL_ConnectionlessPacket (sizebuf_t *msg)
 	c = Cmd_Argv(0);
 
 	//Com_Printf ("%s: %s\n", NET_AdrToString (&net_from), c);
+	
+	// DIAGNOSTYKA: Wypisz każdy pakiet OOB podczas szukania
+	extern qboolean masterQueryActive; // Z ui_joinserver.c
+	if (masterQueryActive) {
+		Com_Printf("OOB Packet: %s from %s\n", c, NET_AdrToString(&net_from));
+	}
 
 	// server responding to a status broadcast
 	if (!strcmp(c, "info")) {
 		CL_ParseStatusMessage(msg);
+		return;
+	}
+	// Obsługa odpowiedzi binarnej z Master Serwera
+	if (!strcmp(c, "getserversResponse")) {
+		Com_DPrintf("Browser: Network packet 'getserversResponse' received.\n");
+		CL_ParseServersResponse(msg);
 		return;
 	}
 	
@@ -1132,31 +1131,16 @@ static void CL_ConnectionlessPacket (sizebuf_t *msg)
 		return;
 	}
 
-	// ping from somewhere
-	/*if (!strcmp(c, "ping")) {
-		Netchan_OutOfBandPrint (NS_CLIENT, &net_from, "ack");
-		return;
-	}*/
-
-	// echo request from server
-	/*if (!strcmp(c, "echo")) {
-		Netchan_OutOfBandPrint (NS_CLIENT, &net_from, "%s", Cmd_Argv(1) );
-		return;
-	}*/
-
 	Com_DPrintf ("Unknown connectionless packet command: %s\n", c);
 }
 
 
-/*
-=================
-CL_DumpPackets
+/// CL_DumpPackets
+///A vain attempt to help bad TCP stacks that cause problems
+/// when they overflow
 
-A vain attempt to help bad TCP stacks that cause problems
-when they overflow
-=================
-*/
-/*void CL_DumpPackets (void)
+/*
+void CL_DumpPackets (void)
 {
 	while (NET_GetPacket (NS_CLIENT, &net_from, &net_message))
 	{
@@ -1164,11 +1148,9 @@ when they overflow
 	}
 }*/
 
-/*
-=================
-CL_ReadPackets
-=================
-*/
+
+/// CL_ReadPackets
+
 void CL_ReadPackets (void)
 {
 	int ret;
@@ -1231,14 +1213,8 @@ void CL_ReadPackets (void)
 	
 }
 
+/// CL_FixUpGender_f
 
-//=============================================================================
-
-/*
-==============
-CL_FixUpGender_f
-==============
-*/
 void CL_FixUpGender(void)
 {
 	char *p;
@@ -1265,25 +1241,20 @@ void CL_FixUpGender(void)
 	}
 }
 
-/*
-==============
-CL_Userinfo_f
-==============
-*/
+/// CL_Userinfo_f
+
 void CL_Userinfo_f (void)
 {
 	Com_Printf ("User info settings:\n");
 	Info_Print (Cvar_Userinfo());
 }
 
-/*
-=================
-CL_Snd_Restart_f
 
-Restart the sound subsystem so it can pick up
-new parameters and flush all sounds
-=================
-*/
+/// CL_Snd_Restart_f
+
+/// Restart the sound subsystem so it can pick up
+/// new parameters and flush all sounds
+
 void CL_Snd_Restart_f (void)
 {
 	S_Shutdown ();
@@ -1832,14 +1803,12 @@ skipplayer:;
 
 }
 
-/*
-=================
-CL_Precache_f
 
-The server will send this command right
-before allowing the client into the server
-=================
-*/
+/// CL_Precache_f
+
+/// The server will send this command right
+/// before allowing the client into the server
+
 void CL_Precache_f (void)
 {
 	//Yet another hack to let old demos work
@@ -2005,11 +1974,9 @@ static void CL_Ups_m( char *buffer, int bufferSize ) {
 	Com_sprintf( buffer, bufferSize, "%d", ups );
 }
 
-/*
-============
-CL_LocalConnect
-============
-*/
+
+/// CL_LocalConnect
+
 void CL_LocalConnect( void ) {
     if ( FS_NeedRestart() ) {
 		if (cls.state > ca_connecting)
@@ -2019,13 +1986,11 @@ void CL_LocalConnect( void ) {
     }
 }
 
-/*
-====================
-CL_RestartFilesystem
+
+/// CL_RestartFilesystem
  
-Flush caches and restart the VFS.
-====================
-*/
+/// Flush caches and restart the VFS.
+
 void VID_Restart_f (void);
 extern int silentSubsystem;
 qboolean CL_IsDisconnected(void)
@@ -2088,11 +2053,9 @@ void CL_RestartFilesystem( qboolean execAutoexec )
     cls.state = cls_state;
 }
 
-/*
-=================
-CL_InitLocal
-=================
-*/
+
+/// CL_InitLocal
+
 void CL_InitLocal (void)
 {
 	cls.state = ca_disconnected;
@@ -2113,17 +2076,14 @@ void CL_InitLocal (void)
 // register our variables
 	cl_stereo_separation = Cvar_Get( "cl_stereo_separation", "0.4", CVAR_ARCHIVE );
 	cl_stereo = Cvar_Get( "cl_stereo", "0", 0 );
-	// =======================================================================
-	    // M-AI-812: Dodane zmienne do personalizacji kolorów efektów
-	    // =======================================================================
-	    // Używane do kontrolowania koloru smugi Railguna (i potencjalnie innych)
+    // Używane do kontrolowania koloru smugi Railguna (i potencjalnie innych)
 	// Użyłem Cvar_Get bez przypisywania do zmiennej globalnej. To jest celowe.
 	// Nie potrzebujemy trzymać wskaźników do tych cvarów przez cały czas – odczytamy ich wartości wtedy, gdy będą potrzebne.
 	// Flaga CVAR_ARCHIVE sprawi, że ich wartości będą zapisywane w konfiguracji gracza.
 	    Cvar_Get("cl_railcolor_r", "0.3", CVAR_ARCHIVE);
 	    Cvar_Get("cl_railcolor_g", "0.5", CVAR_ARCHIVE);
 	    Cvar_Get("cl_railcolor_b", "1.0", CVAR_ARCHIVE);
-	// ===
+	
 
 	cl_add_blend = Cvar_Get ("cl_blend", "1", 0);
 	cl_add_lights = Cvar_Get ("cl_lights", "1", 0);
@@ -2277,14 +2237,10 @@ void CL_InitLocal (void)
 }
 
 
+/// CL_WriteConfiguration
 
-/*
-===============
-CL_WriteConfiguration
+/// Writes key bindings and archived cvars to a config file
 
-Writes key bindings and archived cvars to a config file
-===============
-*/
 void CL_WriteConfiguration (void)
 {
 	FILE	*f;
@@ -2293,10 +2249,10 @@ void CL_WriteConfiguration (void)
 	if (cls.state == ca_uninitialized)
 		return;
 
-	Com_sprintf (path, sizeof(path),"%s/aprconfig.cfg",FS_Gamedir());
+	Com_sprintf (path, sizeof(path),"%s/q2config.cfg",FS_Gamedir());
 	f = fopen (path, "w");
 	if (!f) {
-		Com_Printf ("Couldn't write aprconfig.cfg.\n");
+		Com_Printf ("Couldn't write q2config.cfg.\n");
 		return;
 	}
 
@@ -2306,12 +2262,9 @@ void CL_WriteConfiguration (void)
 	fclose (f);
 }
 
-/*
-===============
-CL_WriteConfig_f
 
-===============
-*/
+/// CL_WriteConfig_f
+
 void CL_WriteConfig_f (void)
 {
 	FILE	*f;
@@ -2342,12 +2295,9 @@ void CL_WriteConfig_f (void)
 	Com_Printf ("Config saved to file %s\n", Cmd_Argv(1));
 }
 
-/*
-==================
-CL_FixCvarCheats
 
-==================
-*/
+/// CL_FixCvarCheats
+
 qboolean CL_CheatsOK(void)
 {
 	if( cls.state < ca_connected || cl.attractloop || Com_ServerState() == ss_demo)
@@ -2364,14 +2314,9 @@ qboolean CL_CheatsOK(void)
 	return false;
 }
 
-//============================================================================
 
-/*
-==================
-CL_Frame
+/// CL_Frame
 
-==================
-*/
 void CL_DemoFrame( int msec );
 void CL_UpdateCmd( int msec );
 
@@ -2475,6 +2420,9 @@ void CL_Frame (int msec)
 	if (!cl.refresh_prepped && cls.state == ca_active)
 		CL_PrepRefresh();
 
+		// update audio
+	S_Update(cl.refdef.vieworg, cl.v_forward, cl.v_right, cl.v_up);
+
 	// update the screen
 	if (host_speeds->integer) {
 		time_before_ref = Sys_Milliseconds();
@@ -2482,20 +2430,13 @@ void CL_Frame (int msec)
 		time_after_ref = Sys_Milliseconds();
 	} else {
 		SCR_UpdateScreen();
-	}
+	}	
 
-	// update audio
-	S_Update(cl.refdef.vieworg, cl.v_forward, cl.v_right, cl.v_up);
+	// IF sound makes lagging videou move S_Update HERE
 
 	if(misc_delta > 99) { // don't need to do this stuff much.
 		// let the mouse activate or deactivate
 		IN_Frame();
-#ifdef CD_AUDIO
-		CDAudio_Update();
-#endif
-#if defined(_WIN32) || defined(WITH_XMMS)
-		MP3_Frame();
-#endif
 		if (cls.spamTime && cls.spamTime < cls.realtime) {
 			Cbuf_AddText ("say \"" APPLICATION " v" VERSION " " CPUSTRING " " BUILDSTRING "\"\n");
 			cls.lastSpamTime = cls.realtime;
@@ -2514,13 +2455,8 @@ void CL_Frame (int msec)
 	//cls.framecount++;
 }
 
-//============================================================================
+/// CL_Init
 
-/*
-====================
-CL_Init
-====================
-*/
 void CL_Init (void)
 {
 	if (dedicated->integer)
@@ -2568,14 +2504,11 @@ void CL_Init (void)
 }
 
 
-/*
-===============
-CL_Shutdown
+/// CL_Shutdown
 
-FIXME: this is a callback from Sys_Quit and Com_Error.  It would be better
-to run quit through here before the final handoff to the sys code.
-===============
-*/
+/// FIXME: this is a callback from Sys_Quit and Com_Error.  It would be better
+/// to run quit through here before the final handoff to the sys code.
+
 void CL_Shutdown(void)
 {
 	static qboolean isdown = false;

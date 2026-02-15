@@ -18,15 +18,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
+// ui_main.c // q2classic
+
 #include "ui_local.h"
 
-/*
-=======================================================================
+/// MAIN MENU
 
-MAIN MENU
-
-=======================================================================
-*/
 #define	MAIN_ITEMS	5
 #define NUM_CURSOR_FRAMES 15
 //static int	m_main_cursor;

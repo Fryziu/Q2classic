@@ -37,6 +37,7 @@ static qboolean snd_inited = false;
 cvar_t *sndbits;
 cvar_t *sndspeed;
 cvar_t *sndchannels;
+extern cvar_t *s_khz;
 
 void Snd_Memset (void* dest, const int val, const size_t count)
 {
@@ -56,6 +57,10 @@ static void sdl_audio_callback (void *unused, Uint8 * stream, int len)
 	if (available >= len)
 	{		
 		S_Audio_Read(stream, len);
+
+		// len to bajty, zamieniamy na sample (16-bit stereo = 4 bajty/sample)
+    	int bytes_per_sample = dma.channels * (dma.samplebits / 8);
+    	atomic_fetch_add(&total_samples_played, len / bytes_per_sample);
 	}
 	else
 	{
@@ -70,66 +75,64 @@ static void sdl_audio_callback (void *unused, Uint8 * stream, int len)
 
 qboolean SNDDMA_Init (void)
 {
-	SDL_AudioSpec desired, obtained;  
-	static qboolean sdl_audio_initialized = false;
+    SDL_AudioSpec desired, obtained;  
+    static qboolean sdl_audio_initialized = false;
 
-	if(snd_inited)
-		return true;
-	
-	if (!sdl_audio_initialized)
-	{
-		if (SDL_Init(SDL_INIT_AUDIO) < 0) {
-			Com_Printf ("Couldn't init SDL audio: %s\n", SDL_GetError());
-			return false;
-		}
-		sdl_audio_initialized = true;
-	}
+    if(snd_inited)
+        return true;
+    
+    if (!sdl_audio_initialized) {
+        if (SDL_Init(SDL_INIT_AUDIO) < 0) {
+            Com_Printf ("Couldn't init SDL audio: %s\n", SDL_GetError());
+            return false;
+        }
+        sdl_audio_initialized = true;
+    }
 
-	if (!sndbits) {
-		sndbits = Cvar_Get("sndbits", "16", CVAR_ARCHIVE);
-		sndspeed = Cvar_Get("sndspeed", "44100", CVAR_ARCHIVE);
-		sndchannels = Cvar_Get("sndchannels", "2", CVAR_ARCHIVE);
-	}
+    // Pobieramy s_khz i s_force_mono (już widoczne dzięki snd_loc.h)
+    int freq = s_khz ? (int)s_khz->value : 44100;
+    int force_mono = s_force_mono ? s_force_mono->integer : 0;
 
-	desired.freq = sndspeed->integer ? sndspeed->integer : 44100;
-	
-	// Wymuszamy S16SYS. Mikser (snd_mix.c) produkuje tylko 16-bit.
-	// Sprzętowa konwersja 8-bit -> 16-bit jest zbędna i szkodliwa przy tym potoku.
-	desired.format = AUDIO_S16SYS;
-	
-	desired.channels = (sndchannels->integer == 1) ? 1 : 2;
-	desired.samples = 1024;
-	desired.callback = sdl_audio_callback;
-	desired.userdata = NULL;
+    // Restrykcyjna walidacja: tylko 44100 lub 48000
+    if (freq != 44100 && freq != 48000) {
+        Com_Printf("Sound: %d Hz is not supported. Forcing 44100 Hz.\n", freq);
+        freq = 44100;
+        Cvar_FullSet("s_khz", "44100", CVAR_ARCHIVE | CVAR_LATCHED);
+    }
 
-	audio_device_id = SDL_OpenAudioDevice(NULL, 0, &desired, &obtained, 0);
-	if (audio_device_id == 0) {
-		Com_Printf ("SDL_OpenAudioDevice() failed: %s\n", SDL_GetError());
-		return false;
-	}
+    desired.freq = freq;
+    desired.format = AUDIO_S16SYS;
+    desired.channels = (s_force_mono && s_force_mono->integer) ? 1 : 2;
+    desired.samples = 512; //1024; // Stabilny bufor dla 44.1/48kHz
+    desired.callback = sdl_audio_callback;
+    desired.userdata = NULL;
 
-	// Poprawne pobranie głębi bitowej z formatu SDL
-	dma.samplebits = SDL_AUDIO_BITSIZE(obtained.format);
-	
-	dma.speed = obtained.freq;
-	dma.channels = obtained.channels;
-	dma.samples = obtained.samples;
-	dma.samplepos = 0;
-	dma.submission_chunk = 1;
-	dma.buffer = NULL;
-  
+    audio_device_id = SDL_OpenAudioDevice(NULL, 0, &desired, &obtained, 0);
+    if (audio_device_id == 0) {
+        Com_Printf ("SDL_OpenAudioDevice() failed: %s\n", SDL_GetError());
+        return false;
+    }
+
+    dma.samplebits = SDL_AUDIO_BITSIZE(obtained.format);
+    dma.speed = obtained.freq;
+    dma.channels = obtained.channels;
+    dma.samples = obtained.samples;
+	dma.samples = AUDIO_RING_BUFFER_SIZE / (dma.channels * (dma.samplebits / 8)); // poprawka
+    dma.samplepos = 0;
+    
     SDL_PauseAudioDevice(audio_device_id, 0);
 
-	snd_inited = true;
-	return true;
+    snd_inited = true;
+    return true;
 }
 
 int SNDDMA_GetDMAPos (void)
 {
 	if(!snd_inited)
 		return 0;
-
-	return dma.samplepos;
+// Silnik oczekuje pozycji w buforze kołowym dma.samples
+    return (int)(atomic_load(&total_samples_played) % dma.samples);
+//	return dma.samplepos;
 }
 
 void SNDDMA_Shutdown (void)

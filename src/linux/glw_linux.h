@@ -17,6 +17,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
+
+// glw_linux.h
+
 #if !( defined __linux__ || defined __FreeBSD__ || defined __APPLE__ )
 #error You should include this file only on Linux/FreeBSD/Apple platforms
 #endif

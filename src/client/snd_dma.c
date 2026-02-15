@@ -17,8 +17,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
+
 // snd_dma.c -- main control for any streaming sound output device
-// Gemini 3 Flash [X-JC-STRICTOR-V2] 2026-02-04
+
 #include "client.h"
 #include "../qcommon/qcommon.h"
 #include "snd_loc.h"
@@ -28,6 +29,81 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 ring_buffer_t s_ringbuffer;
 
+
+static FILE *snd_debug_file = NULL;
+static void S_DebugLog(void)
+{
+    if (s_show->integer != 2) {
+        if (snd_debug_file) {
+            fclose(snd_debug_file);
+            snd_debug_file = NULL;
+        }
+        return;
+    }
+
+    if (!snd_debug_file) {
+        snd_debug_file = fopen("sound_debug.log", "w");
+        if (!snd_debug_file) return;
+        fprintf(snd_debug_file, "time;ch;name;vol_l;vol_r;dist;x;y;z;ent;entchan;auto\n");
+    }
+
+    for (int i = 0; i < MAX_CHANNELS; i++) {
+        channel_t *ch = &channels[i];
+        if (!ch->sfx) continue;
+
+        vec3_t origin, diff;
+        if (ch->fixed_origin) {
+            VectorCopy(ch->origin, origin);
+        } else {
+            CL_GetEntitySoundOrigin(ch->entnum, origin);
+        }
+
+        // Naprawa: VectorDistance -> VectorSubtract + VectorLength
+        VectorSubtract(origin, listener_origin, diff);
+        float dist = VectorLength(diff);
+
+        // Naprawa: cls.framecount -> cls.realtime (czas w ms)
+        fprintf(snd_debug_file, "%i;%i;%s;%i;%i;%.1f;%.1f;%.1f;%.1f;%i;%i;%i\n",
+                cls.realtime, i, ch->sfx->name, ch->leftvol, ch->rightvol,
+                dist, origin[0], origin[1], origin[2], 
+                ch->entnum, ch->entchannel, ch->autosound);
+
+        if (s_show->integer == 2) {
+            Com_Printf("Ch %2i: %-15s V:%3i/%3i D:%4.0f E:%i C:%i %s\n",
+                i, ch->sfx->name, ch->leftvol, ch->rightvol, dist, 
+                ch->entnum, ch->entchannel, ch->autosound ? "[A]" : "");
+        }
+    }
+    fflush(snd_debug_file);
+}
+
+//
+_Atomic long long total_samples_played = 0;
+
+void S_ProcessChannelSamples(channel_t *ch, int samples_done)
+{
+    if (!ch->sfx) return;
+    sfxcache_t *sc = ch->sfx->cache;
+    
+    ch->pos += samples_done;
+
+    if (ch->pos >= sc->length)
+    {
+        if (sc->loopstart >= 0)
+        {   // Precyzyjne zawijanie pętli
+            int loop_len = sc->length - sc->loopstart;
+            if (loop_len > 0)
+                ch->pos = sc->loopstart + (ch->pos - sc->length) % loop_len;
+            else
+                ch->pos = sc->loopstart;
+        }
+        else
+        {
+            ch->sfx = NULL; // Koniec odtwarzania
+        }
+    }
+}
+//
 static void S_Audio_InitRingBuffer(void)
 {
 	atomic_init(&s_ringbuffer.head, 0);
@@ -126,7 +202,7 @@ static sfx_t *S_AliasName (const char *aliasname, const char *truename);
 
 // HRTF
 sound_export_t *snd_backend = &snd_soft_export;
-cvar_t *s_hrtf;
+cvar_t *s_hrtf, *s_occlusion;
 
 
 /// SYSTEM FUNCTIONS
@@ -149,10 +225,12 @@ void S_Init(void)
 	if (!s_sound_mutex) s_sound_mutex = SDL_CreateMutex();
 	if (!s_sound_mutex) Com_Error(ERR_FATAL, "S_Init: Could not create sound mutex!");
 
+	s_occlusion = Cvar_Get("s_occlusion", "0", CVAR_ARCHIVE | CVAR_LATCHED);
+
 	s_volume = Cvar_Get ("s_volume", "0.7", CVAR_ARCHIVE);
 	s_loadas8bit = Cvar_Get ("s_loadas8bit", "0", CVAR_ARCHIVE|CVAR_LATCHED);
-	s_khz = Cvar_Get ("s_khz", "22", CVAR_ARCHIVE|CVAR_LATCHED);
-	s_mixahead = Cvar_Get ("s_mixahead", "0.2", CVAR_ARCHIVE);
+	s_khz = Cvar_Get ("s_khz", "44100", CVAR_ARCHIVE|CVAR_LATCHED);
+	s_mixahead = Cvar_Get ("s_mixahead", "0.03", CVAR_ARCHIVE);
 	s_show = Cvar_Get ("s_show", "0", 0);
 	s_testsound = Cvar_Get ("s_testsound", "0", 0);
 	s_swapstereo = Cvar_Get( "s_swapstereo", "0", CVAR_ARCHIVE );
@@ -160,7 +238,7 @@ void S_Init(void)
 	s_oldresample = Cvar_Get ("s_oldresample", "0", CVAR_LATCHED);
 	s_quality = Cvar_Get ("s_quality", "0", CVAR_ARCHIVE);
 	s_sdl_resample = Cvar_Get("s_sdl_resample", "1", CVAR_LATCHED);
-	s_force_mono = Cvar_Get("s_force_mono", "1", CVAR_LATCHED);
+	s_force_mono = Cvar_Get("s_force_mono", "0", CVAR_LATCHED | CVAR_ARCHIVE);
 	s_sound_overlap = Cvar_Get("s_sound_overlap", "0", CVAR_ARCHIVE);
 
 	s_sdl_resample->OnChange = OnChange_SoundRestart;
@@ -176,8 +254,11 @@ void S_Init(void)
 	if (SNDDMA_Init()) {
 		sound_started = true;
 	 // Inicjalizacja wybranego backendu (np. Steam Audio Context)
-        if (snd_backend->Init) {
-            snd_backend->Init();
+        if (snd_backend->Init && !snd_backend->Init()) {
+            Com_Printf("Sound: %s backend failed to init. Falling back to Software.\n", snd_backend->name);
+            snd_backend = &snd_soft_export;
+            if (snd_backend->Init) snd_backend->Init();
+            Cvar_FullSet("s_hrtf", "0", CVAR_ARCHIVE | CVAR_LATCHED);
         }
 
 		s_registration_sequence = 1;
@@ -192,18 +273,6 @@ void S_Init(void)
 		Cmd_AddCommand("soundinfo", S_SoundInfo_f);
 	}
 
-	
-	// HRTF
-//snd_backend = &snd_soft_export; // unfinished bussiness :-)
-	/*
-	    s_hrtf = Cvar_Get("s_hrtf", "0", CVAR_LATCHED);
-    
-    	if (s_hrtf->integer == 1) {
-    	snd_backend = &snd_hrtf_export;
-		} else {
-    	snd_backend = &snd_soft_export;
-		}
-*/
     Com_Printf("Sound backend: %s\n", snd_backend->name);
 }
 
@@ -227,6 +296,11 @@ void S_FreeAllSounds(void)
 void S_Shutdown(void)
 {
 	if (!sound_started) return;
+
+	 if (snd_debug_file) {
+        fclose(snd_debug_file);
+        snd_debug_file = NULL;
+    }
 
     if (snd_backend->Shutdown) {
         snd_backend->Shutdown();
@@ -349,6 +423,8 @@ void S_StopAllSounds(void)
 	atomic_store(&s_ringbuffer.head, current_tail);	
 	
 	memset(s_ringbuffer.buffer, 0, AUDIO_RING_BUFFER_SIZE);
+//
+	atomic_store(&total_samples_played, 0);
 
 	SDL_UnlockMutex(s_sound_mutex);
 }
@@ -449,17 +525,31 @@ void S_AddLoopSounds (void)
         ch->fixed_origin = false; 
         
         // 2. Rakiety używają zazwyczaj ATTN_NORM (1.0) -> 0.0005f
-        ch->dist_mult = 1.0f * 0.0005f; 
+        ch->dist_mult = 1.0f * 0.002f;  //1.0f * 0.0005f;  // dźwięk "lotu" rakiety? 
 
         S_Spatialize(ch);
     }
 }
 
 /// HRTF
+
 void S_Update(const vec3_t origin, const vec3_t v_forward, const vec3_t v_right, const vec3_t v_up) {
     if (!sound_started) return;
    
     snd_backend->Update(origin, v_forward, v_right, v_up);
+
+    // Wywołanie debugowania po aktualizacji backendu
+    if (s_show->integer > 0) {
+        if (s_show->integer == 1) {
+            // Standardowy s_show 1 (minimalistyczny)
+            for (int i = 0; i < MAX_CHANNELS; i++) {
+                if (channels[i].sfx) 
+                    Com_Printf("Ch %i: %s vol: %i\n", i, channels[i].sfx->name, channels[i].leftvol);
+            }
+        } else {
+            S_DebugLog();
+        }
+    }
 }
 
 static channel_t *S_PickChannel(int entnum, int entchannel)
@@ -490,19 +580,115 @@ static channel_t *S_PickChannel(int entnum, int entchannel)
 	return &channels[first_to_die];
 }
 
-void S_Spatialize(channel_t *ch)
+
+// snd_dma.c
+/*
+// advanced panning and logarithmic volume version (needs modified MODIFIERS :-)
+static void S_SpatializeOrigin(vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol)
 {
-	vec3_t origin;
-	if (ch->entnum == cl.playernum+1) {
-		ch->leftvol = ch->master_vol;
-		ch->rightvol = ch->master_vol;
-		return;
-	}
-	if (ch->fixed_origin) VectorCopy (ch->origin, origin);
-	else CL_GetEntitySoundOrigin (ch->entnum, origin);
-	S_SpatializeOrigin (origin, ch->master_vol, ch->dist_mult, &ch->leftvol, &ch->rightvol);
+    vec3_t source_vec;
+    float dist, scale;
+
+    if (cls.state != ca_active) {
+        *left_vol = *right_vol = (int)master_vol;
+        return;
+    }
+
+    VectorSubtract(origin, listener_origin, source_vec);
+    dist = VectorNormalize(source_vec);
+
+    // 1. Model Logarytmiczny
+    if (dist <= SOUND_FULLVOLUME) {
+        scale = 1.0f;
+    } else {
+        // scale = ref / (ref + rolloff * (dist - ref))
+        // dist_mult w Q2 to zazwyczaj wartości typu 1.0, 2.0, 4.0
+        scale = SOUND_FULLVOLUME / (SOUND_FULLVOLUME + dist_mult * (dist - SOUND_FULLVOLUME));
+    }
+
+    if (scale <= 0.001f) { // Hard cutoff dla wydajności miksera (niesłyszalne)
+        *left_vol = *right_vol = 0;
+        return;
+    }
+
+    if (dma.channels == 1 || !dist_mult) {
+        *left_vol = *right_vol = (int)(master_vol * scale);
+    } else {
+        float dot = DotProduct(listener_right, source_vec);
+
+        // Panning: Constant Power z progiem 10% (SSE)
+        float p_right = 0.5f * (1.0f + dot);
+        float p_left  = 0.5f * (1.0f - dot);
+
+        __m128 v_p = _mm_set_ps(0.0f, 0.0f, p_left, p_right);
+        __m128 v_sqrt = _mm_sqrt_ps(v_p);
+        
+        float res[4];
+        _mm_storeu_ps(res, v_sqrt);
+
+        // Aplikujemy 10% floor i master volume
+        float rscale = (0.1f + 0.9f * res[0]);
+        float lscale = (0.1f + 0.9f * res[1]);
+
+        *right_vol = (int)(master_vol * scale * rscale);
+        *left_vol  = (int)(master_vol * scale * lscale);
+    }
+}
+*/
+
+// advanced panning version
+static void S_SpatializeOrigin(vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol)
+{
+    vec3_t source_vec;
+    float dot, dist, scale;
+
+    if (cls.state != ca_active) {
+        *left_vol = *right_vol = (int)master_vol;
+        return;
+    }
+
+    VectorSubtract(origin, listener_origin, source_vec);
+    dist = VectorNormalize(source_vec);
+
+    dist -= SOUND_FULLVOLUME;
+    if (dist < 0) dist = 0;
+
+    dist *= dist_mult;
+    scale = 1.0f - dist;
+
+    if (scale <= 0) {
+        *left_vol = *right_vol = 0;
+        return;
+    }
+
+    if (dma.channels == 1 || !dist_mult) {
+        *left_vol = *right_vol = (int)(master_vol * scale);
+    } else {
+        dot = DotProduct(listener_right, source_vec);
+
+        // Obliczamy proporcje (p) dla obu kanałów: R = 0.5*(1+dot), L = 0.5*(1-dot)
+        float p_right = 0.5f * (1.0f + dot);
+        float p_left  = 0.5f * (1.0f - dot);
+
+        // Optymalizacja SSE: Obliczamy sqrt dla obu kanałów naraz
+        __m128 v_p = _mm_set_ps(0.0f, 0.0f, p_left, p_right);
+        __m128 v_sqrt = _mm_sqrt_ps(v_p);
+        
+        float res[4];
+        _mm_storeu_ps(res, v_sqrt);
+
+        // Aplikujemy floor 10% i master_vol: 0.1 + 0.9 * sqrt(p)
+        float rscale = (0.1f + 0.9f * res[0]);
+        float lscale = (0.1f + 0.9f * res[1]);
+
+        *right_vol = (int)(master_vol * scale * rscale);
+        *left_vol  = (int)(master_vol * scale * lscale);
+    }
 }
 
+
+/// traditional version
+/*
 static void S_SpatializeOrigin (vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol)
 {
     vec_t dot, dist, lscale, rscale, scale;
@@ -539,6 +725,124 @@ static void S_SpatializeOrigin (vec3_t origin, float master_vol, float dist_mult
 
     *right_vol = (int)(master_vol * scale * rscale);
     *left_vol  = (int)(master_vol * scale * lscale);
+}
+*/
+/*
+// parabolic version
+static void S_SpatializeOrigin (vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol)
+{
+    vec_t   dot, dist, scale;
+    vec3_t  source_vec;
+
+    if (cls.state != ca_active) {
+        *left_vol = *right_vol = (int)master_vol;
+        return;
+    }
+
+    VectorSubtract(origin, listener_origin, source_vec);
+
+    // 1. Dystans - powrót do czystej liniowości zgodnie z życzeniem
+    dist = VectorNormalize(source_vec);
+    dist -= SOUND_FULLVOLUME;
+    if (dist < 0) dist = 0;
+    
+    scale = 1.0f - (dist * dist_mult);
+    if (scale <= 0) {
+        *left_vol = *right_vol = 0;
+        return;
+    }
+
+    if (dma.channels == 1 || !dist_mult) {
+        *left_vol = *right_vol = (int)(master_vol * scale);
+    } else {
+        dot = DotProduct(listener_right, source_vec);
+        
+        // 2. Panoramowanie "GUST" (Krzywa kwadratowa dopasowana do 10%, 70%, 100%)
+        // Funkcja dla ucha prawego: f(dot) = -0.15*dot^2 + 0.45*dot + 0.7
+        // dot =  1 (prawa): -0.15 + 0.45 + 0.7 = 1.00 (100%)
+        // dot =  0 (środek):  0.00 + 0.00 + 0.7 = 0.70 (70%)
+        // dot = -1 (lewa):   -0.15 - 0.45 + 0.7 = 0.10 (10%)
+        
+        float dot2 = dot * dot;
+        float rscale = -0.15f * dot2 + 0.45f * dot + 0.7f;
+        float lscale = -0.15f * dot2 - 0.45f * dot + 0.7f;
+
+        *right_vol = (int)(master_vol * scale * rscale);
+        *left_vol  = (int)(master_vol * scale * lscale);
+    }
+}
+*/
+// quadratic version
+/*
+static void S_SpatializeOrigin (vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol)
+{
+    vec3_t source_vec;
+    float dot, dist, scale;
+
+    if (cls.state != ca_active) {
+        *left_vol = *right_vol = (int)master_vol;
+        return;
+    }
+
+    VectorSubtract(origin, listener_origin, source_vec);
+    dist = VectorLength(source_vec);
+
+    dist -= SOUND_FULLVOLUME;
+    if (dist < 0) dist = 0;
+    scale = 1.0f - (dist * dist_mult);
+
+    if (scale <= 0) {
+        *left_vol = *right_vol = 0;
+        return;
+    }
+
+    float q_scale = scale * scale;
+
+    if (dma.channels == 1 || !dist_mult) {
+        *left_vol = *right_vol = (int)(master_vol * q_scale);
+    } else {
+        VectorNormalize(source_vec);
+        dot = DotProduct(listener_right, source_vec);
+        
+        // GUST: Constant Power Panning (stała moc w środku)
+        // Przybliżenie: pan_r = 0.5 * (1 + dot), rscale = sqrt(pan_r)
+        // Zamiast sqrt używamy wydajnego przybliżenia wielomianem
+        float pan_r = 0.5f * (1.0f + dot);
+        float pan_l = 1.0f - pan_r;
+        
+        // Bleed 15% + Constant Power Approximation
+        float rscale = 0.15f + 0.85f * (pan_r * (1.5f - 0.5f * pan_r));
+        float lscale = 0.15f + 0.85f * (pan_l * (1.5f - 0.5f * pan_l));
+
+        *right_vol = (int)(master_vol * q_scale * rscale);
+        *left_vol  = (int)(master_vol * q_scale * lscale);
+    }
+}
+*/
+
+void S_Spatialize(channel_t *ch)
+{
+    vec3_t origin;
+
+    // Jeśli dźwięk jest przypisany do gracza...
+    if (ch->entnum == cl.playernum + 1) 
+    {
+        // ...ale nie ma tłumienia (dist_mult == 0), to jest to dźwięk 2D (menu, powerupy)
+        if (ch->dist_mult <= 0) {
+            ch->leftvol = ch->master_vol;
+            ch->rightvol = ch->master_vol;
+            return;
+        }
+        // W przeciwnym razie (np. lot rakiety, kroki) pozwól na normalną spatializację
+    }
+
+    if (ch->fixed_origin) {
+        VectorCopy(ch->origin, origin);
+    } else {
+        CL_GetEntitySoundOrigin(ch->entnum, origin);
+    }
+
+    S_SpatializeOrigin(origin, ch->master_vol, ch->dist_mult, &ch->leftvol, &ch->rightvol);
 }
 
 /// REGISTRATION
@@ -712,10 +1016,10 @@ void S_IssuePlaysound(playsound_t *ps) {
     // MATEMATYKA Q2PRO/SOFTWARE:
     if (ps->attenuation <= 0)
         ch->dist_mult = 0;
-    else if (ps->attenuation >= 3.0f) // ATTN_STATIC i wyższe
-        ch->dist_mult = ps->attenuation * 0.001f;
-    else // ATTN_NORM (1.0) i inne
-        ch->dist_mult = ps->attenuation * 0.0005f;
+    else if (ps->attenuation >= 3.0f) // ATTN_STATIC (plats, doors) 
+        ch->dist_mult = ps->attenuation * 0.001f; //  było głośniej 0.001f
+    else // ATTN_NORM (explosions, shots, pickups) 
+        ch->dist_mult = ps->attenuation * 0.0005f; // było głośniej 0.0005f
     
     S_Spatialize(ch);
     ch->pos = 0;

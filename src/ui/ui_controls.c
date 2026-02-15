@@ -18,15 +18,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
+// ui_controls.c
+
 #include "ui_local.h"
 
-/*
-=======================================================================
+/// CONTROLS MENU
 
-CONTROLS MENU
-
-=======================================================================
-*/
 
 #ifdef JOYSTICK
 extern cvar_t *in_joystick;
@@ -122,21 +119,13 @@ static void ControlsSetMenuItemValues( void )
 	s_options_cdvolume_box.curvalue 		= !Cvar_VariableValue("cd_nocd");
 #endif
 
-	// --- KLUCZOWA POPRAWKA: Odczytujemy 'sndspeed' a nie 's_khz' i obsługujemy wszystkie wartości ---
-	switch((int)Cvar_VariableValue("sndspeed"))
-	{
-		case 48000: s_options_quality_list.curvalue = 3; break;
-		case 44100: s_options_quality_list.curvalue = 2; break;
-		case 22050: s_options_quality_list.curvalue = 1; break;
-		case 11025: s_options_quality_list.curvalue = 0; break;
-		default: s_options_quality_list.curvalue = 2; break; // Domyślnie 'High'
-	}
 
-	//s_options_quality_list.curvalue			= !Cvar_VariableValue( "s_loadas8bit" );
-	s_options_sensitivity_slider.curvalue	= ( sensitivity->value ) * 2;
-
-	Cvar_SetValue( "cl_run", ClampCvar( 0, 1, cl_run->value ) );
-	s_options_alwaysrun_box.curvalue		= cl_run->value;
+	s_options_quality_list.curvalue = ( (int)Cvar_VariableValue("sndspeed") == 48000 );
+ 
+	s_options_compatibility_list.curvalue = (int)Cvar_VariableValue("s_hrtf");
+ 	s_options_sensitivity_slider.curvalue	= ( sensitivity->value ) * 2;
+ 
+ 	Cvar_SetValue( "cl_run", ClampCvar( 0, 1, cl_run->value ) );
 
 	s_options_invertmouse_box.curvalue		= m_pitch->value < 0;
 
@@ -206,9 +195,9 @@ extern void Key_ClearTyping( void );
 
 void ConsoleFunc( void *unused )
 {
-	/*
-	** the proper way to do this is probably to have ToggleConsole_f accept a parameter
-	*/
+	
+	// the proper way to do this is probably to have ToggleConsole_f accept a parameter
+	
 	if ( cl.attractloop )
 	{
 		Cbuf_AddText ("killserver\n");
@@ -220,22 +209,34 @@ void ConsoleFunc( void *unused )
 
 	M_ForceMenuOff ();
 	cls.key_dest = key_console;
-}
-// sound engine is rewritten, so this function can be erased (KOMENTARZ JUŻ NIEAKTUALNY)
+	}
+	
+	 
 static void UpdateSoundQualityFunc( void *unused )
-{
-	// Tablica wartości odpowiadająca liście 'quality_items'
-	static int quality_values[] = { 11025, 22050, 44100, 48000 };
+ {
 
-	// Ustaw nową wartość cvara 'sndspeed' na podstawie wyboru w menu
-	Cvar_SetValue( "sndspeed", quality_values[s_options_quality_list.curvalue] );
+ 	static int quality_values[] = { 44100, 48000 };
+	float engine_state = (float)s_options_compatibility_list.curvalue;
 
-	// Ustaw cvar 's_primary' (kompatybilność)
-	Cvar_SetValue( "s_primary", s_options_compatibility_list.curvalue );
+	// Aktualizacja opisu na dolnym pasku
+	if (s_options_compatibility_list.curvalue == 1)
+		Menu_SetStatusBar(&s_options_menu, "Binaural: 3D HRTF spatial audio (best for headphones)");
+	else
+		Menu_SetStatusBar(&s_options_menu, "Classic: Traditional stereo panning"); 
 
-	// Zleć restart systemu dźwięku, aby zastosować zmiany
-	Cbuf_AddText("snd_restart\n");
+	// Częstotliwość próbkowania
+ 	Cvar_SetValue( "sndspeed", quality_values[s_options_quality_list.curvalue] );
+ 
+
+	// Silnik dźwięku: 0 = SDL2, 1 = Steam Audio (HRTF)
+	Cvar_SetValue( "s_hrtf", engine_state );
+	Cvar_SetValue( "s_sound_overlap", engine_state );
+	Cvar_SetValue( "s_occlusion", engine_state );
+ 
+
+ 	Cbuf_AddText("snd_restart\n");
 }
+
 static void Options_MenuDraw ( menuframework_s *self )
 {
 	M_Banner( "m_banner_options" );
@@ -257,17 +258,17 @@ void Options_MenuInit( void )
 #endif
 	static const char *quality_items[] =
 	{
-		"Low (11kHz)",
-		"Medium (22kHz)",
-		"High (44kHz)",
-		"Very High (48kHz)",
+		"Standard (44,1kHz)",
+		"High (48kHz)",
 		0
 	};
 
-	static const char *compatibility_items[] =
-	{
-		"max compatibility", "max performance", 0
-	};
+	
+	static const char *engine_items[] =
+ 	{
+
+		"Classic (SDL2)", "Binaural (Steam Audio)", 0
+ 	};
 
 	static const char *yesno_names[] =
 	{
@@ -285,26 +286,9 @@ void Options_MenuInit( void )
 		0
 	};
 
-	// --- KLUCZOWA POPRAWKA: Również tutaj odczytujemy 'sndspeed' ---
-	squality = Cvar_VariableIntValue("sndspeed");
-
-	switch (squality)	{
-		case 11025: // <-- Poprawiamy wartość
-			squality = 0;
-			break;
-		case 22050: // <-- Poprawiamy wartość
-			squality = 1;
-			break;
-		case 44100: // <-- Poprawiamy wartość
-			squality = 2;
-			break;
-		case 48000: // <-- Poprawiamy wartość
-			squality = 3;
-			break;
-		default:
-			squality = 2; // <-- Domyślnie 'High'
-			break;
-	}
+	
+	squality = (Cvar_VariableIntValue("sndspeed") == 48000);
+ 
 
 	/*
 	** configure controls menu and menu items
@@ -343,10 +327,11 @@ void Options_MenuInit( void )
 	s_options_compatibility_list.generic.type	= MTYPE_SPINCONTROL;
 	s_options_compatibility_list.generic.x		= 0;
 	s_options_compatibility_list.generic.y		= y += 10;
-	s_options_compatibility_list.generic.name	= "sound compatibility";
+	s_options_compatibility_list.generic.name	= "sound engine";
 	s_options_compatibility_list.generic.callback = UpdateSoundQualityFunc;
-	s_options_compatibility_list.itemnames		= compatibility_items;
-	s_options_compatibility_list.curvalue		= Cvar_VariableIntValue( "s_primary" );
+	s_options_compatibility_list.itemnames		= engine_items;
+	s_options_compatibility_list.curvalue		= Cvar_VariableIntValue( "s_hrtf" );
+	
 
 	s_options_sensitivity_slider.generic.type	= MTYPE_SLIDER;
 	s_options_sensitivity_slider.generic.x		= 0;

@@ -17,14 +17,18 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
+
 // snd_mix.c -- portable code to mix sounds for snd_dma.c
-// Gemini 3 Flash [X-JC-STRICTOR-V2] 2026-02-04
+
+#include <emmintrin.h> // SSE2
+#include <smmintrin.h> // SSE4.1 for S_PaintChannelFrom16 & S_TransferPaintBuffer
 #include "client.h"
 #include "snd_loc.h"
 #include "SDL2/SDL.h"
 
+
 #define	PAINTBUFFER_SIZE	2048
-static portable_samplepair_t paintbuffer[PAINTBUFFER_SIZE];
+static portable_samplepair_t paintbuffer[PAINTBUFFER_SIZE] __attribute__((aligned(16)));
 
 /// Mixing and Transfer Functions
 
@@ -34,35 +38,45 @@ void S_TransferPaintBuffer(int endtime)
     if (count <= 0) return;
     if (count > PAINTBUFFER_SIZE) count = PAINTBUFFER_SIZE;
 
-    static short pcm_buffer[PAINTBUFFER_SIZE * 2];
+    static short pcm_buffer[PAINTBUFFER_SIZE * 2] __attribute__((aligned(16)));
     
-    // Wskaźniki z restrict
-    const portable_samplepair_t * restrict in = paintbuffer;
-    short * restrict out = pcm_buffer;
-    
-    for (int i = 0; i < count; i++)
+    int i = 0;
+    // Przetwarzamy po 8 sampli (16 wartości L/R) na raz
+    for (; i <= count - 8; i += 8)
     {
-        // Przesunięcie bitowe >> 8 jest szybkie i zgodne z tablicą głośności (x256).
-        // Ręczny clamping jest bardziej czytelny dla kompilatora niż generyczne makro bound().
-        
-        int l = in[i].left >> 8;
-        int r = in[i].right >> 8;
+        // Załadowanie 32-bitowych intów (L, R) - paintbuffer musi być aligned 16!
+        __m128i in01 = _mm_load_si128((__m128i*)&paintbuffer[i]);     
+        __m128i in23 = _mm_load_si128((__m128i*)&paintbuffer[i + 2]); 
+        __m128i in45 = _mm_load_si128((__m128i*)&paintbuffer[i + 4]); 
+        __m128i in67 = _mm_load_si128((__m128i*)&paintbuffer[i + 6]); 
 
-        if (l > 32767) l = 32767;
-        else if (l < -32768) l = -32768;
+        // Skalowanie o 8 bitów (Quake 2 mixer standard)
+        in01 = _mm_srai_epi32(in01, 8);
+        in23 = _mm_srai_epi32(in23, 8);
+        in45 = _mm_srai_epi32(in45, 8);
+        in67 = _mm_srai_epi32(in67, 8);
 
-        if (r > 32767) r = 32767;
-        else if (r < -32768) r = -32768;
+        // Pakowanie z nasyceniem (32-bit int -> 16-bit short)
+        // _mm_packs_epi32 automatycznie dba o to, by wartości nie wyszły poza -32768 do 32767
+        __m128i packed03 = _mm_packs_epi32(in01, in23); 
+        __m128i packed47 = _mm_packs_epi32(in45, in67); 
 
-        out[i * 2]     = (short)l;
-        out[i * 2 + 1] = (short)r;
-    }   
+        _mm_store_si128((__m128i*)&pcm_buffer[i * 2], packed03);
+        _mm_store_si128((__m128i*)&pcm_buffer[(i + 4) * 2], packed47);
+    }
 
-    // Zakładamy 16-bit, bo tak ustawiliśmy w snd_sdl.c
-    int bytes_to_write = count * 2 * sizeof(short); 
-    S_Audio_Write(pcm_buffer, bytes_to_write);
+    // Pozostałe sample (tail) wykonujemy skalarnie
+    for (; i < count; i++) {
+        int l = paintbuffer[i].left >> 8;
+        int r = paintbuffer[i].right >> 8;
+        pcm_buffer[i * 2]     = (short)bound(-32768, l, 32767);
+        pcm_buffer[i * 2 + 1] = (short)bound(-32768, r, 32767);
+    }
+
+    S_Audio_Write(pcm_buffer, count * dma.channels * sizeof(short));
 }
 
+///
 void S_PaintChannelFrom8 (channel_t *ch, sfxcache_t *sc, int count, int offset)
 {
 	(void)ch;
@@ -77,44 +91,67 @@ void S_PaintChannelFrom8 (channel_t *ch, sfxcache_t *sc, int count, int offset)
 
 void S_PaintChannelFrom16 (channel_t *ch, sfxcache_t *sc, int count, int offset)
 {
-    float vol = s_volume->value;
-    int leftvol = (int)(ch->leftvol * vol);
-    int rightvol = (int)(ch->rightvol * vol);
+    int leftvol = (int)(ch->leftvol * s_volume->value);
+    int rightvol = (int)(ch->rightvol * s_volume->value);
 
-    // Optymalizacja: Pomiń ciszę
-    if (leftvol <= 0 && rightvol <= 0)
-    {
-        ch->pos += count;
+    if (leftvol <= 0 && rightvol <= 0) {
+        S_ProcessChannelSamples(ch, count);
         return;
     }
 
-    // Użycie 'restrict' informuje kompilator, że te obszary pamięci się nie nakładają.
-    // Umożliwia to agresywną wektoryzację (SSE/AVX).
     portable_samplepair_t * restrict samp = &paintbuffer[offset];
-    
-    // Pobieramy wskaźnik na dane
     const short * restrict sfx_data = (const short *)sc->data;
-
     int pos = ch->pos;
 
-    if (sc->channels == 1) // Mono
+    // Przygotuj wektor głośności: [R, L, R, L] (mapowanie do struktury portable_samplepair_t)
+    __m128i v_vol = _mm_set_epi32(rightvol, leftvol, rightvol, leftvol);
+
+    int i = 0;
+    if (sc->channels == 1) // MONO
     {
-        for (int i = 0; i < count; i++) {
-            int sample = sfx_data[pos + i];
-            samp[i].left  += (sample * leftvol);
-            samp[i].right += (sample * rightvol);
+        for (; i <= count - 2; i += 2) {
+            short s0 = sfx_data[pos + i];
+            short s1 = sfx_data[pos + i + 1];
+
+            // Tworzymy wektor 4 krótkich wartości: [s1, s1, s0, s0]
+            // i rozszerzamy je do 32-bitowych intów w jednym kroku SSE4.1
+            __m128i s16 = _mm_set_epi16(0, 0, 0, 0, s1, s1, s0, s0);
+            __m128i s32 = _mm_cvtepi16_epi32(s16); 
+
+            __m128i mixed = _mm_mullo_epi32(s32, v_vol);
+            __m128i dest = _mm_loadu_si128((__m128i*)&samp[i]);
+            _mm_storeu_si128((__m128i*)&samp[i], _mm_add_epi32(dest, mixed));
         }
     }
-    else // Stereo
+    else // STEREO
     {
-        for (int i = 0; i < count; i++) {
-            int idx = (pos + i) * 2;
-            samp[i].left  += (sfx_data[idx] * leftvol);
-            samp[i].right += (sfx_data[idx+1] * rightvol);
+        for (; i <= count - 2; i += 2) {
+            // Ładujemy 4 wartości 16-bit (L0, R0, L1, R1) bezpośrednio
+            __m128i s16 = _mm_loadl_epi64((const __m128i *)&sfx_data[(pos + i) * 2]);
+            // Rozszerzamy dolne 64-bity (4 shorts) do 128-bitów (4 ints)
+            __m128i s32 = _mm_cvtepi16_epi32(s16);
+
+            __m128i mixed = _mm_mullo_epi32(s32, v_vol);
+            __m128i dest = _mm_loadu_si128((__m128i*)&samp[i]);
+            _mm_storeu_si128((__m128i*)&samp[i], _mm_add_epi32(dest, mixed));
         }
     }
-    ch->pos += count;
+
+    // Tail (skalarny fallback)
+    for (; i < count; i++) {
+        if (sc->channels == 1) {
+            int s = sfx_data[pos + i];
+            samp[i].left  += s * leftvol;
+            samp[i].right += s * rightvol;
+        } else {
+            samp[i].left  += sfx_data[(pos + i) * 2] * leftvol;
+            samp[i].right += sfx_data[(pos + i) * 2 + 1] * rightvol;
+        }
+    }
+
+    S_ProcessChannelSamples(ch, count);
 }
+
 
 /// S_PaintChannels: The Heart of the Mixer 
 
@@ -153,6 +190,12 @@ void S_PaintChannels(int endtime)
         {
             channel_t *ch = &channels[i];
             if (!ch->sfx || (!ch->leftvol && !ch->rightvol)) continue;
+
+              // DYNAMICZNA AKTUALIZACJA:
+            // Jeśli dźwięk podąża za encją (!fixed_origin), uaktualnij jego pozycję L/R
+            if (!ch->fixed_origin) {
+                S_Spatialize(ch); 
+            }
 
             sfxcache_t *sc = ch->sfx->cache;
             if (!sc) continue;
@@ -223,8 +266,6 @@ void S_MixAudio(void)
 static void S_Soft_Update(const vec3_t origin, const vec3_t v_forward, const vec3_t v_right, const vec3_t v_up) {
 	if (!sound_started) return;
 
-	S_MixAudio();
-
 	if (cls.disable_screen) return;
 	s_volume->modified = false; 
 
@@ -263,6 +304,7 @@ static void S_Soft_Update(const vec3_t origin, const vec3_t v_forward, const vec
 			}
 		}
 	}
+    S_MixAudio();
 }
 
 sound_export_t snd_soft_export = {

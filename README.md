@@ -1,23 +1,10 @@
-# Quake II Classic Client for GNU/Linux with Steam Audio support (binaural sound)
+# Quake II Classic Client for GNU/Linux
 
 ![Quake II classic for Linux](github-screenshot.jpg)
 
-
-REQUIRED Steam Audio `libphonon.so` library in the .quake2 directory!
----
-
-Download C API(ZIP) from:
-[https://valvesoftware.github.io/steam-audio/downloads.html](https://valvesoftware.github.io/steam-audio/downloads.html)
-
-Extract `libphonon.so` library from the zip file `steamaudio/lib/linux-x64/libphonon.so` into the .quake2 directory!
-
-Or extract from the included file `libphonon.so.zip` that you can find in the `linux/libphonon.so.zip` in this project.
-
-* In the console type *s_hrtf 1*
-
 ## Acknowledgement
 
-This repository is a streamlined fork of [jdolan/quake2](https://github.com/jdolan/quake2). It includes only the essential source code, excluding the large `.pack` data file for a more lightweight repository. Credit is due to jdolan for their work, which saved Linux base code that made these fixes and improvements possible.
+This repository is a streamlined fork of [jdolan/quake2](https://github.com/jdolan/quake2). It includes only the essential source code, excluding the large `.pack` data file for a more lightweight repository. Credit is due to jdolan for their work, which provided a modern, compilable Linux base that made these fixes and improvements possible.
 
 ## Overview
 
@@ -62,7 +49,7 @@ git – version control system used to clone the repository and manage source co
 Next, install the libraries required by the game:
 
 ```bash
-sudo apt-get install libpng-dev libjpeg-dev libcurl4-openssl-dev libsdl2-dev -y
+sudo apt-get install libpng-dev libjpeg-dev libcurl4-openssl-dev libsdl1.2-dev libsdl2-dev -y
 ```
 Dependencies overview
 

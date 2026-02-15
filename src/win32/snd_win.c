@@ -221,9 +221,7 @@ static sndinitstat SNDDMA_InitDirect (void)
 
 	switch (s_khz->integer) {
 		case 48: dma.speed = 48000; break;
-		case 44: dma.speed = 44100; break;
-		case 22: dma.speed = 22050; break;
-		default: dma.speed = 11025; break;
+		default: dma.speed = 44100; break;	
 	}
 
 	Com_Printf( "Initializing DirectSound\n");
@@ -580,9 +578,7 @@ static qboolean SNDDMA_InitWav (void)
 
 	switch (s_khz->integer) {
 		case 48: dma.speed = 48000; break;
-		case 44: dma.speed = 44100; break;
-		case 22: dma.speed = 22050; break;
-		default: dma.speed = 11025; break;
+		default: dma.speed = 44100; break;		
 	}
 
 	memset (&format, 0, sizeof(format));

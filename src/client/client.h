@@ -36,7 +36,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <curl/curl.h>
 #endif
 
-//=============================================================================
 
 typedef struct
 {
@@ -229,14 +228,8 @@ typedef struct
 
 extern	client_state_t	cl;
 
-/*
-==================================================================
+/// the client_static_t structure is persistant through an arbitrary number of server connections
 
-the client_static_t structure is persistant through an arbitrary number
-of server connections
-
-==================================================================
-*/
 typedef struct playerStatus_s {
 	char name[16];
 	int ping;
@@ -347,7 +340,6 @@ typedef struct
 
 extern client_static_t	cls;
 
-//=============================================================================
 
 //
 // cvars
@@ -448,7 +440,6 @@ extern	centity_t	cl_entities[MAX_EDICTS];
 #define PARSE_ENTITIES_MASK		( MAX_PARSE_ENTITIES - 1 )
 extern	entity_state_t	cl_parse_entities[MAX_PARSE_ENTITIES];
 
-//=============================================================================
 
 extern	netadr_t	net_from;
 extern	sizebuf_t	net_message;
@@ -499,10 +490,6 @@ void CL_ParticleEffect2 (const vec3_t org, const vec3_t dir, int color, int coun
 // RAFAEL
 void CL_ParticleEffect3 (const vec3_t org, const vec3_t dir, int color, int count);
 
-
-//=================================================
-
-// ========
 // PGM
 typedef struct particle_s
 {
@@ -526,7 +513,7 @@ typedef struct particle_s
 // PMM
 #define INSTANT_PARTICLE	-10000.0
 // PGM
-// ========
+
 
 void CL_ClearEffects (void);
 void CL_ClearTEnts (void);
@@ -539,7 +526,6 @@ void CL_FlagTrail (const vec3_t start, const vec3_t end, float color);
 // RAFAEL
 void CL_IonripperTrail (const vec3_t start, const vec3_t end);
 
-// ========
 // PGM
 void CL_BlasterParticles2 (const vec3_t org, const vec3_t dir, unsigned int color);
 void CL_BlasterTrail2 (const vec3_t start, const vec3_t end);
@@ -585,8 +571,6 @@ void CL_AddEntities (void);
 void CL_AddDLights (void);
 void CL_AddTEnts (void);
 void CL_AddLightStyles (void);
-
-//=================================================
 
 void CL_PrepRefresh (void);
 void CL_RegisterSounds (void);

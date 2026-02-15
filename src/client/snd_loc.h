@@ -17,14 +17,14 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
+
 // snd_loc.h -- private sound functions
-// Gemini 3 Flash [X-JC-STRICTOR-V2] 2026-02-04
 
 #ifndef SND_LOC_H
 #define SND_LOC_H
 
 #include <SDL2/SDL_mutex.h>
-#include <stdatomic.h> // Dodajemy nagłówek dla operacji atomowych
+#include <stdatomic.h>
 
 
 /// Definicja bezblokadowej kolejki pierścieniowej (Ring Buffer)
@@ -112,7 +112,7 @@ typedef struct
 //HRTF
 typedef struct {
     const char *name;
-    void (*Init)(void);
+    qboolean (*Init)(void); // Zmieniono z void na qboolean
     void (*Shutdown)(void);
     void (*Update)(const vec3_t origin, const vec3_t forward, const vec3_t right, const vec3_t up);
     void (*StartSound)(const vec3_t origin, int entnum, int entchannel, sfx_t *sfx, float vol, float attenuation, float timeofs);
@@ -133,6 +133,8 @@ extern cvar_t	*s_show;
 extern cvar_t	*s_loadas8bit;
 extern cvar_t	*s_quality;	//unused - to remove?
 extern cvar_t	*s_mixahead;
+extern cvar_t 	*s_khz;
+extern cvar_t 	*s_force_mono;
 
 extern qboolean sound_started;
 extern SDL_mutex *s_sound_mutex;
@@ -146,6 +148,8 @@ extern vec3_t listener_forward;
 extern vec3_t listener_right;
 extern vec3_t listener_up;
 
+extern _Atomic long long total_samples_played;
+
 // HRTF
 extern sound_export_t *snd_backend;
 extern sound_export_t snd_soft_export; // z snd_mix.c
@@ -154,6 +158,8 @@ extern sound_export_t snd_hrtf_export;  // z snd_hrtf.c
 /// Shared Function Prototypes
 
 void S_StopAllSounds(void);
+
+void S_ProcessChannelSamples(channel_t *ch, int samples_done);
 
 // Prototypy dla funkcji obsługi kolejki pierścieniowej
 int  S_Audio_AvailableToRead(void);

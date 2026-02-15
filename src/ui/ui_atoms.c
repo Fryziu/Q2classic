@@ -360,15 +360,12 @@ void M_DrawTextBox (int x, int y, int width, int lines)
 	M_DrawCharacter (cx, cy+8, 9);
 }
 
-//=============================================================================
-/* Menu Subsystem */
+///
+/// Menu Subsystem
+///
 
+/// M_Init
 
-/*
-=================
-M_Init
-=================
-*/
 void M_Init (void)
 {
 	Cmd_AddCommand ("menu_main", M_Menu_Main_f);

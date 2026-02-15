@@ -664,6 +664,7 @@ static void R_DrawParticles (void)
 
 		qglDepthMask( GL_FALSE );
 		qglEnable(GL_BLEND);
+		qglBlendFunc(GL_SRC_ALPHA, GL_ONE); // is it needed?
 		qglDisable( GL_TEXTURE_2D );
 
 		qglPointSize( gl_particle_size->value );

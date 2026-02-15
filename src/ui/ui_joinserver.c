@@ -18,112 +18,195 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
+// ui_joinserver.c
+
 #include "ui_local.h"
 
-/*
-=============================================================================
+/// JOIN SERVER MENU
 
-JOIN SERVER MENU
-
-=============================================================================
-*/
 static menuframework_s	s_joinserver_menu;
 static menuaction_s		s_joinserver_search_action;
 static menuaction_s		s_joinserver_address_book_action;
 static menulist_s		s_joinserver_server_list;
 static menulist_s		s_joinserver_sort_box;
 
-#define JOIN_M_TITLE		"-[ Join Server ]-"
+static char join_menu_title[64];
+
+//#define join_menu_title		"-[ Join Server ]-"
+//#define join_menu_title		"-[ Server Browser ]-"
 #define ADDRESS_FILE		"addresses.txt"
-#define MAX_MENU_SERVERS	32
+#define MAX_MENU_SERVERS	256
+#define MASTER_SERVER		"master.quakeservers.net"
 
 // user readable information
 static serverStatus_t localServers[MAX_MENU_SERVERS];
 static char local_server_names[MAX_MENU_SERVERS][64];
-static char local_server_addresses[MAX_MENU_SERVERS][32];
-static char *server_shit[MAX_MENU_SERVERS];
+static char local_server_addresses[MAX_MENU_SERVERS][64];
+static char *server_shit[MAX_MENU_SERVERS + 1];
 static int	sortedSList[MAX_MENU_SERVERS];
 
 static int		m_num_servers = 0;
 static int		m_num_adr_cvar = 0, m_num_adr_file = 0, m_num_addresses = 0;
 static qboolean addressesLoaded = false;
 static qboolean joinMenuInitialized = false;
+qboolean masterQueryActive = false;
 
-cvar_t	*menu_serversort;
+// Maszyna stanów pingowania
+typedef enum { B_IDLE, B_PINGING } bstate_t;
+static bstate_t browser_state = B_IDLE;
+static int ping_index = 0;
+static unsigned int next_ping_time = 0;
 
-static void M_LoadServers(void)
+// Forward declarations dla funkcji statycznych
+static void M_LoadServersFromFile(void);
+static void M_LoadServers(void);
+static void M_PingServers(void);
+static void SearchServers(qboolean useMaster);
+static void CopyServerTitle(char *buf, int size, const serverStatus_t *status);
+static int SortServers(void const *a, void const *b);
+void M_AddAddressToList(const char *address);
+
+void M_ParseServerList(sizebuf_t *msg)
 {
-	char name[32], *adrstring;
-	int  i;
+    netadr_t adr;
+    byte *pos;
 
-	if(m_num_adr_file == MAX_MENU_SERVERS)
-		return;
+    adr.type = NA_IP;
+    pos = msg->data + msg->readcount;
 
-	m_num_addresses -= m_num_adr_cvar;
-	m_num_adr_cvar = 0;
+    while (msg->readcount + 6 <= msg->cursize) {
+        adr.ip[0] = *pos++;
+        adr.ip[1] = *pos++;
+        adr.ip[2] = *pos++;
+        adr.ip[3] = *pos++;
+        // Poprawka parsowania portu i kolejności bajtów
+        adr.port = *(unsigned short *)pos; 
+        pos += 2;
+        msg->readcount += 6;
 
-	for (i=0 ; i<9 ; i++)
-	{
-		Com_sprintf (name, sizeof(name), "adr%i", i);
-		adrstring = Cvar_VariableString (name);
-		if (!adrstring || !adrstring[0])
-			continue;
+        if (adr.port == 0) break;
 
-		Q_strncpyz(local_server_addresses[m_num_addresses++], adrstring, sizeof(local_server_addresses[0]));
-		m_num_adr_cvar++;
-
-		if(m_num_addresses == MAX_MENU_SERVERS)
-			break;
-	}
+        // POPRAWKA: Przekazujemy wskaźnik &adr
+        M_AddAddressToList(NET_AdrToString(&adr));
+    }
 }
+
+void M_AddAddressToList(const char *address)
+{
+    if (m_num_addresses >= MAX_MENU_SERVERS) return;
+    if (!address || !address[0]) return;
+
+    for (int i = 0; i < m_num_addresses; i++) {
+        if (!strcmp(local_server_addresses[i], address)) return;
+    }
+
+    Q_strncpyz(local_server_addresses[m_num_addresses++], address, sizeof(local_server_addresses[0]));
+    
+    if (masterQueryActive && browser_state == B_IDLE) {
+        browser_state = B_PINGING;
+        next_ping_time = cls.realtime; 
+    }
+}
+
+// W ui_joinserver.c, funkcja M_QueryMaster
+static void M_QueryMaster(void)
+{
+	netadr_t adr;
+	// Standardowy pakiet: 4x 0xFF, potem komenda tekstowa
+	byte packet[] = {0xff, 0xff, 0xff, 0xff, 'g', 'e', 't', 's', 'e', 'r', 'v', 'e', 'r', 's', ' ', '3', '4', '\n'};
+
+	if (!NET_StringToAdr(MASTER_SERVER, &adr)) {
+		Com_Printf("Browser: ERROR - Could not resolve master address.\n");
+		return;
+	}
+	if (adr.port == 0) adr.port = BigShort(27900);
+
+	Com_Printf("Browser: Querying master %s (%s)\n", MASTER_SERVER, NET_AdrToString(&adr));
+
+	// Wysyłamy dokładnie tyle bajtów, ile ma pakiet
+	NET_SendPacket(NS_CLIENT, sizeof(packet), packet, &adr);
+}
+
+cvar_t	*menu_serversort;	//? should stay??
+
+///
+static void M_LoadServers (void)
+{
+    char name[32], *adrstring;
+    int  i;
+
+    // Pobieramy adresy z cvarów adr0...adr8
+    for (i=0 ; i<9 ; i++)
+    {
+        Com_sprintf (name, sizeof(name), "adr%i", i);
+        adrstring = Cvar_VariableString (name);
+        if (!adrstring || !adrstring[0])
+            continue;
+
+        if (m_num_addresses < MAX_MENU_SERVERS) {
+            Q_strncpyz(local_server_addresses[m_num_addresses++], adrstring, 64);
+        }
+    }
+}
+
+static void SearchServers(qboolean useMaster)
+{
+    m_num_servers = 0;
+    m_num_addresses = 0;
+    ping_index = 0;
+    next_ping_time = 0;
+    server_shit[0] = NULL;
+    
+    masterQueryActive = useMaster;
+
+    if (useMaster) {
+        // CZYSTY TRYB MASTER
+        browser_state = B_IDLE; // NIE PINGUJEMY dopóki nie dostaniemy listy
+        M_QueryMaster();
+    } else {
+        // TRYB LOKALNY
+        browser_state = B_PINGING;
+        M_LoadServersFromFile();
+        M_LoadServers();
+        M_PingServers();
+    }
+}
+
+///
 
 static void M_LoadServersFromFile(void)
 {
-	char name[32];
-	char *buffer = NULL;
-	int line = 0;
-	char *s, *p;
+    char *buffer = NULL;
+    char *s, *p;
+    int len;
 
-	if(addressesLoaded)
-		return;
+    m_num_addresses = 0;
+    m_num_adr_file = 0;
 
-	FS_LoadFile( ADDRESS_FILE, (void **)&buffer );
-	if (!buffer) {
-		Com_DPrintf ("M_LoadServers: " ADDRESS_FILE  " not found\n");
-		return;
-	}
+    len = FS_LoadFile(ADDRESS_FILE, (void **)&buffer);
+    if (!buffer || len <= 0) {
+        Com_DPrintf("M_LoadServersFromFile: " ADDRESS_FILE " not found or empty\n");
+        return;
+    }
 
-	s = buffer;
+    s = buffer;
+    while (*s && m_num_adr_file < MAX_MENU_SERVERS) {
+        p = COM_Parse(&s);
+        if (!p || !p[0]) break;
 
-	m_num_adr_file = 0;
-	m_num_addresses = 0;
+        Q_strncpyz(local_server_addresses[m_num_adr_file], p, 64);
+        m_num_adr_file++;
 
-	while( *s ) {
-		p = s;
-		line++;
+        while (*s && *s != '\n') s++;
+        if (*s == '\n') s++;
+    }
 
-		Q_strncpyz (name, COM_Parse( &p ), sizeof(name));
-		if( strlen(name) > 2 )
-			strcpy(local_server_addresses[m_num_adr_file++], name);
-
-		if(m_num_adr_file == MAX_MENU_SERVERS)
-			break;
-
-		s = strchr( s, '\n' );
-		if( !s )
-			break;
-
-		*s = '\0';
-		s++;
-	}
-
-	m_num_addresses = m_num_adr_file;
-
-	addressesLoaded = true;
-
-	FS_FreeFile( buffer );
+    m_num_addresses = m_num_adr_file;
+    Com_Printf("Browser: Loaded %i addresses from %s\n", m_num_adr_file, ADDRESS_FILE);
+    FS_FreeFile(buffer);
 }
 
+///
 void CL_SendUIStatusRequests( netadr_t *adr );
 
 static void M_PingServers (void)
@@ -176,6 +259,44 @@ static int SortServers( void const *a, void const *b )
 
 static int titleMax = 0;
 
+
+///
+static void CopyServerTitle(char *buf, int size, const serverStatus_t *status)
+{
+    char map[64], hostname[64];
+    char *s;
+
+    s = Info_ValueForKey(status->infostring, "hostname");
+    Q_strncpyz(hostname, (s && s[0]) ? s : status->address, sizeof(hostname));
+
+    s = Info_ValueForKey(status->infostring, "mapname");
+    int max_clients = atoi(Info_ValueForKey(status->infostring, "maxclients"));
+    
+    Com_sprintf(map, sizeof(map), " %-10s %2i/%2i", 
+                (s && s[0]) ? s : "unknown", 
+                status->numPlayers, 
+                max_clients);
+
+    int map_len = strlen(map);
+    int host_limit = size - map_len - 1;
+
+    if (host_limit <= 0) { // Bufor za mały nawet na mapę
+        Q_strncpyz(buf, "...", size);
+        return;
+    }
+
+    Q_strncpyz(buf, hostname, host_limit + 1);
+    // Dopełnienie spacjami dla wyrównania kolumn
+    int current_len = strlen(buf);
+    for (int i = current_len; i < host_limit; i++) {
+        buf[i] = ' ';
+    }
+    buf[host_limit] = 0;
+
+    strncat(buf, map, size - strlen(buf) - 1);
+}
+
+/*
 void CopyServerTitle(char *buf, int size, const serverStatus_t *status)
 {
 	char map[64], *s;
@@ -209,52 +330,47 @@ void CopyServerTitle(char *buf, int size, const serverStatus_t *status)
 
 	Q_strncatz(buf, map, size);
 }
+*/
+///
 
 void M_AddToServerList (const serverStatus_t *status)
 {
-	serverStatus_t *s;
-	int		i;
+    int i;
 
-	if(!joinMenuInitialized)
-		return;
+    if(!joinMenuInitialized || m_num_servers >= MAX_MENU_SERVERS) return;
 
-	if (m_num_servers >= MAX_MENU_SERVERS)
-		return;
+    for( i=0 ; i<m_num_servers ; i++ ) {
+        if( !strcmp( status->address, localServers[i].address ) ) return;
+    }
 
-	// ignore if duplicated
-	for( i=0, s=localServers ; i<m_num_servers ; i++, s++ )
-		if( !strcmp( status->address, s->address ) )
-			return;
+    localServers[m_num_servers] = *status;
+    
+    titleMax = s_joinserver_server_list.width / 8;
+    if (titleMax > 60) titleMax = 60;
 
-	localServers[m_num_servers++] = *status;
+    CopyServerTitle(local_server_names[m_num_servers], sizeof(local_server_names[0]), &localServers[m_num_servers]);
+    
+    sortedSList[m_num_servers] = m_num_servers;
+    m_num_servers++;
 
-	titleMax = s_joinserver_server_list.width - (MLIST_BSIZE*2);
-	if(m_num_servers > s_joinserver_server_list.maxItems)
-		titleMax -= MLIST_SSIZE;
+    if(menu_serversort->integer) {
+        qsort(sortedSList, m_num_servers, sizeof(sortedSList[0]), SortServers);
+    }
 
-	titleMax /= 8;
-		
+    // Bezpieczne wypełnianie listy wskaźników
+    for(i = 0; i < m_num_servers; i++) {
+        server_shit[i] = local_server_names[sortedSList[i]];
+    }
+    // Gwarantowany terminator wewnątrz granic tablicy (server_shit ma rozmiar MAX_MENU_SERVERS + 1)
+    server_shit[m_num_servers] = NULL; 
 
-	s = &localServers[m_num_servers-1];
-	CopyServerTitle(local_server_names[i], sizeof(local_server_names[i]), s);
-	server_shit[i] = local_server_names[i];
-	sortedSList[i] = i;
-
-	if(menu_serversort->integer) {
-		qsort(sortedSList, m_num_servers, sizeof(sortedSList[0]), SortServers);
-
-		for(i = 0; i < m_num_servers; i++)
-		{
-			server_shit[i] = local_server_names[sortedSList[i]];
-		}
-	}
-
-	s_joinserver_server_list.count = m_num_servers;
+    s_joinserver_server_list.count = m_num_servers;
 }
 
-
+///
 static void JoinServerFunc( void *self )
 {
+	(void)self; // Wyciszenie ostrzeżenia
 	char	buffer[128];
 	int		index;
 
@@ -270,31 +386,16 @@ static void JoinServerFunc( void *self )
 
 static void AddressBookFunc( void *self )
 {
+	(void)self; // Wyciszenie ostrzeżenia
 	M_Menu_AddressBook_f();
 }
 
-static void SearchLocalGames( void )
-{
-	M_DrawTextBox( 8, 120 - 48, 36, 3 );
-	M_Print( 16 + 16, 120 - 48 + 8,  "Searching for local servers, this" );
-	M_Print( 16 + 16, 120 - 48 + 16, "could take up to a minute, so" );
-	M_Print( 16 + 16, 120 - 48 + 24, "please be patient." );
 
-	// the text box won't show up unless we do a buffer swap
-	R_EndFrame();
-
-	m_num_servers = 0;
-	s_joinserver_server_list.count = 0;
-
-	M_LoadServersFromFile();
-	M_LoadServers();
-	// send out info packets
-	M_PingServers();
-}
 
 static void SearchLocalGamesFunc( void *self )
 {
-	SearchLocalGames();
+	(void)self; // Wyciszenie ostrzeżenia
+	SearchServers(masterQueryActive);
 }
 
 
@@ -330,12 +431,18 @@ static void JoinServer_InfoDraw( void )
 		y += 8;
 	}
 	else
-	{
-		for( i=0, player=server->players ; i<server->numPlayers ; i++, player++ ) {
-			DrawString( x, y, va( "%-15s %5i %4i\n", player->name, player->score, player->ping ));
-			y += 8;
-		}
-	}
+ 	{
+ 		for( i=0, player=server->players ; i<server->numPlayers ; i++, player++ ) {
+			const char *pstr = va( "%-15s %5i %4i", player->name, player->score, player->ping );
+			
+			if (player->ping > 0 && player->ping < 100)
+				DrawAltString( x, y, pstr ); // Wyróżnienie dla niskiego pingu
+			else
+				DrawString( x, y, pstr );
+
+ 			y += 8;
+ 		}
+ 	}
 
 	y+=8;
 	DrawAltString( x, y, "Server info");
@@ -363,8 +470,22 @@ static void JoinServer_InfoDraw( void )
 
 static void JoinServer_MenuDraw( menuframework_s *self )
 {
-	//M_Banner( "m_banner_join_server" );
-	DrawString((viddef.width - (strlen(JOIN_M_TITLE)*8))>>1, 10, JOIN_M_TITLE);
+	if (browser_state == B_PINGING && cls.realtime > next_ping_time)
+	{
+		if (ping_index < m_num_addresses) {
+			netadr_t adr;
+			if (NET_StringToAdr(local_server_addresses[ping_index], &adr)) {
+				if (!adr.port) adr.port = BigShort(PORT_SERVER);
+				CL_SendUIStatusRequests(&adr);
+			}
+			ping_index++;
+			next_ping_time = cls.realtime + 40; 
+		} else {
+			browser_state = B_IDLE;
+		}
+	}
+
+	DrawString((viddef.width - (strlen(join_menu_title)*8))>>1, 10, join_menu_title);
 	JoinServer_InfoDraw();
 	Menu_Draw( self );
 }
@@ -444,18 +565,22 @@ static void JoinServer_MenuInit( void )
 	//Menu_Center( &s_joinserver_menu );
 
 	joinMenuInitialized = true;
-
-	SearchLocalGames();
+	
 }
 
 const char *JoinServer_MenuKey( int key )
 {
 	return Default_MenuKey( &s_joinserver_menu, key );
 }
-
-void M_Menu_JoinServer_f (void)
+void M_Menu_JoinServer_f (qboolean useMaster)
 {
+	masterQueryActive = useMaster;
+	if (useMaster)
+		Q_strncpyz(join_menu_title, "-[ Master Server ]-", sizeof(join_menu_title));
+	else
+		Q_strncpyz(join_menu_title, "-[ Address Book ]-", sizeof(join_menu_title));
+
 	JoinServer_MenuInit();
+	SearchServers(useMaster);
 	M_PushMenu( &s_joinserver_menu );
 }
-

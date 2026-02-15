@@ -31,14 +31,7 @@ extern	struct model_s	*cl_mod_smoke;
 extern	struct model_s	*cl_mod_flash;
 
 
-
-/*
-==============================================================
-
-LIGHT STYLE MANAGEMENT
-
-==============================================================
-*/
+/// LIGHT STYLE MANAGEMENT
 
 typedef struct
 {
@@ -50,18 +43,10 @@ typedef struct
 static clightstyle_t	cl_lightstyle[MAX_LIGHTSTYLES];
 static int	lastofs;
 
-// =======================================================================
-// M-AI-812: Nowa funkcja pomocnicza do konwersji kolorów
-// =======================================================================
-/*
-====================
-CL_FindBestColorIndex
 
-Znajduje w 256-kolorowej palecie gry kolor najbardziej zbliżony
-do podanego koloru w formacie RGB (float).
-Zwraca 8-bitowy indeks tego koloru.
-====================
-*/
+// Znajduje w 256-kolorowej palecie gry kolor najbardziej zbliżony do podanego koloru w formacie RGB (float).
+// Zwraca 8-bitowy indeks tego koloru.
+
 byte CL_FindBestColorIndex(float r, float g, float b)
 {
     int i;
@@ -92,23 +77,18 @@ byte CL_FindBestColorIndex(float r, float g, float b)
     }
     return best_color_index;
 }
-///
-/*
-================
-CL_ClearLightStyles
-================
-*/
+
+/// CL_ClearLightStyles
+
 void CL_ClearLightStyles (void)
 {
 	memset (cl_lightstyle, 0, sizeof(cl_lightstyle));
 	lastofs = -1;
 }
 
-/*
-================
-CL_RunLightStyles
-================
-*/
+
+/// CL_RunLightStyles
+
 void CL_RunLightStyles (void)
 {
 	int		ofs;
@@ -156,11 +136,9 @@ void CL_SetLightstyle (int index)
 	}
 }
 
-/*
-================
-CL_AddLightStyles
-================
-*/
+
+/// CL_AddLightStyles
+
 void CL_AddLightStyles (void)
 {
 	int		i;
@@ -170,32 +148,22 @@ void CL_AddLightStyles (void)
 		V_AddLightStyle (i, ls->value);
 }
 
-/*
-==============================================================
 
-DLIGHT MANAGEMENT
-
-==============================================================
-*/
+/// DLIGHT MANAGEMENT
 
 static cdlight_t	cl_dlights[MAX_DLIGHTS];
 
-/*
-================
-CL_ClearDlights
-================
-*/
+
+/// CL_ClearDlights
+
 void CL_ClearDlights (void)
 {
 	memset (cl_dlights, 0, sizeof(cl_dlights));
 }
 
-/*
-===============
-CL_AllocDlight
 
-===============
-*/
+/// CL_AllocDlight
+
 cdlight_t *CL_AllocDlight (int key)
 {
 	int		i;
@@ -235,12 +203,8 @@ cdlight_t *CL_AllocDlight (int key)
 }
 
 
-/*
-===============
-CL_RunDLights
+/// CL_RunDLights
 
-===============
-*/
 void CL_RunDLights (void)
 {
 	int			i;
@@ -262,11 +226,9 @@ void CL_RunDLights (void)
 	}
 }
 
-/*
-==============
-CL_ParseMuzzleFlash
-==============
-*/
+
+/// CL_ParseMuzzleFlash
+
 void CL_ParseMuzzleFlash (sizebuf_t *msg)
 {
 	vec3_t		fv, rv;
@@ -403,7 +365,6 @@ void CL_ParseMuzzleFlash (sizebuf_t *msg)
 		S_StartSound (NULL, i, CHAN_WEAPON, S_RegisterSound("weapons/rippfire.wav"), volume, ATTN_NORM, 0);
 		break;
 
-// ======================
 // PGM
 	case MZ_ETF_RIFLE:
 		VectorSet(dl->color, 0.9f, 0.7f, 0);
@@ -440,16 +401,12 @@ void CL_ParseMuzzleFlash (sizebuf_t *msg)
 		VectorSet(dl->color, 0, 1, 1);
 		break;
 // PGM
-// ======================
 	}
 }
 
 
-/*
-==============
-CL_ParseMuzzleFlash2
-==============
-*/
+/// CL_ParseMuzzleFlash2
+
 void CL_ParseMuzzleFlash2 (sizebuf_t *msg) 
 {
 	int			ent, flash_number;
@@ -746,7 +703,6 @@ void CL_ParseMuzzleFlash2 (sizebuf_t *msg)
 		CL_SmokeAndFlash(origin);
 		break;
 
-// ======
 // ROGUE
 	case MZ2_STALKER_BLASTER:
 	case MZ2_DAEDALUS_BLASTER:
@@ -818,20 +774,14 @@ void CL_ParseMuzzleFlash2 (sizebuf_t *msg)
 		dl->die = cl.time + 200;
 		break;
 // ROGUE
-// ======
-
 // --- Xian's shit ends ---
 
 	}
 }
 
 
-/*
-===============
-CL_AddDLights
+/// CL_AddDLights
 
-===============
-*/
 void CL_AddDLights (void)
 {
 	int			i;
@@ -839,7 +789,6 @@ void CL_AddDLights (void)
 
 	dl = cl_dlights;
 
-//=====
 //PGM
 #ifdef GL_QUAKE
 	for (i=0 ; i<MAX_DLIGHTS ; i++, dl++)
@@ -866,14 +815,7 @@ void CL_AddDLights (void)
 }
 
 
-
-/*
-==============================================================
-
-PARTICLE MANAGEMENT
-
-==============================================================
-*/
+/// PARTICLE MANAGEMENT
 
 cparticle_t	*active_particles, *free_particles;
 
@@ -881,11 +823,9 @@ cparticle_t	particles[MAX_PARTICLES];
 int			cl_numparticles = MAX_PARTICLES;
 
 
-/*
-===============
-CL_ClearParticles
-===============
-*/
+
+/// CL_ClearParticles
+
 static void CL_ClearParticles (void)
 {
 	int		i;
@@ -900,13 +840,8 @@ static void CL_ClearParticles (void)
 }
 
 
-/*
-===============
-CL_ParticleEffect
-
-Wall impact puffs
-===============
-*/
+/// CL_ParticleEffect
+// Wall impact puffs
 
 void CL_ParticleEffect (const vec3_t org, const vec3_t dir, int color, int count)
 {
@@ -943,11 +878,8 @@ void CL_ParticleEffect (const vec3_t org, const vec3_t dir, int color, int count
 }
 
 
-/*
-===============
-CL_ParticleEffect2
-===============
-*/
+/// CL_ParticleEffect2
+
 void CL_ParticleEffect2 (const vec3_t org, const vec3_t dir, int color, int count)
 {
 	int			i;
@@ -984,11 +916,9 @@ void CL_ParticleEffect2 (const vec3_t org, const vec3_t dir, int color, int coun
 
 
 // RAFAEL
-/*
-===============
-CL_ParticleEffect3
-===============
-*/
+
+/// CL_ParticleEffect3
+
 void CL_ParticleEffect3 (const vec3_t org, const vec3_t dir, int color, int count)
 {
 	int			i;
@@ -1023,11 +953,9 @@ void CL_ParticleEffect3 (const vec3_t org, const vec3_t dir, int color, int coun
 	}
 }
 
-/*
-===============
-CL_TeleporterParticles
-===============
-*/
+
+/// CL_TeleporterParticles
+
 void CL_TeleporterParticles (const entity_state_t *ent)
 {
 	int			i;
@@ -1062,12 +990,8 @@ void CL_TeleporterParticles (const entity_state_t *ent)
 }
 
 
-/*
-===============
-CL_LogoutEffect
+/// CL_LogoutEffect
 
-===============
-*/
 void CL_LogoutEffect (const vec3_t org, int type)
 {
 	int			i;
@@ -1107,12 +1031,8 @@ void CL_LogoutEffect (const vec3_t org, int type)
 }
 
 
-/*
-===============
-CL_ItemRespawnParticles
+///CL_ItemRespawnParticles
 
-===============
-*/
 void CL_ItemRespawnParticles (const vec3_t org)
 {
 	int			i;
@@ -1154,11 +1074,8 @@ void CL_ItemRespawnParticles (const vec3_t org)
 }
 
 
-/*
-===============
-CL_ExplosionParticles
-===============
-*/
+/// CL_ExplosionParticles
+
 void CL_ExplosionParticles (const vec3_t org)
 {
 	int			i;
@@ -1192,11 +1109,8 @@ void CL_ExplosionParticles (const vec3_t org)
 }
 
 
-/*
-===============
-CL_BigTeleportParticles
-===============
-*/
+/// CL_BigTeleportParticles
+
 void CL_BigTeleportParticles (const vec3_t org)
 {
 	int			i;
@@ -1238,13 +1152,9 @@ void CL_BigTeleportParticles (const vec3_t org)
 }
 
 
-/*
-===============
-CL_BlasterParticles
+/// CL_BlasterParticles
+// Wall impact puffs
 
-Wall impact puffs
-===============
-*/
 void CL_BlasterParticles (const vec3_t org, const vec3_t dir)
 {
 	int			i, count = 40;
@@ -1280,12 +1190,8 @@ void CL_BlasterParticles (const vec3_t org, const vec3_t dir)
 }
 
 
-/*
-===============
-CL_BlasterTrail
+// CL_BlasterTrail
 
-===============
-*/
 void CL_BlasterTrail (const vec3_t start, const vec3_t end)
 {
 	vec3_t		move, vec;
@@ -1329,12 +1235,9 @@ void CL_BlasterTrail (const vec3_t start, const vec3_t end)
 	}
 }
 
-/*
-===============
-CL_QuadTrail
 
-===============
-*/
+/// CL_QuadTrail
+
 void CL_QuadTrail (const vec3_t start, const vec3_t end)
 {
 	vec3_t		move, vec;
@@ -1377,12 +1280,9 @@ void CL_QuadTrail (const vec3_t start, const vec3_t end)
 	}
 }
 
-/*
-===============
-CL_FlagTrail
 
-===============
-*/
+/// CL_FlagTrail
+
 void CL_FlagTrail (const vec3_t start, const vec3_t end, float color)
 {
 	vec3_t		move, vec;
@@ -1425,12 +1325,9 @@ void CL_FlagTrail (const vec3_t start, const vec3_t end, float color)
 	}
 }
 
-/*
-===============
-CL_DiminishingTrail
 
-===============
-*/
+/// CL_DiminishingTrail
+
 void CL_DiminishingTrail (const vec3_t start, const vec3_t end, centity_t *old, int flags)
 {
 	vec3_t		move, vec;
@@ -1529,12 +1426,8 @@ void CL_DiminishingTrail (const vec3_t start, const vec3_t end, centity_t *old, 
 }
 
 
-/*
-===============
-CL_RocketTrail
+/// CL_RocketTrail
 
-===============
-*/
 void CL_RocketTrail (const vec3_t start, const vec3_t end, centity_t *old)
 {
 	vec3_t		move, vec;
@@ -1586,277 +1479,49 @@ void CL_RocketTrail (const vec3_t start, const vec3_t end, centity_t *old)
 	}
 }
 
-/*
-===============
-CL_RailTrail
+// Railgun spirales
 
-===============
-*/
-/*
 void CL_RailTrail (const vec3_t start, const vec3_t end)
 {
 	vec3_t		move, vec, right, up, dir;
-	float		len, dec, c, s;
+	float		len, c, s;
 	cparticle_t	*p;
 	int			i;
-	byte		clr = 0x74;
-	cdlight_t *dl;
-
-	VectorCopy (start, move);
-	VectorSubtract (end, start, vec);
-	len = VectorNormalize (vec);
-
-	// add a light at the dest
-	dl = CL_AllocDlight(0);
-	VectorCopy(end, dl->origin);
-	dl->radius = 100;
-	dl->die = cl.time + 200;
-	VectorSet(dl->color, 0.3, 0.5, 1.0);
-
-	MakeNormalVectors (vec, right, up);
-
-	for (i=0 ; i<len ; i++)
-	{
-
-		if(i % 3 == 0){
-			VectorAdd(move, vec, move);
-			continue;
-		}
-
-		if (!free_particles)
-			return;
-
-		p = free_particles;
-		free_particles = p->next;
-		p->next = active_particles;
-		active_particles = p;
-		
-		p->time = cl.time;
-		VectorClear (p->accel);
-
-		Q_sincos(i * 0.1f, &s, &c);
-
-		VectorScale (right, c, dir);
-		VectorMA (dir, s, up, dir);
-
-		p->alpha = 1.0f;
-		p->alphavel = -1.0f / (1.0f+frand()*0.2f);
-		p->color = clr + (rand()&7);
-
-		p->org[0] = move[0] + dir[0]*3;
-		p->org[1] = move[1] + dir[1]*3;
-		p->org[2] = move[2] + dir[2]*3;
-		p->vel[0] = dir[0]*6;
-		p->vel[1] = dir[1]*6;
-		p->vel[2] = dir[2]*6;
-
-		VectorAdd (move, vec, move);
-	}
-
-	dec = 2.0f;
-	VectorScale (vec, dec, vec);
-	VectorCopy (start, move);
-
-	while (len > 0)
-	{
-		len -= dec;
-
-		if (!free_particles)
-			return;
-		p = free_particles;
-		free_particles = p->next;
-		p->next = active_particles;
-		active_particles = p;
-
-		p->time = cl.time;
-		VectorClear (p->accel);
-
-		p->alpha = 1.0f;
-		p->alphavel = -1.0f / (0.6f+frand()*0.2f);
-		p->color = 0x0 + (rand()&15);
-
-		p->org[0] = move[0] + crand()*3;
-		p->org[1] = move[1] + crand()*3;
-		p->org[2] = move[2] + crand()*3;
-		p->vel[0] = crand()*3;
-		p->vel[1] = crand()*3;
-		p->vel[2] = crand()*3;
-
-		VectorAdd (move, vec, move);
-	}
-}
-*/
-// nowszy
-/*
-
-void CL_RailTrail (const vec3_t start, const vec3_t end)
-{
-	vec3_t		move, vec, right, up, dir;
-	float		len, c, s;
-	cparticle_t	*p;
-	int			i, j; // Dodano 'j' dla pętli
-	byte		clr;
+	byte		base_clr;
 	cdlight_t   *dl;
-    vec3_t      rail_color;
+    
+    // Cache'owanie wskaźników do CVarów (statyczne, aby nie szukać co strzał)
+    static cvar_t *r_c = NULL, *g_c = NULL, *b_c = NULL;
+    if (!r_c) {
+        r_c = Cvar_Get("cl_railcolor_r", "0.5", CVAR_ARCHIVE);
+        g_c = Cvar_Get("cl_railcolor_g", "0.5", CVAR_ARCHIVE);
+        b_c = Cvar_Get("cl_railcolor_b", "1.0", CVAR_ARCHIVE);
+    }
 
-    // Odczytywanie koloru z cvarów (bez zmian)
-    rail_color[0] = Cvar_VariableValue("cl_railcolor_r");
-    rail_color[1] = Cvar_VariableValue("cl_railcolor_g");
-    rail_color[2] = Cvar_VariableValue("cl_railcolor_b");
+    vec3_t rail_color = { r_c->value, g_c->value, b_c->value };
 
 	VectorCopy (start, move);
 	VectorSubtract (end, start, vec);
 	len = VectorNormalize (vec);
 
-	// Dynamiczne światło (bez zmian)
+    // LICZYMY INDEKS TYLKO RAZ NA STRZAŁ
+    base_clr = CL_FindBestColorIndex(rail_color[0], rail_color[1], rail_color[2]);
+
+    // Światła (tylko na końcach, bez zmian)
 	dl = CL_AllocDlight(0);
 	VectorCopy(end, dl->origin);
 	dl->radius = 100;
 	dl->die = cl.time + 200;
 	VectorCopy(rail_color, dl->color);
 
-	MakeNormalVectors (vec, right, up);
-
-	// Główna pętla dla spirali
-	for (i=0 ; i<len ; i++)
-	{
-		if(i % 3 == 0){
-			VectorAdd(move, vec, move);
-			continue;
-		}
-
-		if (!free_particles) return;
-		p = free_particles;
-		free_particles = p->next;
-		p->next = active_particles;
-		active_particles = p;
-
-		p->time = cl.time;
-		VectorClear (p->accel);
-
-		Q_sincos(i * 0.1f, &s, &c);
-		VectorScale (right, c, dir);
-		VectorMA (dir, s, up, dir);
-
-		p->alpha = 1.0f;
-		p->alphavel = -1.0f / (1.0f+frand()*0.2f);
-
-        // ===================================================================
-        // NOWA LOGIKA: Dodanie kontrolowanej losowości do koloru RGB
-        // ===================================================================
-        {
-            vec3_t  particle_color;
-            float   color_variation = 0.15f; // Jak bardzo kolor ma się różnić
-
-            // 1. Zacznij od bazowego koloru
-            VectorCopy(rail_color, particle_color);
-
-            // 2. Dodaj losową wariację do każdej składowej
-            particle_color[0] += crand() * color_variation;
-            particle_color[1] += crand() * color_variation;
-            particle_color[2] += crand() * color_variation;
-
-            // 3. Upewnij się, że wartości są w prawidłowym zakresie [0, 1]
-            for (j = 0; j < 3; j++)
-            {
-                if (particle_color[j] < 0) particle_color[j] = 0;
-                if (particle_color[j] > 1) particle_color[j] = 1;
-            }
-
-            // 4. Dopiero teraz znajdź najlepszy indeks palety dla tego nowego koloru
-            clr = CL_FindBestColorIndex(particle_color[0], particle_color[1], particle_color[2]);
-        }
-
-		p->color = clr; // Każda cząsteczka ma teraz potencjalnie nieco inny odcień
-        // ===================================================================
-
-		p->org[0] = move[0] + dir[0]*3;
-		p->org[1] = move[1] + dir[1]*3;
-		p->org[2] = move[2] + dir[2]*3;
-		p->vel[0] = dir[0]*6;
-		p->vel[1] = dir[1]*6;
-		p->vel[2] = dir[2]*6;
-
-		VectorAdd (move, vec, move);
-	}
-
-    // Druga pętla "dymu" z poprawionym, bezpiecznym zakresem kolorów
-	float dec = 2.0f;
-	VectorScale (vec, dec, vec);
-	VectorCopy (start, move);
-
-	while (len > 0)
-	{
-		len -= dec;
-
-				if (!free_particles)
-					return;
-				p = free_particles;
-				free_particles = p->next;
-				p->next = active_particles;
-				active_particles = p;
-
-				p->time = cl.time;
-				VectorClear (p->accel);
-
-				p->alpha = 1.0f;
-				p->alphavel = -1.0f / (0.6f+frand()*0.2f);
-				//p->color = 0x0 + (rand()&15);
-				p->color = 4 + (rand() & 7);
-
-				p->org[0] = move[0] + crand()*3;
-				p->org[1] = move[1] + crand()*3;
-				p->org[2] = move[2] + crand()*3;
-				p->vel[0] = crand()*3;
-				p->vel[1] = crand()*3;
-				p->vel[2] = crand()*3;
-
-				VectorAdd (move, vec, move);
-	}
-
-}
-*/
-
-void CL_RailTrail (const vec3_t start, const vec3_t end)
-{
-	vec3_t		move, vec, right, up, dir;
-	float		len, c, s;
-	cparticle_t	*p;
-	int			i, j;
-	byte		clr;
-	cdlight_t   *dl;
-    vec3_t      rail_color;
-
-    rail_color[0] = Cvar_VariableValue("cl_railcolor_r");
-    rail_color[1] = Cvar_VariableValue("cl_railcolor_g");
-    rail_color[2] = Cvar_VariableValue("cl_railcolor_b");
-
-	VectorCopy (start, move);
-	VectorSubtract (end, start, vec);
-	len = VectorNormalize (vec);
-
-    // ===================================================================
-    // ZMIANA: Dodajemy DWA światła - jedno na końcu, drugie na początku.
-    // ===================================================================
-	// Światło na końcu smugi
-	dl = CL_AllocDlight(0);
-	VectorCopy(end, dl->origin);
-	dl->radius = 100;
-	dl->die = cl.time + 200;
-	VectorCopy(rail_color, dl->color);
-
-    // NOWOŚĆ: Światło na początku smugi (błysk przy wylocie)
 	dl = CL_AllocDlight(0);
 	VectorCopy(start, dl->origin);
 	dl->radius = 100;
 	dl->die = cl.time + 200;
 	VectorCopy(rail_color, dl->color);
-    // ===================================================================
-
 
 	MakeNormalVectors (vec, right, up);
 
-	// Główna pętla dla spirali
 	for (i=0 ; i<len ; i++)
 	{
 		if(i % 3 == 0){
@@ -1878,25 +1543,10 @@ void CL_RailTrail (const vec3_t start, const vec3_t end)
 		VectorMA (dir, s, up, dir);
 
 		p->alpha = 1.0f;
-		p->alphavel = -1.0f / (1.0f+frand()*0.2f);
+		p->alphavel = -1.0f / (1.0f + frand()*0.2f);
 
-        {
-            vec3_t  particle_color;
-            float   color_variation = 0.15f;
-
-            VectorCopy(rail_color, particle_color);
-            particle_color[0] += crand() * color_variation;
-            particle_color[1] += crand() * color_variation;
-            particle_color[2] += crand() * color_variation;
-
-            for (j = 0; j < 3; j++)
-            {
-                if (particle_color[j] < 0) particle_color[j] = 0;
-                if (particle_color[j] > 1) particle_color[j] = 1;
-            }
-            clr = CL_FindBestColorIndex(particle_color[0], particle_color[1], particle_color[2]);
-        }
-		p->color = clr;
+        // OPTYMALIZACJA: Zamiast CL_FindBestColorIndex, używamy bazy i lekkiej wariacji palety
+        p->color = (base_clr & ~7) + (rand() & 7); 
 
 		p->org[0] = move[0] + dir[0]*3;
 		p->org[1] = move[1] + dir[1]*3;
@@ -1908,17 +1558,16 @@ void CL_RailTrail (const vec3_t start, const vec3_t end)
 		VectorAdd (move, vec, move);
 	}
 
-    // Druga pętla "dymu"
+    // Druga pętla (dym) - tu używamy stałego koloru szarego (indeks 4-11)
 	float dec = 2.0f;
 	VectorScale (vec, dec, vec);
 	VectorCopy (start, move);
+    float smoke_len = len;
 
-	while (len > 0)
+	while (smoke_len > 0)
 	{
-		len -= dec;
-
-		if (!free_particles)
-			return;
+		smoke_len -= dec;
+		if (!free_particles) return;
 		p = free_particles;
 		free_particles = p->next;
 		p->next = active_particles;
@@ -1927,24 +1576,20 @@ void CL_RailTrail (const vec3_t start, const vec3_t end)
 		p->time = cl.time;
 		VectorClear (p->accel);
 		p->alpha = 1.0f;
-		p->alphavel = -1.0f / (0.6f+frand()*0.2f);
-		p->color = 4 + (rand() & 7);
-		p->org[0] = move[0] + crand()*3;
-		p->org[1] = move[1] + crand()*3;
-		p->org[2] = move[2] + crand()*3;
-		p->vel[0] = crand()*3;
-		p->vel[1] = crand()*3;
-		p->vel[2] = crand()*3;
+		p->alphavel = -1.0f / (0.6f + frand()*0.2f);
+		p->color = 4 + (rand() & 7); // Standardowa szarość
+		VectorCopy(move, p->org);
+        p->vel[0] = crand()*3; p->vel[1] = crand()*3; p->vel[2] = crand()*3;
 
 		VectorAdd (move, vec, move);
 	}
 }
+
+
 // RAFAEL
-/*
-===============
-CL_IonripperTrail
-===============
-*/
+
+/// CL_IonripperTrail
+
 void CL_IonripperTrail (const vec3_t start, const vec3_t ent)
 {
 	vec3_t	move, vec;
@@ -1996,12 +1641,8 @@ void CL_IonripperTrail (const vec3_t start, const vec3_t ent)
 }
 
 
-/*
-===============
-CL_BubbleTrail
+/// CL_BubbleTrail
 
-===============
-*/
 void CL_BubbleTrail (const vec3_t start, const vec3_t end)
 {
 	vec3_t		move, vec;
@@ -2047,11 +1688,7 @@ void CL_BubbleTrail (const vec3_t start, const vec3_t end)
 }
 
 
-/*
-===============
-CL_FlyParticles
-===============
-*/
+/// CL_FlyParticles
 
 #define	BEAMLENGTH			16
 void CL_FlyParticles (const vec3_t origin, int count)
@@ -2106,8 +1743,7 @@ void CL_FlyParticles (const vec3_t origin, int count)
 		VectorClear (p->vel);
 		VectorClear (p->accel);
 
-		p->color = 0;
-		//p->colorvel = 0;
+		p->color = 2;	
 
 		p->alpha = 1.0f;
 		p->alphavel = -100;
@@ -2144,11 +1780,7 @@ void CL_FlyEffect (centity_t *ent, const vec3_t origin)
 }
 
 
-/*
-===============
-CL_BfgParticles
-===============
-*/
+/// CL_BfgParticles
 
 #define	BEAMLENGTH			16
 void CL_BfgParticles (const entity_t *ent)
@@ -2207,11 +1839,8 @@ void CL_BfgParticles (const entity_t *ent)
 }
 
 
-/*
-===============
-CL_TrapParticles
-===============
-*/
+/// CL_TrapParticles
+
 // RAFAEL
 void CL_TrapParticles (entity_t *ent)
 {
@@ -2302,11 +1931,8 @@ void CL_TrapParticles (entity_t *ent)
 }
 
 
-/*
-===============
-CL_BFGExplosionParticles
-===============
-*/
+//CL_BFGExplosionParticles
+
 //FIXME combined with CL_ExplosionParticles
 void CL_BFGExplosionParticles (const vec3_t org)
 {
@@ -2340,12 +1966,8 @@ void CL_BFGExplosionParticles (const vec3_t org)
 }
 
 
-/*
-===============
-CL_TeleportParticles
+/// CL_TeleportParticles
 
-===============
-*/
 void CL_TeleportParticles (const vec3_t org)
 {
 	int			i, j, k;
@@ -2388,11 +2010,8 @@ void CL_TeleportParticles (const vec3_t org)
 }
 
 
-/*
-===============
-CL_AddParticles
-===============
-*/
+/// CL_AddParticles
+
 void CL_AddParticles (void)
 {
 	cparticle_t		*p, *next;
@@ -2473,15 +2092,9 @@ void CL_AddParticles (void)
 }
 
 
-/*
-==============
-CL_EntityEvent
+/// CL_EntityEvent
+// An entity has just been parsed that has an event value the female events are there for backwards compatability
 
-An entity has just been parsed that has an event value
-
-the female events are there for backwards compatability
-==============
-*/
 extern struct sfx_s	*cl_sfx_footsteps[4];
 
 void CL_EntityEvent (const entity_state_t *ent)
@@ -2513,12 +2126,8 @@ void CL_EntityEvent (const entity_state_t *ent)
 }
 
 
-/*
-==============
-CL_ClearEffects
+/// CL_ClearEffects
 
-==============
-*/
 void CL_ClearEffects (void)
 {
 	CL_ClearParticles ();

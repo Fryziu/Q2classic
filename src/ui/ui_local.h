@@ -17,6 +17,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
+
+// ui_local.h
+
 #ifndef __QMENU_H__
 #define __QMENU_H__
 
@@ -189,7 +192,7 @@ void M_Menu_Main_f (void);
 			void M_Menu_DownloadOptions_f (void);
 		void M_Menu_Credits_f( void );
 	void M_Menu_Multiplayer_f( void );
-		void M_Menu_JoinServer_f (void);
+		void M_Menu_JoinServer_f (qboolean useMaster);
 			void M_Menu_AddressBook_f( void );
 		void M_Menu_StartServer_f (void);
 			void M_Menu_DMOptions_f (void);

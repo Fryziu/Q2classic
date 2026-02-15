@@ -1111,7 +1111,7 @@ void Qcommon_Init (int argc, char **argv)
 
 	Cbuf_AddText ("exec default.cfg\n");
 	Cbuf_Execute();
-	Cbuf_AddText ("exec aprconfig.cfg\n");
+	Cbuf_AddText ("exec q2config.cfg\n");
 	Cbuf_Execute();
 	FS_ExecConfig("autoexec.cfg");
 	Cbuf_Execute();

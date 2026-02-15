@@ -18,19 +18,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
+// ui_multiplayer.c
+
 #include "ui_local.h"
 
-/*
-=======================================================================
 
-MULTIPLAYER MENU
+/// MULTIPLAYER MENU
 
-=======================================================================
-*/
 menuframework_s	s_multiplayer_menu;
 static menuaction_s		s_join_network_server_action;
+static menuaction_s		s_servers_browser_action;
 static menuaction_s		s_start_network_server_action;
 static menuaction_s		s_player_setup_action;
+static menuaction_s		s_address_book_action;
 
 static void Multiplayer_MenuDraw ( menuframework_s *self )
 {
@@ -46,8 +46,13 @@ static void PlayerSetupFunc( void *unused )
 }
 
 static void JoinNetworkServerFunc( void *unused )
+{	
+	M_Menu_JoinServer_f(false); // LAN + AddressBook
+}
+
+static void ServersBrowserFunc( void *unused )
 {
-	M_Menu_JoinServer_f();
+	M_Menu_JoinServer_f(true); // Internet (Master Server)
 }
 
 static void StartNetworkServerFunc( void *unused )
@@ -55,37 +60,59 @@ static void StartNetworkServerFunc( void *unused )
 	M_Menu_StartServer_f ();
 }
 
+static void AddressBookFunc( void *unused )
+{
+	M_Menu_AddressBook_f();
+}
+
 void Multiplayer_MenuInit( void )
 {
+	int y = 0;
 	memset(&s_multiplayer_menu, 0, sizeof(s_multiplayer_menu));
 	s_multiplayer_menu.x = viddef.width * 0.50 - 64;
 	s_multiplayer_menu.nitems = 0;
 
+	s_servers_browser_action.generic.type	= MTYPE_ACTION;
+	s_servers_browser_action.generic.flags  = QMF_LEFT_JUSTIFY;
+	s_servers_browser_action.generic.x		= 0;
+	s_servers_browser_action.generic.y		= y;
+	s_servers_browser_action.generic.name	= " servers browser";
+	s_servers_browser_action.generic.callback = ServersBrowserFunc;
+
 	s_join_network_server_action.generic.type	= MTYPE_ACTION;
 	s_join_network_server_action.generic.flags  = QMF_LEFT_JUSTIFY;
 	s_join_network_server_action.generic.x		= 0;
-	s_join_network_server_action.generic.y		= 0;
+	s_join_network_server_action.generic.y		= y += 10;
 	s_join_network_server_action.generic.name	= " join network server";
 	s_join_network_server_action.generic.callback = JoinNetworkServerFunc;
+
+	s_address_book_action.generic.type	= MTYPE_ACTION;
+	s_address_book_action.generic.flags  = QMF_LEFT_JUSTIFY;
+	s_address_book_action.generic.x		= 0;
+	s_address_book_action.generic.y		= y += 10;
+	s_address_book_action.generic.name	= " address book";
+	s_address_book_action.generic.callback = AddressBookFunc;
 
 	s_start_network_server_action.generic.type	= MTYPE_ACTION;
 	s_start_network_server_action.generic.flags  = QMF_LEFT_JUSTIFY;
 	s_start_network_server_action.generic.x		= 0;
-	s_start_network_server_action.generic.y		= 10;
+	s_start_network_server_action.generic.y		= y += 10;
 	s_start_network_server_action.generic.name	= " start network server";
 	s_start_network_server_action.generic.callback = StartNetworkServerFunc;
 
 	s_player_setup_action.generic.type	= MTYPE_ACTION;
 	s_player_setup_action.generic.flags  = QMF_LEFT_JUSTIFY;
 	s_player_setup_action.generic.x		= 0;
-	s_player_setup_action.generic.y		= 20;
+	s_player_setup_action.generic.y		= y += 10;
 	s_player_setup_action.generic.name	= " player setup";
 	s_player_setup_action.generic.callback = PlayerSetupFunc;
 
 	s_multiplayer_menu.draw = Multiplayer_MenuDraw;
 	s_multiplayer_menu.key = NULL;
 
+	Menu_AddItem( &s_multiplayer_menu, ( void * ) &s_servers_browser_action );
 	Menu_AddItem( &s_multiplayer_menu, ( void * ) &s_join_network_server_action );
+	Menu_AddItem( &s_multiplayer_menu, ( void * ) &s_address_book_action );
 	Menu_AddItem( &s_multiplayer_menu, ( void * ) &s_start_network_server_action );
 	Menu_AddItem( &s_multiplayer_menu, ( void * ) &s_player_setup_action );
 

@@ -1395,14 +1395,29 @@ void CL_AddEntities (void)
 }
 
 
-/*
-===============
-CL_GetEntitySoundOrigin
 
-Called to get the sound spatialization origin
-===============
-*/
+/// CL_GetEntitySoundOrigin
+/// Called to get the sound spatialization origin
+// Haos to explain
+/*
 void CL_GetEntitySoundOrigin (int ent, vec3_t org)
+{
+    if ((unsigned)ent >= MAX_EDICTS)
+        Com_Error(ERR_DROP, "CL_GetEntityOrigin: ent = %i", ent);
+
+    if (ent == cl.playernum + 1) {
+        VectorCopy (cl.refdef.vieworg, org);
+        return;
+    }
+
+    // Używamy gotowego lerp_origin obliczonego przez silnik dla renderera
+    VectorCopy(cl_entities[ent].lerp_origin, org);
+}
+	*/
+
+/// original function
+/*
+	void CL_GetEntitySoundOrigin (int ent, vec3_t org)
 {
 	centity_t	*cent;
 
@@ -1447,4 +1462,89 @@ void CL_GetEntitySoundOrigin (int ent, vec3_t org)
 		VectorAdd(org, midPoint, org);
 	}
 }
+*/
 
+// optimized
+/*
+void CL_GetEntitySoundOrigin(int ent, vec3_t org)
+{
+    if ((unsigned)ent >= MAX_EDICTS)
+        Com_Error(ERR_DROP, "CL_GetEntityOrigin: ent = %i", ent);
+
+    if (ent == cl.playernum + 1) {
+        VectorCopy(cl.refdef.vieworg, org);
+        return;
+    }
+
+    const centity_t *cent = &cl_entities[ent];
+    const entity_state_t *s = &cent->current;
+    
+    // 1. Wybór źródła pochodzenia (redukcja branchingu)
+    // Używamy wskaźnika, aby ujednolicić logikę LERP
+    const float *start = (s->renderfx & (RF_FRAMELERP | RF_BEAM)) 
+                         ? s->old_origin 
+                         : cent->prev.origin;
+
+    // 2. Skonsolidowany LERP (FMA - Fused Multiply-Add friendly)
+    // GCC 13 z -O3 zamieni to na instrukcje wektorowe SSE
+    const float f = cl.lerpfrac;
+    org[0] = start[0] + f * (s->origin[0] - start[0]);
+    org[1] = start[1] + f * (s->origin[1] - start[1]);
+    org[2] = start[2] + f * (s->origin[2] - start[2]);
+
+    // 3. Optymalizacja dla Brush Models
+    // SOLID_BSP = 31. Sprawdzamy tylko, gdy modelindex jest sensowny.
+    if (s->solid == 31 && s->modelindex > 0) {
+        const cmodel_t *cm = cl.model_clip[s->modelindex];
+        if (cm) {
+            // Bezpośrednie wyliczenie środka zamiast wywoływania VectorAvg
+            org[0] += (cm->mins[0] + cm->maxs[0]) * 0.5f;
+            org[1] += (cm->mins[1] + cm->maxs[1]) * 0.5f;
+            org[2] += (cm->mins[2] + cm->maxs[2]) * 0.5f;
+        }
+    }
+}
+*/
+
+// another optimized version
+
+void CL_GetEntitySoundOrigin (int ent, vec3_t org)
+{
+    if ((unsigned)ent >= MAX_EDICTS)
+        Com_Error(ERR_DROP, "CL_GetEntityOrigin: ent = %i", ent);
+
+    if (ent == cl.playernum + 1)
+    {
+        VectorCopy(cl.refdef.vieworg, org);
+        return;
+    }
+
+    centity_t *cent = &cl_entities[ent];
+    vec3_t *v1, *v2;
+
+    if (cent->current.renderfx & (RF_FRAMELERP | RF_BEAM))
+    {
+        v1 = &cent->current.old_origin;
+        v2 = &cent->current.origin;
+    }
+    else
+    {
+        v1 = &cent->prev.origin;
+        v2 = &cent->current.origin;
+    }
+
+    // Interpolacja liniowa (Carmack style)
+    for (int i = 0; i < 3; i++)
+        org[i] = (*v1)[i] + cl.lerpfrac * ((*v2)[i] - (*v1)[i]);
+
+    // Offset dla modeli szczotkowych (drzwi, windy)
+    if (cent->current.solid == 31)
+    {
+        cmodel_t *cmodel = cl.model_clip[cent->current.modelindex];
+        if (cmodel)
+        {
+            for (int i = 0; i < 3; i++)
+                org[i] += 0.5f * (cmodel->mins[i] + cmodel->maxs[i]);
+        }
+    }
+}
