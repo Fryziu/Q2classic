@@ -18,6 +18,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
+// gl_local.h
+
 #ifdef __cplusplus
 # define QGL_EXTERN extern "C"
 #else
@@ -78,18 +80,15 @@ typedef struct
 
 extern	viddef_t	vid;
 
-/*
+//  skins will be outline flood filled and mip mapped
+//  pics and sprites with alpha will be outline flood filled
+//  pic won't be mip mapped
 
-  skins will be outline flood filled and mip mapped
-  pics and sprites with alpha will be outline flood filled
-  pic won't be mip mapped
+//  model skin
+//  sprite frame
+//  wall texture
+//  pic
 
-  model skin
-  sprite frame
-  wall texture
-  pic
-
-*/
 
 #define IT_TRANS		1
 #define IT_PALETTED		2
@@ -131,7 +130,7 @@ typedef struct image_s
 
 #define	MAX_GLTEXTURES		1024
 
-//===================================================================
+///
 
 typedef enum
 {
@@ -163,7 +162,7 @@ typedef struct
 #define BACKFACE_EPSILON	0.01
 
 
-//====================================================
+///
 
 extern	image_t		gltextures[MAX_GLTEXTURES];
 extern	int			numgltextures;
@@ -277,17 +276,18 @@ extern	cvar_t	*gl_celshading_width;
 extern	cvar_t	*gl_scale;
 extern	cvar_t	*gl_watercaustics;
 extern	cvar_t	*gl_fog;
+extern  cvar_t  *maxclients; // <--- Dodaj to
 
 extern	cvar_t	*gl_coloredlightmaps;
 extern	cvar_t	*gl_shelleffect;
 
 extern	cvar_t	*gl_minlight_entities;
 extern	cvar_t	*gl_multisample;
-//End
+// End
 
-//extern	int		gl_lightmap_format;
-//extern	int		gl_solid_format;
-//extern	int		gl_alpha_format;
+// extern	int		gl_lightmap_format;
+// extern	int		gl_solid_format;
+// extern	int		gl_alpha_format;
 extern	int		gl_tex_solid_format;
 extern	int		gl_tex_alpha_format;
 
@@ -307,7 +307,7 @@ void GL_SelectTexture( int tmu );
 void R_LightPoint (const vec3_t p, vec3_t color);
 void R_PushDlights (void);
 
-//====================================================================
+///
 
 extern	bspModel_t	*r_worldmodel;
 
@@ -362,12 +362,12 @@ void	R_CinematicSetPalette ( const unsigned char *palette);
 
 void	Draw_GetPalette (void);
 
-//void GL_ResampleTexture (unsigned *in, int inwidth, int inheight, unsigned *out,  int outwidth, int outheight);
+// void GL_ResampleTexture (unsigned *in, int inwidth, int inheight, unsigned *out,  int outwidth, int outheight);
 
 struct image_s *R_RegisterSkin (const char *name);
 
 
-//void LoadPCX (const char *filename, byte **pic, byte **palette, int *width, int *height);
+// void LoadPCX (const char *filename, byte **pic, byte **palette, int *width, int *height);
 
 image_t *GL_LoadPic (const char *name, byte *pic, int width, int height, imagetype_t type, int flags, int samples);
 image_t	*GL_FindImage (const char *name, imagetype_t type);
@@ -383,14 +383,13 @@ void	GL_FreeUnusedImages (void);
 
 void	GL_TextureBits(void);
 
-/*
-** GL extension emulation functions
-*/
-//void GL_DrawParticles( int n, const particle_t particles[], const unsigned colortable[768] );
 
-/*
-** GL config stuff
-*/
+/// GL extension emulation functions
+// void GL_DrawParticles( int n, const particle_t particles[], const unsigned colortable[768] );
+
+
+// GL config stuff
+
 #define GL_RENDERER_VOODOO		0x00000001
 #define GL_RENDERER_VOODOO2   	0x00000002
 #define GL_RENDERER_VOODOO_RUSH	0x00000004
@@ -508,13 +507,9 @@ qboolean R_GetModeInfo( int *width, int *height, int mode );
 extern const vec4_t	colorWhite;
 extern vec4_t	colorBlack;
 
-/*
-====================================================================
 
-IMPLEMENTATION SPECIFIC FUNCTIONS
 
-====================================================================
-*/
+///		IMPLEMENTATION SPECIFIC FUNCTIONS		///
 
 void		GLimp_BeginFrame( float camera_separation );
 void		GLimp_EndFrame( void );

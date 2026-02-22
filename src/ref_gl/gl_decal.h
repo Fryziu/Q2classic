@@ -34,7 +34,7 @@ typedef struct msurface_s msurface_t;
 // --- Stałe Konfiguracyjne Modułu ---
 // M-AI-812: Przeniesione z gl_decal.c, ponieważ są używane przez
 // publiczną strukturę cdecal_t.
-#define MAX_DECALS				2048 //256     // Maksymalna liczba aktywnych decali
+#define MAX_DECALS				8192 //	2048 //256     // Maksymalna liczba aktywnych decali
 #define MAX_DECAL_VERTS			64      // Maksymalna liczba wierzchołków na decal
 #define MAX_DECAL_FRAGMENTS		64      // Maksymalna liczba fragmentów przy cięciu
 

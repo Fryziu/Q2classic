@@ -263,8 +263,8 @@ static void OnChange_DecalsMax(cvar_t *self, const char *oldValue)
 {
 	if (self->integer < 256)
 		Cvar_Set(self->name, "256");
-	else if (self->integer > 4096)
-		Cvar_Set(self->name, "4096");
+	else if (self->integer > MAX_DECALS)
+		Cvar_Set(self->name, "8192");
 
 	if (maxDecals == self->integer)
 		return;

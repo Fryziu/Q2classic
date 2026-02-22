@@ -184,13 +184,10 @@ static void R_ModeList_f( void );
 // vertex arrays
 vArrays_t r_arrays;
 
-/*
-=================
-R_CullBox
 
-Returns true if the box is completely outside the frustom
-=================
-*/
+/// R_CullBox
+// Returns true if the box is completely outside the frustom
+
 qboolean R_CullBox (const vec3_t mins, const vec3_t maxs)
 {
 	int		i;
@@ -303,21 +300,13 @@ void R_RotateForEntity (const vec3_t origin, vec3_t axis[3])
 	isModelMatrix = true;
 }
 
-/*
-=============================================================
-
-  SPRITE MODELS
-
-=============================================================
-*/
 
 
-/*
-=================
-R_DrawSpriteModel
+///		SPRITE MODELS	///
 
-=================
-*/
+
+/// R_DrawSpriteModel
+
 static void R_DrawSpriteModel (model_t *model)
 {
 	spriteFrame_t	*frame;
@@ -379,13 +368,10 @@ static void R_DrawSpriteModel (model_t *model)
 
 }
 
-//==================================================================================
+///
 
-/*
-=============
-R_DrawNullModel
-=============
-*/
+//// R_DrawNullModel
+
 static void R_DrawNullModel (void)
 {
 	vec3_t	shadelight;
@@ -423,11 +409,9 @@ static void R_DrawNullModel (void)
 	qglEnable (GL_TEXTURE_2D);
 }
 
-/*
-=============
-R_DrawEntitiesOnList
-=============
-*/
+
+/// R_DrawEntitiesOnList
+
 static void R_DrawEntitiesOnList (void)
 {
 	model_t	*model;
@@ -649,11 +633,9 @@ static void GL_DrawParticles(void)
 	qglDisableClientState( GL_COLOR_ARRAY );
 }
 
-/*
-===============
-R_DrawParticles
-===============
-*/
+
+/// R_DrawParticles
+
 static void R_DrawParticles (void)
 {
 	if ( gl_ext_pointparameters->integer && qglPointParameterfEXT )
@@ -664,7 +646,6 @@ static void R_DrawParticles (void)
 
 		qglDepthMask( GL_FALSE );
 		qglEnable(GL_BLEND);
-		qglBlendFunc(GL_SRC_ALPHA, GL_ONE); // is it needed?
 		qglDisable( GL_TEXTURE_2D );
 
 		qglPointSize( gl_particle_size->value );
@@ -691,11 +672,9 @@ static void R_DrawParticles (void)
 	}
 }
 
-/*
-============
-R_PolyBlend
-============
-*/
+
+/// R_PolyBlend
+
 static void R_PolyBlend (void)
 {
 	if (!gl_polyblend->integer || r_newrefdef.blend[3] < 0.01f)
@@ -723,7 +702,7 @@ static void R_PolyBlend (void)
 	qglColor4fv(colorWhite);
 }
 
-//=======================================================================
+///
 
 static void SetPlaneSignbits(cplane_t *out)
 {
@@ -764,13 +743,11 @@ static void R_SetFrustum (void)
 	}
 }
 
-//=======================================================================
+///
 
-/*
-===============
-R_SetupFrame
-===============
-*/
+
+/// R_SetupFrame
+
 static void R_SetupFrame (void)
 {
 
@@ -887,11 +864,9 @@ static void R_SetupProjection( void )
 	r_ProjectionMatrix[14] = -2.0f * zFar * zNear / depth;
 }
 
-/*
-=============
-R_SetupModelviewMatrix
-=============
-*/
+
+/// R_SetupModelviewMatrix
+
 static void R_SetupModelviewMatrix( void )
 {
 	r_WorldViewMatrix[ 0] = -viewAxis[1][0];
@@ -911,11 +886,9 @@ static void R_SetupModelviewMatrix( void )
 	r_WorldViewMatrix[14] = DotProduct(r_origin, viewAxis[0]);
 }
 
-/*
-=============
-R_SetupGL
-=============
-*/
+
+/// R_SetupGL
+
 static void R_SetupGL (void)
 {
 	// set up viewport
@@ -940,11 +913,9 @@ static void R_SetupGL (void)
 	qglEnable(GL_DEPTH_TEST);
 }
 
-/*
-=============
-R_Clear
-=============
-*/
+
+/// R_Clear
+
 static void R_Clear (void)
 {
 	int	bits = 0;
@@ -988,13 +959,10 @@ static void R_Clear (void)
 	qglDepthRange (gldepthmin, gldepthmax);
 }
 
-/*
-================
-R_RenderView
 
-r_newrefdef must be set before the first call
-================
-*/
+/// R_RenderView
+// r_newrefdef must be set before the first call
+
 static void R_RenderView (refdef_t *fd)
 {
 	if (r_norefresh->integer)
@@ -1142,12 +1110,9 @@ static void	R_SetGL2D (void)
 	qglEnable(GL_ALPHA_TEST);
 }
 
-/*
-====================
-R_SetLightLevel
 
-====================
-*/
+/// R_SetLightLevel
+
 static void R_SetLightLevel (void)
 {
 	vec3_t		shadelight;
@@ -1178,11 +1143,9 @@ static void R_SetLightLevel (void)
 
 }
 
-/*
-=====================
-R_RenderFrame
-=====================
-*/
+
+/// R_RenderFrame
+
 void R_RenderFrame (refdef_t *fd)
 {
 	R_RenderView( fd );
@@ -1356,14 +1319,14 @@ static void GL_Register( void )
 	Cvar_Subsystem( CVAR_SYSTEM_VIDEO );
 
 	r_lefthand = Cvar_Get( "hand", "0", CVAR_USERINFO | CVAR_ARCHIVE );
-	// =======================================================================
+	
 	    // M-AI-812: Nowa zmienna do kontrolowania widoczności broni w hand 2
-	    // =======================================================================
+	 
 	    // Ta zmienna będzie w 100% po stronie klienta.
 	    // 0 = Ukryj broń dla hand 2 (domyślne zachowanie)
 	    // 1 = Pokaż broń dla hand 2
 	    Cvar_Get( "cl_gun_show_center", "0", CVAR_ARCHIVE );
-	    // ===
+	    // 
 	r_norefresh = Cvar_Get ("r_norefresh", "0", 0);
 	r_fullbright = Cvar_Get ("r_fullbright", "0", CVAR_CHEAT);
 	r_drawentities = Cvar_Get ("r_drawentities", "1", 0);
@@ -1534,11 +1497,9 @@ void GL_Unregister (void)
 	gl_fog->OnChange = NULL;
 }
 
-/*
-================
-R_GetModeInfo
-================
-*/
+
+/// R_GetModeInfo
+
 typedef struct vidmode_s
 {
 	const char *description;
@@ -1593,11 +1554,9 @@ static void R_ModeList_f( void )
 	}
 }
 
-/*
-==================
-R_SetMode
-==================
-*/
+
+/// R_SetMode
+
 qboolean R_SetMode (void)
 {
 	rserr_t err;
@@ -1654,11 +1613,9 @@ qboolean R_SetMode (void)
 	return true;
 }
 
-/*
-===============
-R_Init
-===============
-*/
+
+/// R_Init
+
 char qglLastError[256];
 
 static const char *GetQGLErrorString (unsigned int error)
@@ -2050,11 +2007,9 @@ int R_Init( void *hinstance, void *hWnd )
 	return 0;
 }
 
-/*
-===============
-R_Shutdown
-===============
-*/
+
+/// R_Shutdown
+
 void R_Shutdown (void)
 {	
 	R_ShutdownModels();
@@ -2077,11 +2032,8 @@ void R_Shutdown (void)
 
 
 
-/*
-===============
-R_BeginFrame
-===============
-*/
+/// R_BeginFrame
+
 void R_BeginFrame( float camera_separation )
 {
 
@@ -2130,11 +2082,10 @@ void R_EndFrame (void)
 {
 	GLimp_EndFrame();
 }
-/*
-=============
-R_SetPalette
-=============
-*/
+
+
+/// R_SetPalette
+
 uint32 r_rawpalette[256];
 
 void R_CinematicSetPalette ( const unsigned char *palette)
@@ -2171,9 +2122,9 @@ void R_CinematicSetPalette ( const unsigned char *palette)
 	qglClearColor( 1, 0.2f, 0, 1 );
 }
 
-/*
-** R_DrawBeam
-*/
+
+// R_DrawBeam
+
 void R_DrawBeam (void)
 {
 #define NUM_BEAM_SEGS 6

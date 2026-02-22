@@ -52,13 +52,10 @@ static int	power_shield_index;
 void Use_Quad (edict_t *ent, gitem_t *item);
 static int	quad_drop_timeout_hack;
 
-//======================================================================
+///
 
-/*
-===============
-GetItemByIndex
-===============
-*/
+///		GetItemByIndex
+
 gitem_t	*GetItemByIndex (int index)
 {
 	if (index == 0 || index >= game.num_items)
@@ -68,12 +65,8 @@ gitem_t	*GetItemByIndex (int index)
 }
 
 
-/*
-===============
-FindItemByClassname
+///		FindItemByClassname
 
-===============
-*/
 gitem_t	*FindItemByClassname (char *classname)
 {
 	int		i;
@@ -91,12 +84,9 @@ gitem_t	*FindItemByClassname (char *classname)
 	return NULL;
 }
 
-/*
-===============
-FindItem
 
-===============
-*/
+///		FindItem
+
 gitem_t	*FindItem (char *pickup_name)
 {
 	int		i;
@@ -114,7 +104,7 @@ gitem_t	*FindItem (char *pickup_name)
 	return NULL;
 }
 
-//======================================================================
+///
 
 void DoRespawn (edict_t *ent)
 {
@@ -154,7 +144,7 @@ void SetRespawn (edict_t *ent, float delay)
 }
 
 
-//======================================================================
+///
 
 qboolean Pickup_Powerup (edict_t *ent, edict_t *other)
 {
@@ -192,7 +182,7 @@ void Drop_General (edict_t *ent, gitem_t *item)
 }
 
 
-//======================================================================
+///
 
 qboolean Pickup_Adrenaline (edict_t *ent, edict_t *other)
 {
@@ -334,7 +324,7 @@ qboolean Pickup_Pack (edict_t *ent, edict_t *other)
 	return true;
 }
 
-//======================================================================
+///
 
 void Use_Quad (edict_t *ent, gitem_t *item)
 {
@@ -361,7 +351,7 @@ void Use_Quad (edict_t *ent, gitem_t *item)
 	gi.sound(ent, CHAN_ITEM, gi.soundindex("items/damage.wav"), 1, ATTN_NORM, 0);
 }
 
-//======================================================================
+///
 
 void Use_Breather (edict_t *ent, gitem_t *item)
 {
@@ -376,7 +366,7 @@ void Use_Breather (edict_t *ent, gitem_t *item)
 //	gi.sound(ent, CHAN_ITEM, gi.soundindex("items/damage.wav"), 1, ATTN_NORM, 0);
 }
 
-//======================================================================
+///
 
 void Use_Envirosuit (edict_t *ent, gitem_t *item)
 {
@@ -391,7 +381,7 @@ void Use_Envirosuit (edict_t *ent, gitem_t *item)
 //	gi.sound(ent, CHAN_ITEM, gi.soundindex("items/damage.wav"), 1, ATTN_NORM, 0);
 }
 
-//======================================================================
+///
 
 void	Use_Invulnerability (edict_t *ent, gitem_t *item)
 {
@@ -406,7 +396,7 @@ void	Use_Invulnerability (edict_t *ent, gitem_t *item)
 	gi.sound(ent, CHAN_ITEM, gi.soundindex("items/protect.wav"), 1, ATTN_NORM, 0);
 }
 
-//======================================================================
+///
 
 void	Use_Silencer (edict_t *ent, gitem_t *item)
 {
@@ -417,7 +407,7 @@ void	Use_Silencer (edict_t *ent, gitem_t *item)
 //	gi.sound(ent, CHAN_ITEM, gi.soundindex("items/damage.wav"), 1, ATTN_NORM, 0);
 }
 
-//======================================================================
+///
 
 qboolean Pickup_Key (edict_t *ent, edict_t *other)
 {
@@ -442,7 +432,7 @@ qboolean Pickup_Key (edict_t *ent, edict_t *other)
 	return true;
 }
 
-//======================================================================
+///
 
 qboolean Add_Ammo (edict_t *ent, gitem_t *item, int count)
 {
@@ -535,8 +525,7 @@ void Drop_Ammo (edict_t *ent, gitem_t *item)
 	ValidateSelectedItem (ent);
 }
 
-
-//======================================================================
+///
 
 void MegaHealth_think (edict_t *self)
 {
@@ -585,7 +574,7 @@ qboolean Pickup_Health (edict_t *ent, edict_t *other)
 	return true;
 }
 
-//======================================================================
+///
 
 int ArmorIndex (edict_t *ent)
 {
@@ -683,7 +672,7 @@ qboolean Pickup_Armor (edict_t *ent, edict_t *other)
 	return true;
 }
 
-//======================================================================
+///
 
 int PowerArmorType (edict_t *ent)
 {
@@ -752,13 +741,10 @@ void Drop_PowerArmor (edict_t *ent, gitem_t *item)
 	Drop_General (ent, item);
 }
 
-//======================================================================
+///
 
-/*
-===============
-Touch_Item
-===============
-*/
+///		Touch_Item
+
 void Touch_Item (edict_t *ent, edict_t *other, cplane_t *plane, csurface_t *surf)
 {
 	(void)plane;
@@ -823,7 +809,7 @@ void Touch_Item (edict_t *ent, edict_t *other, cplane_t *plane, csurface_t *surf
 	}
 }
 
-//======================================================================
+///
 
 static void drop_temp_touch (edict_t *ent, edict_t *other, cplane_t *plane, csurface_t *surf)
 {
@@ -913,13 +899,11 @@ void Use_Item (edict_t *ent, edict_t *other, edict_t *activator)
 	gi.linkentity (ent);
 }
 
-//======================================================================
+///
 
-/*
-================
-droptofloor
-================
-*/
+
+///		droptofloor
+
 void droptofloor (edict_t *ent)
 {
 	trace_t		tr;
@@ -986,15 +970,13 @@ void droptofloor (edict_t *ent)
 }
 
 
-/*
-===============
-PrecacheItem
 
-Precaches all data needed for a given item.
-This will be called for each item spawned in a level,
-and for each item in each client's inventory.
-===============
-*/
+///		PrecacheItem
+
+// Precaches all data needed for a given item.
+// This will be called for each item spawned in a level,
+// and for each item in each client's inventory.
+
 void PrecacheItem (gitem_t *it)
 {
 	char	*s, *start;
@@ -1053,16 +1035,14 @@ void PrecacheItem (gitem_t *it)
 	}
 }
 
-/*
-============
-SpawnItem
 
-Sets the clipping size and plants the object on the floor.
+///		SpawnItem
 
-Items can't be immediately dropped to floor, because they might
-be on an entity that hasn't spawned yet.
-============
-*/
+// Sets the clipping size and plants the object on the floor.
+
+// Items can't be immediately dropped to floor, because they might
+// be on an entity that hasn't spawned yet.
+
 void SpawnItem (edict_t *ent, gitem_t *item)
 {
 	PrecacheItem (item);
@@ -1134,20 +1114,18 @@ void SpawnItem (edict_t *ent, gitem_t *item)
 		gi.modelindex (ent->model);
 }
 
-//======================================================================
+///
 
 gitem_t	itemlist[] = 
 {
 	{
 		NULL
 	},	// leave index 0 alone
-
-	//
+	
 	// ARMOR
-	//
 
-/*QUAKED item_armor_body (.3 .3 1) (-16 -16 -16) (16 16 16)
-*/
+// QUAKED item_armor_body (.3 .3 1) (-16 -16 -16) (16 16 16)
+
 	{
 		"item_armor_body", 
 		Pickup_Armor,
@@ -1157,20 +1135,20 @@ gitem_t	itemlist[] =
 		"misc/ar1_pkup.wav",
 		"models/items/armor/body/tris.md2", EF_ROTATE,
 		NULL,
-/* icon */		"i_bodyarmor",
-/* pickup */	"Body Armor",
-/* width */		3,
+		"i_bodyarmor",		// icon
+		"Body Armor",	// pickup
+		3,				//width
 		0,
 		NULL,
 		IT_ARMOR,
 		0,
 		&bodyarmor_info,
 		ARMOR_BODY,
-/* precache */ ""
+		""		// precache
 	},
 
-/*QUAKED item_armor_combat (.3 .3 1) (-16 -16 -16) (16 16 16)
-*/
+//QUAKED item_armor_combat (.3 .3 1) (-16 -16 -16) (16 16 16)
+
 	{
 		"item_armor_combat", 
 		Pickup_Armor,

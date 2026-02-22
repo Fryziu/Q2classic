@@ -25,8 +25,9 @@ extern cparticle_t	*active_particles, *free_particles;
 extern cparticle_t	particles[MAX_PARTICLES];
 extern int			cl_numparticles;
 
-//=============
-//=============
+
+//
+
 void CL_Flashlight (int ent, const vec3_t pos)
 {
 	cdlight_t	*dl;
@@ -40,11 +41,9 @@ void CL_Flashlight (int ent, const vec3_t pos)
 	dl->color[0] = dl->color[1] = dl->color[2] = 1;
 }
 
-/*
-======
-CL_ColorFlash - flash of light
-======
-*/
+
+///		CL_ColorFlash - flash of light
+
 void CL_ColorFlash (const vec3_t pos, int ent, int intensity, float r, float g, float b)
 {
 	cdlight_t	*dl;
@@ -69,11 +68,8 @@ void CL_ColorFlash (const vec3_t pos, int ent, int intensity, float r, float g, 
 }
 
 
-/*
-======
-CL_DebugTrail
-======
-*/
+///		CL_DebugTrail
+
 void CL_DebugTrail (const vec3_t start, const vec3_t end)
 {
 	vec3_t		move, vec;
@@ -116,11 +112,9 @@ void CL_DebugTrail (const vec3_t start, const vec3_t end)
 
 }
 
-/*
-===============
-CL_SmokeTrail
-===============
-*/
+
+///		CL_SmokeTrail
+
 void CL_SmokeTrail (const vec3_t start, const vec3_t end, int colorStart, int colorRun, int spacing)
 {
 	vec3_t		move, vec;
@@ -268,11 +262,9 @@ void CL_ForceWall (const vec3_t start, const vec3_t end, int color)
 }*/
 
 
-/*
-===============
-CL_GenericParticleEffect
-===============
-*/
+
+///		CL_GenericParticleEffect
+
 void CL_GenericParticleEffect (const vec3_t org, const vec3_t dir, int color, int count, int numcolors, int dirspread, float alphavel)
 {
 	int			i;
@@ -310,12 +302,9 @@ void CL_GenericParticleEffect (const vec3_t org, const vec3_t dir, int color, in
 	}
 }
 
-/*
-===============
-CL_BubbleTrail2 (lets you control the # of bubbles by setting the distance between the spawns)
 
-===============
-*/
+///		CL_BubbleTrail2 (lets you control the # of bubbles by setting the distance between the spawns)
+
 void CL_BubbleTrail2 (const vec3_t start, const vec3_t end, int dist)
 {
 	vec3_t		move, vec;
@@ -577,13 +566,11 @@ void CL_Heatbeam (const vec3_t start, const vec3_t end)
 }
 #endif
 
-/*
-===============
-CL_ParticleSteamEffect
 
-Puffs with velocity along direction, with some randomness thrown in
-===============
-*/
+///		CL_ParticleSteamEffect
+
+// Puffs with velocity along direction, with some randomness thrown in
+
 void CL_ParticleSteamEffect (const vec3_t org, const vec3_t dir, int color, int count, int magnitude)
 {
 	int			i;
@@ -667,11 +654,9 @@ void CL_ParticleSteamEffect2 (cl_sustain_t *self)
 	self->nextthink += self->thinkinterval;
 }
 
-/*
-===============
-CL_TrackerTrail
-===============
-*/
+
+///		CL_TrackerTrail
+
 void CL_TrackerTrail (const vec3_t start, const vec3_t end, int particleColor)
 {
 	vec3_t		move, vec;
@@ -907,12 +892,9 @@ void CL_Tracker_Explode(const vec3_t origin)
 	
 }
 
-/*
-===============
-CL_TagTrail
 
-===============
-*/
+///		CL_TagTrail
+
 void CL_TagTrail (const vec3_t start, const vec3_t end, int color)
 {
 	vec3_t		move;
@@ -956,11 +938,9 @@ void CL_TagTrail (const vec3_t start, const vec3_t end, int color)
 	}
 }
 
-/*
-===============
-CL_ColorExplosionParticles
-===============
-*/
+
+///		CL_ColorExplosionParticles
+
 void CL_ColorExplosionParticles (const vec3_t org, int color, int run)
 {
 	int			i;
@@ -993,11 +973,9 @@ void CL_ColorExplosionParticles (const vec3_t org, int color, int run)
 	}
 }
 
-/*
-===============
-CL_ParticleSmokeEffect - like the steam effect, but unaffected by gravity
-===============
-*/
+
+///		CL_ParticleSmokeEffect - like the steam effect, but unaffected by gravity
+
 void CL_ParticleSmokeEffect (const vec3_t org, const vec3_t dir, int color, int count, int magnitude)
 {
 	int			i;
@@ -1036,13 +1014,11 @@ void CL_ParticleSmokeEffect (const vec3_t org, const vec3_t dir, int color, int 
 	}
 }
 
-/*
-===============
-CL_BlasterParticles2
 
-Wall impact puffs (Green)
-===============
-*/
+///		CL_BlasterParticles2
+
+// Wall impact puffs (Green)
+
 void CL_BlasterParticles2 (const vec3_t org, const vec3_t dir, unsigned int color)
 {
 	int			i;
@@ -1079,13 +1055,11 @@ void CL_BlasterParticles2 (const vec3_t org, const vec3_t dir, unsigned int colo
 	}
 }
 
-/*
-===============
-CL_BlasterTrail2
 
-Green!
-===============
-*/
+///		CL_BlasterTrail2
+
+// Green!
+
 void CL_BlasterTrail2 (const vec3_t start, const vec3_t end)
 {
 	vec3_t		move, vec;

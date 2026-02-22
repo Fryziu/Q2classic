@@ -18,21 +18,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
-/*
+// gl_model.h
 
-d*_t structures are on-disk representations
-m*_t structures are in-memory
+// d*_t structures are on-disk representations
+// m*_t structures are in-memory
 
-*/
 
-/*
-==============================================================================
-
-BRUSH MODELS
-
-==============================================================================
-*/
-
+///		BRUSH MODELS		///
 
 //
 // in memory representation
@@ -154,10 +146,10 @@ typedef struct mleaf_s
 } mleaf_t;
 
 
-//===================================================================
+///
 
 //
-// Whole model
+//		Whole model
 //
 
 typedef enum {mod_bad, mod_brush, mod_sprite, mod_alias} modtype_t;
@@ -326,7 +318,7 @@ typedef struct model_s
 	byte		*extradata;
 } model_t;
 
-//============================================================================
+///
 
 void	Mod_Init (void);
 

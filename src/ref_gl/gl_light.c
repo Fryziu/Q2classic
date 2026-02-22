@@ -29,13 +29,9 @@ extern qboolean usingmodifiedlightmaps;
 
 #define	DLIGHT_CUTOFF	0
 
-/*
-=============================================================================
 
-DYNAMIC LIGHTS BLEND RENDERING
+///		DYNAMIC LIGHTS BLEND RENDERING	///
 
-=============================================================================
-*/
 static void R_RenderDlight (const dlight_t *light)
 {
 	int		i;
@@ -69,11 +65,9 @@ static void R_RenderDlight (const dlight_t *light)
 	qglEnd ();
 }
 
-/*
-=============
-R_RenderDlights
-=============
-*/
+
+/// R_RenderDlights
+
 void R_RenderDlights (void)
 {
 	int		i;
@@ -102,19 +96,12 @@ void R_RenderDlights (void)
 }
 
 
-/*
-=============================================================================
 
-DYNAMIC LIGHTS
+///		DYNAMIC LIGHTS		///
 
-=============================================================================
-*/
 
-/*
-=============
-R_MarkLights
-=============
-*/
+/// R_MarkLights
+
 
 void R_MarkLights (const dlight_t *light, int bit, const mnode_t *node)
 {
@@ -164,11 +151,9 @@ void R_MarkLights (const dlight_t *light, int bit, const mnode_t *node)
 	R_MarkLights (light, bit, node->children[1]);
 }
 
-/*
-=============
-R_PushDlights
-=============
-*/
+
+/// R_PushDlights
+
 void R_PushDlights (void)
 {
 	int		i;
@@ -184,13 +169,9 @@ void R_PushDlights (void)
 }
 
 
-/*
-=============================================================================
 
-LIGHT SAMPLING
+///		LIGHT SAMPLING		///
 
-=============================================================================
-*/
 
 static vec3_t	pointcolor;
 static cplane_t	*lightplane;		// used as shadow plane
@@ -286,11 +267,9 @@ static int RecursiveLightPoint (const mnode_t *node, const vec3_t start, const v
 	return RecursiveLightPoint (node->children[!side], mid, end);
 }
 
-/*
-===============
-R_LightPoint
-===============
-*/
+
+/// R_LightPoint
+
 void R_LightPoint (const vec3_t p, vec3_t color)
 {
 	vec3_t		end;
@@ -346,14 +325,12 @@ void R_LightPoint (const vec3_t p, vec3_t color)
 }
 
 
-//===================================================================
+///
 
 static float s_blocklights[34*34*3];
-/*
-===============
-R_StainNode
-===============
-*/
+
+///		R_StainNode		///
+
 static void R_StainNode (const stain_t *st, const mnode_t *node) { 
 	msurface_t *surf;
 	float		dist;
@@ -457,12 +434,9 @@ static void R_StainNode (const stain_t *st, const mnode_t *node) {
 	R_StainNode (st, node->children[1]);
 }
 
-/*
-=====================
-R_AddStain
 
-=====================
-*/
+///		R_AddStain
+
 static const vec3_t stainColors[4] = {
   {1.0f, 0.8f, 0.8f}, //Blood
   {0.89f, 0.89f, 0.89f}, //Normal shot
@@ -484,11 +458,9 @@ void R_AddStain (const vec3_t org, int color, float size)
 	R_StainNode(&s, r_worldmodel->nodes);
 }
 
-/*
-===============
-R_AddDynamicLights
-===============
-*/
+
+///		R_AddDynamicLights
+
 void R_AddDynamicLights (const msurface_t *surf)
 {
 	int			lnum;
@@ -586,9 +558,8 @@ void R_AddDynamicLights (const msurface_t *surf)
 }
 
 
-/*
-** R_SetCacheState
-*/
+/// R_SetCacheState
+
 void R_SetCacheState( msurface_t *surf )
 {
 	int maps;
@@ -599,13 +570,10 @@ void R_SetCacheState( msurface_t *surf )
 	}
 }
 
-/*
-===============
-R_BuildLightMap
 
-Combine and scale multiple lightmaps into the floating format in blocklights
-===============
-*/
+/// R_BuildLightMap
+// Combine and scale multiple lightmaps into the floating format in blocklights
+
 void R_BuildLightMap (const msurface_t *surf, byte *dest, int stride)
 {
 	int			smax, tmax;
@@ -733,17 +701,17 @@ store:
 			if (b > max)
 				max = b;
 
-			/*
-			** alpha is ONLY used for the mono lightmap case.  For this reason
-			** we set it to the brightest of the color components so that 
-			** things don't get too dim.
-			*/
+			
+			// alpha is ONLY used for the mono lightmap case.  For this reason
+			// we set it to the brightest of the color components so that 
+			// things don't get too dim.
+			
 			a = max;
 
-			/*
-			** rescale all the color components if the intensity of the greatest
-			** channel exceeds 1.0
-			*/
+			
+			// rescale all the color components if the intensity of the greatest
+			// channel exceeds 1.0
+			
 			if (max > 255)
 			{
 				float t = 255.0F / max;

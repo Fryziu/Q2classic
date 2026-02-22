@@ -737,11 +737,9 @@ void P_WorldEffects (void)
 }
 
 
-/*
-===============
-G_SetClientEffects
-===============
-*/
+
+///		G_SetClientEffects
+
 void G_SetClientEffects (edict_t *ent)
 {
 	int		pa_type;
@@ -790,11 +788,9 @@ void G_SetClientEffects (edict_t *ent)
 }
 
 
-/*
-===============
-G_SetClientEvent
-===============
-*/
+
+///		G_SetClientEvent
+
 void G_SetClientEvent (edict_t *ent)
 {
 	if (ent->s.event)

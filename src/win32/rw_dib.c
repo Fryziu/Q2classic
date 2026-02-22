@@ -15,14 +15,13 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+*/
 
-*/
-/*
-** RW_DIB.C
-**
-** This handles DIB section management under Windows.
-**
-*/
+
+// RW_DIB.C
+
+// This handles DIB section management under Windows.
+
 #include "..\ref_soft\r_local.h"
 #include "rw_win.h"
 
