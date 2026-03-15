@@ -126,7 +126,7 @@ static char	*SV_StatusString (void)
 			Com_sprintf (player, sizeof(player), "%i %i \"%s\"\n", 
 				cl->edict->client->ps.stats[STAT_FRAGS], cl->ping, cl->name);
 			playerLength = strlen(player);
-			if (statusLength + playerLength >= sizeof(status) )
+			if (statusLength + playerLength >= (int)sizeof(status) )
 				break;		// can't hold any more
 			strcpy (status + statusLength, player);
 			statusLength += playerLength;
@@ -340,7 +340,7 @@ static void SVC_DirectConnect (void)
 			&& ( cl->netchan.qport == qport 
 			|| adr.port == cl->netchan.remote_address.port ) )
 		{
-			if (!NET_IsLocalAddress (&adr) && (svs.realtime - cl->lastconnect) < (sv_reconnect_limit->integer * 1000))
+			if (!NET_IsLocalAddress (&adr) && (int)(svs.realtime - cl->lastconnect) < (sv_reconnect_limit->integer * 1000))
 			{
 				Com_DPrintf ("%s:reconnect rejected : too soon\n", NET_AdrToString (&adr));
 				return;
@@ -440,7 +440,7 @@ static void SVC_RemoteCommand (void)
 	else
 		Com_Printf ("Rcon from %s:\n%s\n", NET_AdrToString (&net_from), net_message.data+4);
 
-	Com_BeginRedirect (RD_PACKET, sv_outputbuf, SV_OUTPUTBUF_LENGTH, SV_FlushRedirect);
+	Com_BeginRedirect (RD_PACKET, sv_outputbuf, SV_OUTPUTBUF_LENGTH, (void *)(intptr_t)SV_FlushRedirect);
 
 	if (!i)
 	{
@@ -688,7 +688,7 @@ static void SV_CheckTimeouts (void)
 	for (i=0,cl=svs.clients ; i<maxclients->integer ; i++,cl++)
 	{
 		// message times may be wrong across a changelevel
-		if (cl->lastmessage > svs.realtime)
+		if (cl->lastmessage > (int)svs.realtime)
 			cl->lastmessage = svs.realtime;
 
 		if (cl->state == cs_zombie
@@ -855,7 +855,7 @@ static void Master_Heartbeat (void)
 		return;		// a private dedicated game
 
 	// check for time wraparound
-	if (svs.last_heartbeat > svs.realtime)
+	if (svs.last_heartbeat > (int)svs.realtime)
 		svs.last_heartbeat = svs.realtime;
 
 	if (svs.realtime - svs.last_heartbeat < HEARTBEAT_SECONDS*1000)
@@ -926,7 +926,7 @@ void SV_UserinfoChanged (client_t *cl)
 	// name for C code
 	Q_strncpyz (cl->name, Info_ValueForKey (cl->userinfo, "name"), sizeof(cl->name));
 	// mask off high bit
-	for (i=0 ; i<sizeof(cl->name) ; i++)
+	for (i=0 ; i<(int)sizeof(cl->name) ; i++)
 		cl->name[i] &= 127;
 
 	// rate command

@@ -232,6 +232,8 @@ char *messages[] =
 
 void actor_pain (edict_t *self, edict_t *other, float kick, int damage)
 {
+	(void)kick;
+	(void)damage;
 	int		n;
 
 	if (self->health < (self->max_health / 2))
@@ -353,6 +355,10 @@ mmove_t actor_move_death2 = {FRAME_death201, FRAME_death213, actor_frames_death2
 
 void actor_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
+	(void)inflictor;
+	(void)attacker;
+	(void)damage;
+	(void)point;
 	int		n;
 
 // check for gib
@@ -420,6 +426,8 @@ void actor_attack(edict_t *self)
 
 void actor_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	vec3_t		v;
 
 	self->goalentity = self->movetarget = G_PickTarget(self->target);
@@ -516,7 +524,9 @@ for JUMP only:
 
 void target_actor_touch (edict_t *self, edict_t *other, cplane_t *plane, csurface_t *surf)
 {
-	vec3_t	v;
+	(void)plane;
+	(void)surf;
+	vec3_t		v;
 
 	if (other->movetarget != self)
 		return;

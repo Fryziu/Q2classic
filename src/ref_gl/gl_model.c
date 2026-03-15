@@ -406,8 +406,8 @@ static void Mod_LoadSubmodels (const lump_t *l)
 		out->radius = RadiusFromBounds (out->mins, out->maxs);
 
 		headnode = LittleLong( in->headnode );
-		if( headnode >= loadmodel->bspModel->numnodes ) {
-			/* FIXME: headnode may be garbage for some models */
+		if( headnode >= (uint32)loadmodel->bspModel->numnodes ) {
+// FIXME: headnode may be garbage for some models 
 			Com_DPrintf( "LoadSubmodels: bad headnode for model %d\n", i );
 			out->headnode = NULL;
 		} else {
@@ -416,7 +416,7 @@ static void Mod_LoadSubmodels (const lump_t *l)
 
 		firstFace = LittleLong (in->firstface);
 		numFaces = LittleLong (in->numfaces);
-		if( firstFace + numFaces > loadmodel->bspModel->numsurfaces ) {
+		if( firstFace + numFaces > (uint32)loadmodel->bspModel->numsurfaces ) {
 			Com_Error(ERR_DROP, "LoadSubmodels: bad faces\n" );
 			return;
 		}
@@ -425,11 +425,9 @@ static void Mod_LoadSubmodels (const lump_t *l)
 	}
 }
 
-/*
-=================
-Mod_LoadEdges
-=================
-*/
+
+///		Mod_LoadEdges
+
 static void Mod_LoadEdges (const lump_t *l)
 {
 	dedge_t *in;
@@ -454,11 +452,9 @@ static void Mod_LoadEdges (const lump_t *l)
 	}
 }
 
-/*
-=================
-Mod_LoadTexinfo
-=================
-*/
+
+///		Mod_LoadTexinfo
+
 static void Mod_LoadTexinfo (const lump_t *l)
 {
 	texinfo_t *in;
@@ -516,13 +512,11 @@ static void Mod_LoadTexinfo (const lump_t *l)
 	}
 }
 
-/*
-================
-CalcSurfaceExtents
 
-Fills in s->texturemins[] and s->extents[]
-================
-*/
+///		CalcSurfaceExtents
+
+// Fills in s->texturemins[] and s->extents[]
+
 static void CalcSurfaceExtents (msurface_t *s)
 {
 	float	mins[2], maxs[2], val;
@@ -572,11 +566,9 @@ void GL_CreateSurfaceLightmap (msurface_t *surf);
 void GL_EndBuildingLightmaps (void);
 void GL_BeginBuildingLightmaps (void);
 
-/*
-=================
-Mod_LoadFaces
-=================
-*/
+
+///		Mod_LoadFaces
+
 static void Mod_LoadFaces (const lump_t *l)
 {
 	dface_t		*in;
@@ -623,7 +615,7 @@ static void Mod_LoadFaces (const lump_t *l)
 		out->plane = loadmodel->bspModel->planes + planenum;
 
 		ti = LittleShort (in->texinfo);
-		if ((unsigned)ti >= loadmodel->bspModel->numtexinfo) {
+		if (ti >= loadmodel->bspModel->numtexinfo) {
 			Com_Error (ERR_DROP, "Mod_LoadFaces: bad texinfo number");
 		}
 		out->texinfo = loadmodel->bspModel->texinfo + ti;
@@ -666,11 +658,8 @@ static void Mod_LoadFaces (const lump_t *l)
 }
 
 
-/*
-=================
-Mod_SetParent
-=================
-*/
+///		Mod_SetParent
+
 static void Mod_SetParent (mnode_t *node, mnode_t *parent)
 {
 	node->parent = parent;
@@ -682,11 +671,9 @@ static void Mod_SetParent (mnode_t *node, mnode_t *parent)
 	Mod_SetParent (node->children[1], node);
 }
 
-/*
-=================
-Mod_LoadNodes
-=================
-*/
+
+///		Mod_LoadNodes
+
 static void Mod_LoadNodes (const lump_t *l)
 {
 	int			i, j, count, p;
@@ -738,11 +725,9 @@ static void Mod_LoadNodes (const lump_t *l)
 	Mod_SetParent (loadmodel->bspModel->nodes, NULL);	// sets nodes and leafs
 }
 
-/*
-=================
-Mod_LoadLeafs
-=================
-*/
+
+///		Mod_LoadLeafs
+
 static void Mod_LoadLeafs (const lump_t *l)
 {
 	dleaf_t 	*in;
@@ -796,11 +781,9 @@ static void Mod_LoadLeafs (const lump_t *l)
 	}	
 }
 
-/*
-=================
-Mod_LoadMarksurfaces
-=================
-*/
+
+///		Mod_LoadMarksurfaces
+
 static void Mod_LoadMarksurfaces (const lump_t *l)
 {	
 	int		i, j, count;
@@ -827,11 +810,9 @@ static void Mod_LoadMarksurfaces (const lump_t *l)
 	}
 }
 
-/*
-=================
-Mod_LoadSurfedges
-=================
-*/
+
+///		Mod_LoadSurfedges
+
 static void Mod_LoadSurfedges (const lump_t *l)
 {	
 	int		i, count;
@@ -857,11 +838,8 @@ static void Mod_LoadSurfedges (const lump_t *l)
 }
 
 
-/*
-=================
-Mod_LoadPlanes
-=================
-*/
+///	Mod_LoadPlanes
+
 static void Mod_LoadPlanes (const lump_t *l)
 {
 	int			i, j, count, bits;
@@ -896,11 +874,9 @@ static void Mod_LoadPlanes (const lump_t *l)
 	}
 }
 
-/*
-=================
-Mod_LoadBrushModel
-=================
-*/
+
+///		Mod_LoadBrushModel
+
 static void Mod_LoadBrushModel (model_t *mod, byte *rawdata, int length)
 {
 	int				i;
@@ -910,7 +886,7 @@ static void Mod_LoadBrushModel (model_t *mod, byte *rawdata, int length)
 	if (loadmodel != mod_known)
 		Com_Error (ERR_DROP, "Mod_LoadBrushModel: Loaded a brush model after the world");
 
-	if( length < sizeof( dheader_t ) ) {
+	if( length < (int)sizeof( dheader_t ) ) {
 		Com_Error(ERR_DROP, "Mod_LoadBrushModel: %s has length < header length\n", mod->name );
 	}
 
@@ -957,9 +933,8 @@ static void Mod_LoadBrushModel (model_t *mod, byte *rawdata, int length)
 	Mod_LoadSubmodels (&header.lumps[LUMP_MODELS]);
 	//mod->numframes = 2;		// regular and alternate animation
 	
-//
 // set up the submodels
-//
+
 	for (i=0 ; i<mod->bspModel->numSubmodels ; i++)
 	{
 		model_t	*starmod;
@@ -973,19 +948,12 @@ static void Mod_LoadBrushModel (model_t *mod, byte *rawdata, int length)
 	mod->extradatasize = Hunk_End();
 }
 
-/*
-==============================================================================
 
-ALIAS MODELS
+///		ALIAS MODELS		///
 
-==============================================================================
-*/
 
-/*
-=================
-Mod_LoadAliasMD2Model
-=================
-*/
+///		Mod_LoadAliasMD2Model
+
 //#define Mod_Malloc(size) Z_TagMalloc(size, TAG_RENDER_IMAGE)
 //#define Mod_Malloc(size) Hunk_Alloc(size)
 
@@ -1014,13 +982,13 @@ static void Mod_LoadAliasMD2Model (model_t *mod, byte *rawdata, int length)
 	vec_t				scaleS, scaleT;
 
 
-	if( length < sizeof( dmdl_t ) ) {
+	if( length < (int)sizeof( dmdl_t ) ) {
 		Com_Error( ERR_DROP, "Mod_LoadAliasMD2Model: %s has length < header length\n", mod->name );
 	}
 
-	/* byte swap the header */
+	// byte swap the header
 	header = *( dmdl_t * )rawdata;
-	for( i = 0; i < sizeof( header )/4; i++ ) {
+	for( i = 0; i < (int)sizeof( header )/4; i++ ) {
 		(( uint32 * )&header)[i] = LittleLong( (( uint32 * )&header)[i] );
 	}
 
@@ -1062,9 +1030,8 @@ static void Mod_LoadAliasMD2Model (model_t *mod, byte *rawdata, int length)
 		Com_Error( ERR_DROP, "Mod_LoadAliasMD2Model: %s has bad frame offset\n", mod->name );
 	}
 
-//
 // load triangle lists
-//
+
 	pintri = ( dtriangle_t * )( rawdata + header.ofs_tris );
 	for( i = 0, k = 0; i < header.num_tris; i++, k += 3 ) {
 		vertIndices[k+0] = ( index_t )LittleShort( pintri[i].index_xyz[0] );
@@ -1076,9 +1043,8 @@ static void Mod_LoadAliasMD2Model (model_t *mod, byte *rawdata, int length)
 		tcIndices[k+2] = ( index_t )LittleShort( pintri[i].index_st[2] );
 	}
 
-//
 // build list of unique vertexes
-//
+
 	numIndexes = header.num_tris * 3;
 	for( i = 0; i < numIndexes; i++ ) {
 		indremap[i] = 0xFFFF;
@@ -1135,9 +1101,9 @@ static void Mod_LoadAliasMD2Model (model_t *mod, byte *rawdata, int length)
 
 	for ( i = 0; i < numIndexes; i++)
 		poutindex[i] = finalIndices[i];
-//
+
 // load base s and t vertices
-//
+
 	scaleS = 1.0f / header.skinwidth;
 	scaleT = 1.0f / header.skinheight;
 	poutcoord = poutmesh->stcoords = (vec2_t *)buf; buf += numVerts * sizeof(vec2_t);
@@ -1148,9 +1114,9 @@ static void Mod_LoadAliasMD2Model (model_t *mod, byte *rawdata, int length)
 		}
 	}
 
-//
+
 // load the frames
-//
+
 	poutframe = poutmodel->frames = (aliasFrame_t *)buf;
 	buf += poutmodel->numFrames * sizeof(aliasFrame_t);
 	poutvertex = poutmesh->vertexes = (aliasVertex_t *)buf;
@@ -1192,12 +1158,10 @@ static void Mod_LoadAliasMD2Model (model_t *mod, byte *rawdata, int length)
 }
 
 
+///		Mod_StripLODSuffix
+
 /*
-=================
-Mod_StripLODSuffix
-=================
-*/
-/*void Mod_StripLODSuffix( char *name )
+void Mod_StripLODSuffix( char *name )
 {
 	int len, lodnum;
 
@@ -1210,15 +1174,13 @@ Mod_StripLODSuffix
 		if( name[len-2] == '_' )
 			name[len-2] = 0;
 	}
-}*/
-
-/*
-=================
-Mod_LoadAliasMD3Model
-=================
+}
 */
 
-/*static vec_t Quat_Normalize( quat_t q )
+///		Mod_LoadAliasMD3Model
+
+/*
+static vec_t Quat_Normalize( quat_t q )
 {
 	vec_t length;
 
@@ -1264,7 +1226,8 @@ static void Matrix_Quat( vec3_t m[3], quat_t q )
 	}
 
 	Quat_Normalize( q );
-}*/
+}
+*/
 
 static void Mod_LoadAliasMD3Model ( model_t *mod, byte *rawdata, int length )
 {
@@ -1291,7 +1254,7 @@ static void Mod_LoadAliasMD3Model ( model_t *mod, byte *rawdata, int length )
 	float				s[2], c[2];
 	vec3_t				normal;
 
-	if( length < sizeof( dmd3header_t ) ) {
+	if( length < (int)sizeof( dmd3header_t ) ) {
 		Com_Error( ERR_DROP, "Mod_LoadAliasMD3Model: %s has length < header length\n", mod->name );
 	}
 
@@ -1376,9 +1339,9 @@ static void Mod_LoadAliasMD3Model ( model_t *mod, byte *rawdata, int length )
 	//poutmodel->numTags = numTags;
 	poutmodel->numMeshes = numMeshes;
 
-//
+
 // load the frames
-//
+
 	pinframe = ( dmd3frame_t * )( rawdata + LittleLong( header->ofs_frames ) );
 	poutframe = poutmodel->frames = ( aliasFrame_t * )buf; buf += sizeof( aliasFrame_t ) * poutmodel->numFrames;
 	for( i = 0; i < poutmodel->numFrames; i++, pinframe++, poutframe++ ) {
@@ -1390,9 +1353,9 @@ static void Mod_LoadAliasMD3Model ( model_t *mod, byte *rawdata, int length )
 		ClearBounds( poutframe->mins, poutframe->maxs );
 	}
 	
-//
+
 // load the tags
-//
+
 /*	pintag = ( dmd3tag_t * )( ( byte * )header + LittleLong( header->ofs_tags ) );
 	pouttag = poutmodel->tags = ( aliasTag_t * )buf; buf += sizeof( aliasTag_t ) * poutmodel->numFrames * poutmodel->numTags;
 	for( i = 0; i < poutmodel->numFrames; i++ ) {
@@ -1410,11 +1373,12 @@ static void Mod_LoadAliasMD3Model ( model_t *mod, byte *rawdata, int length )
 
 			Q_strncpyz( pouttag->name, pintag->name, MD3_MAX_PATH );
 		}
-	}*/
+	}
+*/
 
-//
+
 // load the meshes
-//
+
 	pinmesh = ( dmd3mesh_t * )( rawdata + LittleLong( header->ofs_meshes ) );
 	poutmesh = poutmodel->meshes = ( aliasMesh_t * )buf; buf += poutmodel->numMeshes * sizeof( aliasMesh_t );
 	for( i = 0; i < poutmodel->numMeshes; i++, poutmesh++ )
@@ -1425,9 +1389,9 @@ static void Mod_LoadAliasMD3Model ( model_t *mod, byte *rawdata, int length )
 		poutmesh->numTris = numTris[i];
 		poutmesh->numSkins = numSkins[i];
 		poutmesh->numVerts = numVerts[i];
-	//
+
 	// load the skins
-	//
+
 		pinskin = ( dmd3skin_t * )( ( byte * )pinmesh + LittleLong( pinmesh->ofs_skins ) );
 		if( ( byte * )( pinskin + poutmesh->numSkins ) > rawend ) {
 			Com_Error( ERR_DROP, "Mod_LoadAliasMD3Model: %s has bad skin offset for mesh %d\n", mod->name, i );
@@ -1436,9 +1400,8 @@ static void Mod_LoadAliasMD3Model ( model_t *mod, byte *rawdata, int length )
 		for( j = 0; j < poutmesh->numSkins; j++, pinskin++, poutskin++ )
 			poutskin->image = GL_FindImage(pinskin->name, it_skin );
 
-	//
 	// load the indexes
-	//
+
 		pinindex = ( index_t * )( ( byte * )pinmesh + LittleLong( pinmesh->ofs_indexes ) );
 		if( ( byte * )( pinindex + poutmesh->numTris * 3 ) > rawend ) {
 			Com_Error( ERR_DROP, "Mod_LoadAliasMD3Model: %s has bad indices offset for mesh %d\n", mod->name, i );
@@ -1450,9 +1413,8 @@ static void Mod_LoadAliasMD3Model ( model_t *mod, byte *rawdata, int length )
 			poutindex[2] = (index_t)LittleLong( pinindex[2] );
 		}
 
-	//
 	// load the texture coordinates
-	//
+	
 		pincoord = ( dmd3coord_t * )( ( byte * )pinmesh + LittleLong( pinmesh->ofs_tcs ) );
 		if( ( byte * )( pincoord + poutmesh->numVerts ) > rawend ) {
 			Com_Error( ERR_DROP, "Mod_LoadAliasMD3Model: %s has bad tcoords offset for mesh %d\n", mod->name, i );
@@ -1463,9 +1425,8 @@ static void Mod_LoadAliasMD3Model ( model_t *mod, byte *rawdata, int length )
 			poutcoord[j][1] = LittleFloat( pincoord->st[1] );
 		}
 
-	//
 	// load the vertexes and normals
-	//
+
 		pinvert = ( dmd3vertex_t * )( ( byte * )pinmesh + LittleLong( pinmesh->ofs_verts ) );
 		if( ( byte * )( pinvert + poutmesh->numVerts * poutmodel->numFrames ) > rawend ) {
 			Com_Error( ERR_DROP, "Mod_LoadAliasMD3Model: %s has bad vertices offset for mesh %d\n", mod->name, i );
@@ -1493,9 +1454,8 @@ static void Mod_LoadAliasMD3Model ( model_t *mod, byte *rawdata, int length )
 		pinmesh = ( dmd3mesh_t * )( ( byte * )pinmesh + LittleLong( pinmesh->meshsize ) );
 	}
 
-//
 // calculate model bounds
-//
+
 	poutframe = poutmodel->frames;
 	for( i = 0; i < poutmodel->numFrames; i++, poutframe++ ) {
 		VectorMA( poutframe->translate, MD3_XYZ_SCALE, poutframe->mins, poutframe->mins );
@@ -1508,19 +1468,12 @@ static void Mod_LoadAliasMD3Model ( model_t *mod, byte *rawdata, int length )
 	}
 }
 
-/*
-==============================================================================
 
-SPRITE MODELS
+///		SPRITE MODELS		///
 
-==============================================================================
-*/
 
-/*
-=================
-Mod_LoadSpriteModel
-=================
-*/
+///		Mod_LoadSpriteModel
+
 static void Mod_LoadSpriteModel (model_t *mod, byte *rawdata, int length)
 {
 	dsprite_t		*sprin;
@@ -1530,7 +1483,7 @@ static void Mod_LoadSpriteModel (model_t *mod, byte *rawdata, int length)
 	int				i, numFrames, bufsize;
 	char			skinName[SPRITE_MAX_NAME];
 
-	if( length < sizeof( dsprite_t ) ) {
+	if( length < (int)sizeof( dsprite_t ) ) {
 		Com_Error(ERR_DROP, "Mod_LoadSpriteModel: %s has length < header length\n", mod->name );
 	}
 
@@ -1588,7 +1541,7 @@ static void Mod_LoadSpriteModel (model_t *mod, byte *rawdata, int length)
 	}
 }
 
-//=============================================================================
+//
 
 static void Mod_RemoveHash (model_t *mod)
 {
@@ -1603,13 +1556,12 @@ static void Mod_RemoveHash (model_t *mod)
 		}
 	}
 }
-/*
-@@@@@@@@@@@@@@@@@@@@@
-R_BeginRegistration
 
-Specifies the model that will be used as the world
-@@@@@@@@@@@@@@@@@@@@@
-*/
+
+///		R_BeginRegistration
+
+// Specifies the model that will be used as the world
+
 void R_BeginRegistration (const char *map)
 {
 	char	fullname[MAX_QPATH];
@@ -1642,12 +1594,8 @@ void R_BeginRegistration (const char *map)
 }
 
 
-/*
-@@@@@@@@@@@@@@@@@@@@@
-R_RegisterModel
+///		R_RegisterModel
 
-@@@@@@@@@@@@@@@@@@@@@
-*/
 struct model_s *R_RegisterModel (const char *name)
 {
 	model_t			*mod;
@@ -1718,12 +1666,9 @@ struct model_s *R_RegisterModel (const char *name)
 }
 
 
-/*
-@@@@@@@@@@@@@@@@@@@@@
-R_EndRegistration
 
-@@@@@@@@@@@@@@@@@@@@@
-*/
+///		R_EndRegistration
+
 void R_EndRegistration (void)
 {
 	int		i;
@@ -1744,14 +1689,10 @@ void R_EndRegistration (void)
 }
 
 
-//=============================================================================
+//
 
+///		Mod_Free
 
-/*
-================
-Mod_Free
-================
-*/
 void Mod_Free (model_t *mod)
 {
 	Mod_RemoveHash(mod);
@@ -1764,11 +1705,9 @@ void Mod_Free (model_t *mod)
 	memset (mod, 0, sizeof(*mod));
 }
 
-/*
-================
-Mod_FreeAll
-================
-*/
+
+///		Mod_FreeAll
+
 void R_ShutdownModels (void)
 {
 	int		i;

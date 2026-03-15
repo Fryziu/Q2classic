@@ -125,6 +125,145 @@ static void S_HRTF_MixFrame(void) {
     static float mix_r[HRTF_FRAME_SIZE] __attribute__((aligned(32)));
     static float direct_out[HRTF_FRAME_SIZE] __attribute__((aligned(32)));
     
+    // --- ŚLEDZENIE STANU KANAŁÓW (Do detekcji resetu DSP) ---
+    static void *last_sfx[MAX_CHANNELS];
+    //static int   last_pos[MAX_CHANNELS];
+
+    memset(mix_l, 0, sizeof(mix_l));
+    memset(mix_r, 0, sizeof(mix_r));
+
+    __m128 v_inv_32768 = _mm_set1_ps(1.0f / 32768.0f);
+    __m128 v_half = _mm_set1_ps(0.5f);
+
+    for (int i = 0; i < MAX_CHANNELS; i++) {
+        channel_t* ch = &channels[i];
+        
+        if (!ch->sfx || !ch->sfx->cache) {
+            last_sfx[i] = NULL; // Zwalniamy śledzenie dla nieaktywnego kanału
+            continue;
+        }
+
+        // --- BUGFIX: Oczyszczanie stanu DSP ---
+        // Jeśli pojawił się nowy dźwięk, lub stary został odpalony od nowa (pos == 0)
+        // i nie jest to płynny loop (autosound), musimy zresetować historię efektów.
+        // Eliminuje to potężne impulsy dźwiękowe na starcie mapy.
+        if (ch->sfx != last_sfx[i] || (ch->pos == 0 && !ch->autosound)) {
+            ptr_iplBinauralEffectReset(ipl_effects[i]);
+            ptr_iplDirectEffectReset(ipl_direct_effects[i]);
+        }
+        last_sfx[i] = ch->sfx;
+        //last_pos[i] = ch->pos;        //// wunused variable - testować
+
+        sfxcache_t* sc = ch->sfx->cache;
+        vec3_t source_pos, rel_pos;
+        if (ch->fixed_origin) VectorCopy(ch->origin, source_pos);
+        else CL_GetEntitySoundOrigin(ch->entnum, source_pos);
+        
+        VectorSubtract(source_pos, listener_origin, rel_pos);
+        float len = VectorLength(rel_pos);
+
+        float occlusion = S_CheckOcclusion(source_pos);
+        float scale = 1.0f - ((len - 80.0f) * ch->dist_mult);
+        scale = (scale < 0.0f) ? 0.0f : (scale > 1.0f) ? 1.0f : scale;
+        float vol = s_volume->value * (ch->master_vol / 255.0f) * (scale * scale) * 0.8f;
+
+        short* src = (short*)sc->data + (ch->pos * sc->channels);
+        __m128 v_vol = _mm_set1_ps(vol);
+        float* in_buf = in_channel_data[0];
+
+        // 1. Konwersja PCM -> Float (Signed SIMD Safe)
+        int s = 0;
+        for (; s < HRTF_FRAME_SIZE; s += 4) {
+            if (ch->pos + s + 3 < sc->length) {
+                __m128 f32;
+                if (sc->channels == 2) {
+                    __m128i s_l = _mm_set_epi32(src[(s+3)*2],   src[(s+2)*2],   src[(s+1)*2],   src[s*2]);
+                    __m128i s_r = _mm_set_epi32(src[(s+3)*2+1], src[(s+2)*2+1], src[(s+1)*2+1], src[s*2+1]);
+                    f32 = _mm_mul_ps(_mm_cvtepi32_ps(_mm_add_epi32(s_l, s_r)), v_half);
+                } else {
+                    f32 = _mm_cvtepi32_ps(_mm_cvtepi16_epi32(_mm_loadl_epi64((const __m128i*)&src[s])));
+                }
+                _mm_store_ps(&in_buf[s], _mm_mul_ps(_mm_mul_ps(f32, v_inv_32768), v_vol));
+            } else {
+                for (int j = s; j < HRTF_FRAME_SIZE; j++) in_buf[j] = 0.0f;
+                break;
+            }
+        }
+
+        // 2. Direct Effect - Inicjalizacja WSZYSTKICH pól dla 4.8
+        IPLDirectEffectParams dirParams = {0};
+        dirParams.flags = IPL_DIRECTEFFECTFLAGS_APPLYOCCLUSION | IPL_DIRECTEFFECTFLAGS_APPLYTRANSMISSION;
+        dirParams.transmissionType = IPL_TRANSMISSIONTYPE_FREQDEPENDENT;
+        dirParams.distanceAttenuation = 1.0f;
+        dirParams.occlusion = occlusion;
+        dirParams.transmission[0] = 0.6f;
+        dirParams.transmission[1] = 0.4f;
+        dirParams.transmission[2] = 0.2f;
+        dirParams.directivity = 1.0f;
+
+        float* direct_ptr = direct_out;
+        IPLAudioBuffer direct_buf = { .numChannels = 1, .numSamples = HRTF_FRAME_SIZE, .data = &direct_ptr };
+        ptr_iplDirectEffectApply(ipl_direct_effects[i], &dirParams, &ipl_in_buffer, &direct_buf);
+
+        // 3. Binaural Effect
+        IPLBinauralEffectParams binParams = {0};
+        binParams.interpolation = IPL_HRTFINTERPOLATION_BILINEAR;
+        binParams.spatialBlend = 1.0f;
+        binParams.hrtf = ipl_hrtf;
+        binParams.direction.x = DotProduct(rel_pos, listener_right);
+        binParams.direction.y = DotProduct(rel_pos, listener_up);
+        binParams.direction.z = -DotProduct(rel_pos, listener_forward);
+
+        if (len > 0.1f) { 
+            float inv = 1.0f/len; 
+            binParams.direction.x *= inv; binParams.direction.y *= inv; binParams.direction.z *= inv; 
+        } else {
+            binParams.direction.z = -1.0f;
+        }
+        ptr_iplBinauralEffectApply(ipl_effects[i], &binParams, &direct_buf, &ipl_out_buffer);
+
+        // 4. Mix Output
+        for (int s = 0; s < HRTF_FRAME_SIZE; s += 4) {
+            _mm_store_ps(&mix_l[s], _mm_add_ps(_mm_load_ps(&mix_l[s]), _mm_load_ps(&out_channel_data[0][s])));
+            _mm_store_ps(&mix_r[s], _mm_add_ps(_mm_load_ps(&mix_r[s]), _mm_load_ps(&out_channel_data[1][s])));
+        }
+        S_ProcessChannelSamples(ch, HRTF_FRAME_SIZE);
+    }
+
+    // 5. Delicate Soft Limiter & Final Interleaved PCM
+    short pcm[HRTF_FRAME_SIZE * 2] __attribute__((aligned(16)));
+    __m128 v_scale = _mm_set1_ps(32767.0f);
+    __m128 v_one   = _mm_set1_ps(1.0f);
+    __m128 v_limit = _mm_set1_ps(0.12f);
+
+    for (int s = 0; s < HRTF_FRAME_SIZE; s += 4) {
+        __m128 l = _mm_load_ps(&mix_l[s]);
+        __m128 r = _mm_load_ps(&mix_r[s]);
+
+        __m128 l2 = _mm_mul_ps(l, l);
+        __m128 r2 = _mm_mul_ps(r, r);
+        
+        l = _mm_mul_ps(l, _mm_sub_ps(v_one, _mm_mul_ps(l2, v_limit)));
+        r = _mm_mul_ps(r, _mm_sub_ps(v_one, _mm_mul_ps(r2, v_limit)));
+
+        __m128i i_l = _mm_cvtps_epi32(_mm_mul_ps(l, v_scale));
+        __m128i i_r = _mm_cvtps_epi32(_mm_mul_ps(r, v_scale));
+        
+        __m128i packed = _mm_packs_epi32(_mm_unpacklo_epi32(i_l, i_r), 
+                                         _mm_unpackhi_epi32(i_l, i_r));
+        _mm_store_si128((__m128i*)&pcm[s*2], packed);
+    }
+
+    S_Audio_Write(pcm, (int)sizeof(pcm));
+    paintedtime += HRTF_FRAME_SIZE;
+}
+
+/*
+static void S_HRTF_MixFrame(void) {
+    static float mix_l[HRTF_FRAME_SIZE] __attribute__((aligned(32)));
+    static float mix_r[HRTF_FRAME_SIZE] __attribute__((aligned(32)));
+    static float direct_out[HRTF_FRAME_SIZE] __attribute__((aligned(32)));
+    
     memset(mix_l, 0, sizeof(mix_l));
     memset(mix_r, 0, sizeof(mix_r));
 
@@ -210,7 +349,9 @@ static void S_HRTF_MixFrame(void) {
         }
         S_ProcessChannelSamples(ch, HRTF_FRAME_SIZE);
     }
-/*
+  
+ */   
+/*  // this part of the function is temporairly disabled
     // 5. Final Interleaved PCM
     short pcm[HRTF_FRAME_SIZE * 2] __attribute__((aligned(16)));
     __m128 v_scale = _mm_set1_ps(32767.0f);
@@ -221,6 +362,7 @@ static void S_HRTF_MixFrame(void) {
     }
 */
 
+/*
 // 5. Delicate Soft Limiter & Final Interleaved PCM
     short pcm[HRTF_FRAME_SIZE * 2] __attribute__((aligned(16)));
     __m128 v_scale = _mm_set1_ps(32767.0f);
@@ -253,6 +395,7 @@ static void S_HRTF_MixFrame(void) {
     S_Audio_Write(pcm, (int)sizeof(pcm));
     paintedtime += HRTF_FRAME_SIZE;
 }
+*/
 
 // snd_hrtf.c - S_HRTF_Update
 
@@ -272,7 +415,7 @@ static void S_HRTF_Update(const vec3_t origin, const vec3_t forward, const vec3_
     }
 
     SDL_LockMutex(s_sound_mutex);
-    while (s_pendingplays.next != &s_pendingplays && s_pendingplays.next->begin <= (unsigned int)paintedtime) {
+    while (s_pendingplays.next != &s_pendingplays && s_pendingplays.next->begin <= paintedtime) {
         S_IssuePlaysound(s_pendingplays.next);
     }
     SDL_UnlockMutex(s_sound_mutex);

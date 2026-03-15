@@ -55,34 +55,40 @@ static void StartGame( void )
 
 static void EasyGameFunc( void *data )
 {
+	(void)data;
 	Cvar_Set( "skill", "0" );
 	StartGame();
 }
 
 static void MediumGameFunc( void *data )
 {
+	(void)data;
 	Cvar_Set( "skill", "1" );
 	StartGame();
 }
 
 static void HardGameFunc( void *data )
 {
+	(void)data;
 	Cvar_Set( "skill", "2" );
 	StartGame();
 }
 
 static void LoadGameFunc( void *unused )
 {
+	(void)unused;
 	M_Menu_LoadGame_f ();
 }
 
 static void SaveGameFunc( void *unused )
 {
+	(void)unused;
 	M_Menu_SaveGame_f();
 }
 
 static void CreditsFunc( void *unused )
 {
+	(void)unused;
 	M_Menu_Credits_f();
 }
 

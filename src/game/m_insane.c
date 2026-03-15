@@ -17,13 +17,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
-/*
-==============================================================================
 
-insane
+///		insane		///
 
-==============================================================================
-*/
 
 #include "g_local.h"
 #include "m_insane.h"
@@ -502,6 +498,10 @@ void insane_run (edict_t *self)
 
 void insane_pain (edict_t *self, edict_t *other, float kick, int damage)
 {
+	(void)other;
+	(void)kick;
+	(void)damage;
+
 	int	l,r;
 
 //	if (self->health < (self->max_health / 2))
@@ -628,6 +628,10 @@ void insane_dead (edict_t *self)
 
 void insane_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
+	(void)inflictor;
+	(void)attacker;
+	(void)point;
+	
 	int		n;
 
 	if (self->health <= self->gib_health)

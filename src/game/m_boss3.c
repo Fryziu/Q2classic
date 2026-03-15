@@ -17,19 +17,18 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
-/*
-==============================================================================
 
-boss3
+///		boss3		///
 
-==============================================================================
-*/
 
 #include "g_local.h"
 #include "m_boss32.h"
 
 void Use_Boss3 (edict_t *ent, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
+	
 	gi.WriteByte (svc_temp_entity);
 	gi.WriteByte (TE_BOSSTPORT);
 	gi.WritePosition (ent->s.origin);

@@ -225,6 +225,10 @@ void infantry_pain (edict_t *self, edict_t *other, float kick, int damage)
 {
 	int		n;
 
+	(void)other;
+	(void)kick;
+	(void)damage;
+
 	if (self->health < (self->max_health / 2))
 		self->s.skinnum = 1;
 
@@ -309,6 +313,7 @@ void InfantryMachineGun (edict_t *self)
 
 void infantry_sight (edict_t *self, edict_t *other)
 {
+	(void)other;
 	gi.sound (self, CHAN_BODY, sound_sight, 1, ATTN_NORM, 0);
 }
 
@@ -398,6 +403,10 @@ void infantry_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int dam
 {
 	int		n;
 
+	(void)inflictor;
+	(void)attacker;
+	(void)point;
+
 // check for gib
 	if (self->health <= self->gib_health)
 	{
@@ -479,6 +488,8 @@ mmove_t infantry_move_duck = {FRAME_duck01, FRAME_duck05, infantry_frames_duck, 
 
 void infantry_dodge (edict_t *self, edict_t *attacker, float eta)
 {
+	(void)eta;
+
 	if (random() > 0.25)
 		return;
 

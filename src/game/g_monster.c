@@ -92,6 +92,7 @@ void monster_fire_railgun (edict_t *self, vec3_t start, vec3_t aimdir, int damag
 
 void monster_fire_bfg (edict_t *self, vec3_t start, vec3_t aimdir, int damage, int speed, int kick, float damage_radius, int flashtype)
 {
+	(void)kick;
 	fire_bfg (self, start, aimdir, damage, speed, damage_radius);
 
 	gi.WriteByte (svc_muzzleflash2);
@@ -472,6 +473,7 @@ Using a monster makes it angry at the current activator
 */
 void monster_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
 	if (self->enemy)
 		return;
 	if (self->health <= 0)
@@ -515,6 +517,7 @@ void monster_triggered_spawn (edict_t *self)
 
 void monster_triggered_spawn_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
 	// we have a one frame delay here so we don't telefrag the guy who activated us
 	self->think = monster_triggered_spawn;
 	self->nextthink = level.time + FRAMETIME;

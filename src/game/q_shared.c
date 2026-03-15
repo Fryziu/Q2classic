@@ -565,7 +565,7 @@ COM_StripExtension
 */
 void COM_StripExtension (const char *in, char *out)
 {
-	char *dot;
+	const char *dot;
 
 	if (!(dot = strrchr(in, '.'))) {
 		strcpy(out, in);
@@ -652,17 +652,24 @@ void COM_MakePrintable (char *s)
 	char *string = s;
 	int	c;
 
-	while((c = *string++) != 0)
+	// Wymuszamy rzutowanie na unsigned char, 
+	// aby znaki ASCII > 127 zawsze byÅ‚y bezpiecznymi wartoÅ›ciami dodatnimi
+	while((c = (unsigned char)*string++) != 0)
 	{
 		switch (c) {
-		case 'å':
-		case 'ä': *s++ = 'a'; break;
-		case 'Å':
-		case 'Ä': *s++ = 'A'; break;
-		case 'ö': *s++ = 'o'; break;
-		case 'Ö': *s++ = 'O'; break;
+		case 0xE5: // 'Ã¥'
+		case 0xE4: // 'Ã¤'
+			*s++ = 'a'; break;
+		case 0xC5: // 'Ã…'
+		case 0xC4: // 'Ã„'
+			*s++ = 'A'; break;
+		case 0xF6: // 'Ã¶'
+			*s++ = 'o'; break;
+		case 0xD6: // 'Ã–'
+			*s++ = 'O'; break;
 		case '`':
-		case '´': *s++ = '\''; break;
+		case 0xB4: // 'Â´'
+			*s++ = '\''; break;
 		default:	
 			if ( c >= 0x20 && c <= 0x7E )
 				*s++ = c;

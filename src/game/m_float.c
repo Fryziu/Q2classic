@@ -40,6 +40,7 @@ static int	sound_sight;
 
 void floater_sight (edict_t *self, edict_t *other)
 {
+	(void)other;
 	gi.sound (self, CHAN_VOICE, sound_sight, 1, ATTN_NORM, 0);
 }
 
@@ -581,6 +582,10 @@ void floater_pain (edict_t *self, edict_t *other, float kick, int damage)
 {
 	int		n;
 
+	(void)other;
+	(void)kick;
+	(void)damage;
+
 	if (self->health < (self->max_health / 2))
 		self->s.skinnum = 1;
 
@@ -618,6 +623,11 @@ void floater_dead (edict_t *self)
 
 void floater_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
+	(void)inflictor;
+	(void)attacker;
+	(void)damage;
+	(void)point;
+
 	gi.sound (self, CHAN_VOICE, sound_death1, 1, ATTN_NORM, 0);
 	BecomeExplosion1(self);
 }

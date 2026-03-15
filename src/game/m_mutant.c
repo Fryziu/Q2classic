@@ -61,6 +61,7 @@ void mutant_step (edict_t *self)
 
 void mutant_sight (edict_t *self, edict_t *other)
 {
+	(void)other;
 	gi.sound (self, CHAN_VOICE, sound_sight, 1, ATTN_NORM, 0);
 }
 
@@ -318,6 +319,9 @@ void mutant_melee (edict_t *self)
 
 void mutant_jump_touch (edict_t *self, edict_t *other, cplane_t *plane, csurface_t *surf)
 {
+	(void)plane;
+	(void)surf;
+
 	if (self->health <= 0)
 	{
 		self->touch = NULL;
@@ -509,6 +513,10 @@ void mutant_pain (edict_t *self, edict_t *other, float kick, int damage)
 {
 	float	r;
 
+	(void)other;
+	(void)kick;
+	(void)damage;
+
 	if (self->health < (self->max_health / 2))
 		self->s.skinnum = 1;
 
@@ -589,6 +597,10 @@ mmove_t mutant_move_death2 = {FRAME_death201, FRAME_death210, mutant_frames_deat
 void mutant_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
 	int		n;
+
+	(void)inflictor;
+	(void)attacker;
+	(void)point;
 
 	if (self->health <= self->gib_health)
 	{

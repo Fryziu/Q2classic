@@ -32,6 +32,11 @@ int m_mouseold[2] = {0, 0};
 qboolean	m_entersound;		// play after drawing a frame, so caching
 								// won't disrupt the sound
 
+static void M_Menu_JoinServer_Wrapper_f(void)
+{
+	M_Menu_JoinServer_f(false);
+}
+
 void M_Banner( char *name )
 {
 	int w, h;
@@ -243,17 +248,12 @@ const char *Default_MenuKey( menuframework_s *m, int key )
 	return sound;
 }
 
-//=============================================================================
 
-/*
-================
-M_DrawCharacter
+///		M_DrawCharacter
 
-Draws one solid graphics character
-cx and cy are in 320*240 coordinates, and will be centered on
-higher res screens.
-================
-*/
+// Draws one solid graphics character
+// cx and cy are in 320*240 coordinates, and will be centered on higher res screens.
+
 void M_DrawCharacter (int cx, int cy, int num)
 {
 	Draw_Char ( cx + ((viddef.width - 320)>>1), cy + ((viddef.height - 240)>>1), num, COLOR_WHITE, 1);
@@ -285,15 +285,11 @@ void M_DrawPic (int x, int y, char *pic)
 }
 
 
-/*
-=============
-M_DrawCursor
+///		M_DrawCursor
 
-Draws an animating cursor with the point at
-x,y.  The pic will extend to the left of x,
-and both above and below y.
-=============
-*/
+// Draws an animating cursor with the point at
+// x,y.  The pic will extend to the left of x, and both above and below y.
+
 #define NUM_CURSOR_FRAMES 15
 void M_DrawCursor( int x, int y, int f )
 {
@@ -360,9 +356,8 @@ void M_DrawTextBox (int x, int y, int width, int lines)
 	M_DrawCharacter (cx, cy+8, 9);
 }
 
-///
-/// Menu Subsystem
-///
+
+///		MENU SUBSYSTEM
 
 /// M_Init
 
@@ -372,7 +367,7 @@ void M_Init (void)
 	Cmd_AddCommand ("menu_game", M_Menu_Game_f);
 		Cmd_AddCommand ("menu_loadgame", M_Menu_LoadGame_f);
 		Cmd_AddCommand ("menu_savegame", M_Menu_SaveGame_f);
-		Cmd_AddCommand ("menu_joinserver", M_Menu_JoinServer_f);
+		Cmd_AddCommand ("menu_joinserver", M_Menu_JoinServer_Wrapper_f);
 			Cmd_AddCommand ("menu_addressbook", M_Menu_AddressBook_f);
 		Cmd_AddCommand ("menu_startserver", M_Menu_StartServer_f);
 			Cmd_AddCommand ("menu_dmoptions", M_Menu_DMOptions_f);
@@ -400,8 +395,8 @@ void M_MouseMove( int mx, int my )
 	m_mouse[0] += mx;
 	m_mouse[1] += my;
 
-	clamp( m_mouse[0], 0, viddef.width - 8 );
-	clamp( m_mouse[1], 0, viddef.height - 8 );
+	clamp( m_mouse[0], 0, (int)viddef.width - 8 );
+	clamp( m_mouse[1], 0, (int)viddef.height - 8 );
 
 	if(bselected) {
 		if (my) {
@@ -411,11 +406,9 @@ void M_MouseMove( int mx, int my )
 	}
 }
 
-/*
-=================
-M_Draw
-=================
-*/
+
+///		M_Draw
+
 void M_Draw (void)
 {
 	extern cvar_t *gl_scale;
@@ -455,8 +448,7 @@ void M_Draw (void)
 	Draw_ScaledPic(m_mouse[0], m_mouse[1], gl_scale->value, "ch1", 1, 1, 1, 1);
 
 	// delay playing the enter sound until after the
-	// menu has been drawn, to avoid delay while
-	// caching images
+	// menu has been drawn, to avoid delay while caching images
 	if (m_entersound)
 	{
 		S_StartLocalSound( menu_in_sound );
@@ -464,11 +456,9 @@ void M_Draw (void)
 	}
 }
 
-/*
-=================
-M_Keydown
-=================
-*/
+
+///		M_Keydown
+
 void M_Keydown (int key, qboolean down)
 {
 	const char *s;

@@ -44,6 +44,8 @@ float SV_CalcRoll (vec3_t angles, vec3_t velocity)
 	float	sign;
 	float	side;
 	float	value;
+
+	(void)angles;
 	
 	side = DotProduct (velocity, right);
 	sign = side < 0 ? -1 : 1;

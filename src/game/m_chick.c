@@ -273,6 +273,9 @@ void chick_pain (edict_t *self, edict_t *other, float kick, int damage)
 {
 	float	r;
 
+	(void)other;
+	(void)kick;
+
 	if (self->health < (self->max_health / 2))
 		self->s.skinnum = 1;
 
@@ -366,6 +369,10 @@ void chick_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage
 {
 	int		n;
 
+	(void)inflictor;
+	(void)attacker;
+	(void)point;
+
 // check for gib
 	if (self->health <= self->gib_health)
 	{
@@ -443,6 +450,8 @@ mmove_t chick_move_duck = {FRAME_duck01, FRAME_duck07, chick_frames_duck, chick_
 
 void chick_dodge (edict_t *self, edict_t *attacker, float eta)
 {
+	(void)eta;
+
 	if (random() > 0.25)
 		return;
 
@@ -643,6 +652,7 @@ void chick_attack(edict_t *self)
 
 void chick_sight(edict_t *self, edict_t *other)
 {
+	(void)other;
 	gi.sound (self, CHAN_VOICE, sound_sight, 1, ATTN_NORM, 0);
 }
 

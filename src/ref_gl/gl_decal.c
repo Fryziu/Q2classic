@@ -27,9 +27,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 static cvar_t	*gl_decals_debug;
 
-// =======================================================================
-// SVG DECAL IMPLEMENTATION
-// =======================================================================
+///			SVG DECAL IMPLEMENTATION			///
 
 // Definiujemy implementację NanoSVG w tym jednym pliku.
 #define NANOSVG_IMPLEMENTATION
@@ -105,7 +103,7 @@ static GLuint GL_RasterizeSVGToTexture(const char* svg_data, int width, int heig
 
     return tex_id;
 }
-// ===
+//
 
 #define INSTANT_DECAL	-10000.0
 
@@ -202,9 +200,9 @@ void GL_InitDecalImages (void)
     } else {
         Com_Printf(" - Loaded 'pics/energy_mark.png'.\n");
     }
-    // =======================================================================
+    
      // #4: Placeholder dla tekstury Krwi
-     // =======================================================================
+     // 
      // r_decal_blood = GL_FindImage("pics/blood.png", it_sprite);
      // if (!r_decal_blood || r_decal_blood == r_notexture) {
      //     // Tutaj można dodać fallback do SVG dla krwi w przyszłości
@@ -248,6 +246,7 @@ static void GL_AllocDecals(void)
 
 static void OnChange_Decals(cvar_t *self, const char *oldValue)
 {
+	(void)oldValue;
 	if (!self->integer)
 		return;
 
@@ -261,10 +260,11 @@ static void OnChange_Decals(cvar_t *self, const char *oldValue)
 
 static void OnChange_DecalsMax(cvar_t *self, const char *oldValue)
 {
+	(void)oldValue;
 	if (self->integer < 256)
 		Cvar_Set(self->name, "256");
 	else if (self->integer > MAX_DECALS)
-		Cvar_Set(self->name, "8192");
+		Cvar_Set(self->name, "32768");//16384
 
 	if (maxDecals == self->integer)
 		return;
@@ -300,11 +300,9 @@ void GL_ShutDownDecals (void)
 	gl_decals_max->OnChange = NULL;
 }
 
-/*
-=================
-CG_ClearDecals
-=================
-*/
+
+///		CG_ClearDecals
+
 void GL_ClearDecals (void)
 {
 	int i;
@@ -322,13 +320,11 @@ void GL_ClearDecals (void)
 		decals[i].next = &decals[i+1];
 }
 
-/*
-=================
-CG_AllocDecal
 
-Returns either a free decal or the oldest one
-=================
-*/
+///		CG_AllocDecal
+
+// Returns either a free decal or the oldest one
+
 static cdecal_t *GL_AllocDecal (void)
 {
 	cdecal_t *dl;
@@ -351,11 +347,9 @@ static cdecal_t *GL_AllocDecal (void)
 	return dl;
 }
 
-/*
-=================
-CG_FreeDecal
-=================
-*/
+
+///		CG_FreeDecal
+
 static void GL_FreeDecal ( cdecal_t *dl )
 {
 	if (!dl->prev)
@@ -379,9 +373,8 @@ void R_AddDecal	(vec3_t origin, vec3_t dir, float red, float green, float blue, 
 	mat3_t		axis;
 	cdecal_t	*d;
 
-	// ===================================================================
 	// KROK 1: Blok diagnostyczny (tylko do logowania)
-	// ===================================================================
+
 	if (gl_decals_debug && gl_decals_debug->integer > 0)
 	{
 		char *typeName = "UNKNOWN";
@@ -430,10 +423,9 @@ void R_AddDecal	(vec3_t origin, vec3_t dir, float red, float green, float blue, 
 			fr->numverts = MAX_DECAL_VERTS;
 		else if (fr->numverts < 1)
 			continue;
-
-		// ===================================================================
+		
 		// KROK 2: Alokacja i przypisanie tekstury (poprawna kolejność)
-		// ===================================================================
+		
 		d = GL_AllocDecal ();
 		d->time = r_newrefdef.time;
 
@@ -460,18 +452,19 @@ void R_AddDecal	(vec3_t origin, vec3_t dir, float red, float green, float blue, 
 			continue;
 		}
 
-		// ===================================================================
 		// KROK 3: Reszta logiki funkcji (bez zmian)
-		// ===================================================================
+		
 		d->numverts = fr->numverts;
 		d->node = fr->node;
 
 		VectorCopy(fr->surf->plane->normal, d->direction);
 		if (!(fr->surf->flags & SURF_PLANEBACK))
+		{
 			VectorNegate(d->direction, d->direction);
 
 			Vector4Set(d->color, red, green, blue, alpha);
 		VectorCopy (origin, d->org);
+		}
 
 		if (flags & DF_FADE_COLOR)
 		{
@@ -536,11 +529,10 @@ void R_AddDecals (void)
 		// Sprawdź, czy węzeł, w którym jest decal, jest widoczny
 		if (dl->node == NULL || dl->node->visframe != r_visframecount)
 			continue;
-
-        // ===================================================================
+       
         // PRZYWRÓCONY KOD: Sprawdza, czy decal nie jest za plecami gracza
         // lub odwrócony tyłem. To naprawia ostrzeżenia kompilatora.
-        // ===================================================================
+       
 		// Nie renderuj, jeśli decal jest za płaszczyzną widoku
 		if ( DotProduct(dl->org, viewAxis[0]) < mindist)
 			continue;
@@ -549,10 +541,9 @@ void R_AddDecals (void)
 		VectorSubtract(dl->org, r_origin, v);
 		if (DotProduct(dl->direction, v) < 0)
 			continue;
-        // ===================================================================
 
 		// Binduj teksturę tylko wtedy, gdy jest inna niż poprzednia.
-        if (dl->image && dl->image->texnum != last_texnum)
+        if (dl->image && dl->image->texnum != (int)last_texnum)		///// wstawiony (int) - przetestowac
         {
             GL_Bind(dl->image->texnum);
             last_texnum = dl->image->texnum;
@@ -607,11 +598,8 @@ static fragment_t *clippedFragments;
 static int		fragmentFrame;
 static cplane_t fragmentPlanes[6];
 
-/*
-=================
-R_ClipPoly
-=================
-*/
+
+///		R_ClipPoly
 
 static void R_ClipPoly (int nump, vec4_t vecs, int stage, fragment_t *fr)
 {
@@ -704,11 +692,8 @@ static void R_ClipPoly (int nump, vec4_t vecs, int stage, fragment_t *fr)
 	R_ClipPoly (newc, newv[0], stage+1, fr);
 }
 
-/*
-=================
-R_PlanarSurfClipFragment
-=================
-*/
+
+///		R_PlanarSurfClipFragment
 
 static void R_PlanarSurfClipFragment (mnode_t *node, msurface_t *surf, vec3_t normal)
 {
@@ -762,11 +747,8 @@ static void R_PlanarSurfClipFragment (mnode_t *node, msurface_t *surf, vec3_t no
 	}
 }
 
-/*
-=================
-R_RecursiveFragmentNode
-=================
-*/
+
+///		R_RecursiveFragmentNode
 
 static void R_RecursiveFragmentNode (mnode_t *node, vec3_t origin, float radius, vec3_t normal)
 {
@@ -829,11 +811,8 @@ mark0:
 	R_RecursiveFragmentNode (node->children[1], origin, radius, normal);
 }
 
-/*
-=================
-R_GetClippedFragments
-=================
-*/
+
+///		R_GetClippedFragments
 
 static int R_GetClippedFragments (vec3_t origin, float radius, mat3_t axis, int maxfverts, vec3_t *fverts, int maxfragments, fragment_t *fragments)
 {

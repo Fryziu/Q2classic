@@ -158,7 +158,7 @@ void Cbuf_AddTextToDefer (const char *text)
 		return;
 
 	l = strlen(text) + 1;
-	if (deferCurSize + l >= sizeof(defer_text_buf)) {
+	if (deferCurSize + l >= (int)sizeof(defer_text_buf)) {
 		Com_Printf ("Cbuf_AddTextToDefer: overflow\n");
 		return;
 	}
@@ -980,7 +980,7 @@ Cmd_Argv
 */
 char *Cmd_Argv (int arg)
 {
-	if ( (unsigned)arg >= cmd_argc )
+	if ( (unsigned)arg >= (unsigned)cmd_argc )
 		return "";
 	return cmd_argv[arg];	
 }

@@ -38,6 +38,7 @@ static int sound_search;
 
 void berserk_sight (edict_t *self, edict_t *other)
 {
+	(void)other;
 	gi.sound (self, CHAN_VOICE, sound_sight, 1, ATTN_NORM, 0);
 }
 
@@ -230,6 +231,7 @@ mmove_t berserk_move_attack_club = {FRAME_att_c9, FRAME_att_c20, berserk_frames_
 
 void berserk_strike (edict_t *self)
 {
+	(void)self;
 	//FIXME play impact sound
 }
 
@@ -329,6 +331,8 @@ mmove_t berserk_move_pain2 = {FRAME_painb1, FRAME_painb20, berserk_frames_pain2,
 
 void berserk_pain (edict_t *self, edict_t *other, float kick, int damage)
 {
+	(void)other;
+	(void)kick;
 	if (self->health < (self->max_health / 2))
 		self->s.skinnum = 1;
 
@@ -399,6 +403,9 @@ mmove_t berserk_move_death2 = {FRAME_deathc1, FRAME_deathc8, berserk_frames_deat
 
 void berserk_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
+	(void)inflictor;
+	(void)attacker;
+	(void)point;
 	int		n;
 
 	if (self->health <= self->gib_health)

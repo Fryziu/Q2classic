@@ -72,7 +72,7 @@ void Com_BeginRedirect (int target, char *buffer, int buffersize, void (*flush))
 	rd_target = target;
 	rd_buffer = buffer;
 	rd_buffersize = buffersize;
-	rd_flush = flush;
+	rd_flush = (typeof(rd_flush))(intptr_t)flush;
 
 	*rd_buffer = 0;
 }
@@ -107,7 +107,7 @@ void Com_Printf (const char *fmt, ...)
 
 	if (rd_target)
 	{
-		if ((strlen (msg) + strlen(rd_buffer)) > (rd_buffersize - 1)) {
+		if ((int)(strlen (msg) + strlen(rd_buffer)) > (rd_buffersize - 1)) {
 			rd_flush(rd_target, rd_buffer);
 			*rd_buffer = 0;
 		}
@@ -123,6 +123,7 @@ void Com_Printf (const char *fmt, ...)
 	case 1:
 	case 2:
 		text++;
+		/* fallthrough */
 	default:
 		for (s = text; *s; s++)
 			*s &= 127;
@@ -310,14 +311,14 @@ int COM_Argc (void)
 
 char *COM_Argv (int arg)
 {
-	if ((unsigned)arg >= com_argc || !com_argv[arg])
+	if ((unsigned)arg >= (unsigned)com_argc || !com_argv[arg])
 		return "";
 	return com_argv[arg];
 }
 
 void COM_ClearArgv (int arg)
 {
-	if ((unsigned)arg >= com_argc || !com_argv[arg])
+	if ((unsigned)arg >= (unsigned)com_argc || !com_argv[arg])
 		return;
 	com_argv[arg] = "";
 }
@@ -457,17 +458,17 @@ typedef struct zstatic_s {
 #pragma pack(pop)
 
 static zstatic_t		z_static[] = {
-	{ { Z_MAGIC, TAG_STATIC, sizeof( zstatic_t ) }, { '0', '\0' }, Z_TAIL },
-	{ { Z_MAGIC, TAG_STATIC, sizeof( zstatic_t ) }, { '1', '\0' }, Z_TAIL },
-	{ { Z_MAGIC, TAG_STATIC, sizeof( zstatic_t ) }, { '2', '\0' }, Z_TAIL },
-	{ { Z_MAGIC, TAG_STATIC, sizeof( zstatic_t ) }, { '3', '\0' }, Z_TAIL },
-	{ { Z_MAGIC, TAG_STATIC, sizeof( zstatic_t ) }, { '4', '\0' }, Z_TAIL },
-	{ { Z_MAGIC, TAG_STATIC, sizeof( zstatic_t ) }, { '5', '\0' }, Z_TAIL },
-	{ { Z_MAGIC, TAG_STATIC, sizeof( zstatic_t ) }, { '6', '\0' }, Z_TAIL },
-	{ { Z_MAGIC, TAG_STATIC, sizeof( zstatic_t ) }, { '7', '\0' }, Z_TAIL },
-	{ { Z_MAGIC, TAG_STATIC, sizeof( zstatic_t ) }, { '8', '\0' }, Z_TAIL },
-	{ { Z_MAGIC, TAG_STATIC, sizeof( zstatic_t ) }, { '9', '\0' }, Z_TAIL },
-	{ { Z_MAGIC, TAG_STATIC, sizeof( zstatic_t ) }, { '\0', '\0'}, Z_TAIL }
+	{ { Z_MAGIC, TAG_STATIC, sizeof( zstatic_t ), NULL, NULL }, { '0', '\0' }, Z_TAIL },
+	{ { Z_MAGIC, TAG_STATIC, sizeof( zstatic_t ), NULL, NULL }, { '1', '\0' }, Z_TAIL },
+	{ { Z_MAGIC, TAG_STATIC, sizeof( zstatic_t ), NULL, NULL }, { '2', '\0' }, Z_TAIL },
+	{ { Z_MAGIC, TAG_STATIC, sizeof( zstatic_t ), NULL, NULL }, { '3', '\0' }, Z_TAIL },
+	{ { Z_MAGIC, TAG_STATIC, sizeof( zstatic_t ), NULL, NULL }, { '4', '\0' }, Z_TAIL },
+	{ { Z_MAGIC, TAG_STATIC, sizeof( zstatic_t ), NULL, NULL }, { '5', '\0' }, Z_TAIL },
+	{ { Z_MAGIC, TAG_STATIC, sizeof( zstatic_t ), NULL, NULL }, { '6', '\0' }, Z_TAIL },
+	{ { Z_MAGIC, TAG_STATIC, sizeof( zstatic_t ), NULL, NULL }, { '7', '\0' }, Z_TAIL },
+	{ { Z_MAGIC, TAG_STATIC, sizeof( zstatic_t ), NULL, NULL }, { '8', '\0' }, Z_TAIL },
+	{ { Z_MAGIC, TAG_STATIC, sizeof( zstatic_t ), NULL, NULL }, { '9', '\0' }, Z_TAIL },
+	{ { Z_MAGIC, TAG_STATIC, sizeof( zstatic_t ), NULL, NULL }, { '\0', '\0'}, Z_TAIL }
 };
 
 typedef struct zstats_s {

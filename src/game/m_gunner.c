@@ -45,6 +45,7 @@ void gunner_idlesound (edict_t *self)
 
 void gunner_sight (edict_t *self, edict_t *other)
 {
+	(void)other;
 	gi.sound (self, CHAN_VOICE, sound_sight, 1, ATTN_NORM, 0);
 }
 
@@ -292,6 +293,9 @@ mmove_t gunner_move_pain1 = {FRAME_pain101, FRAME_pain118, gunner_frames_pain1, 
 
 void gunner_pain (edict_t *self, edict_t *other, float kick, int damage)
 {
+	(void)other;
+	(void)kick;
+
 	if (self->health < (self->max_health / 2))
 		self->s.skinnum = 1;
 
@@ -354,6 +358,10 @@ mmove_t gunner_move_death = {FRAME_death01, FRAME_death11, gunner_frames_death, 
 void gunner_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
 	int		n;
+
+	(void)inflictor;
+	(void)attacker;
+	(void)point;
 
 // check for gib
 	if (self->health <= self->gib_health)
@@ -428,6 +436,8 @@ mmove_t	gunner_move_duck = {FRAME_duck01, FRAME_duck08, gunner_frames_duck, gunn
 
 void gunner_dodge (edict_t *self, edict_t *attacker, float eta)
 {
+	(void)eta;
+
 	if (random() > 0.25)
 		return;
 

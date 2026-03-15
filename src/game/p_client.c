@@ -71,6 +71,8 @@ static void SP_CreateCoopSpots (edict_t *self)
 {
 	edict_t	*spot;
 
+	(void)self;
+
 	if(Q_stricmp(level.mapname, "security") == 0)
 	{
 		spot = G_Spawn();
@@ -170,14 +172,17 @@ Use 'angles' instead of 'angle', so you can set pitch or roll as well as yaw.  '
 */
 void SP_info_player_intermission(edict_t *ent)
 {
+	(void)ent;
 }
-
 
 //=======================================================================
 
-
 void player_pain (edict_t *self, edict_t *other, float kick, int damage)
 {
+	(void)self;
+	(void)other;
+	(void)kick;
+	(void)damage;
 	// player pain is handled at the end of the frame in P_DamageFeedback
 }
 
@@ -214,6 +219,8 @@ void ClientObituary (edict_t *self, edict_t *inflictor, edict_t *attacker)
 	char		*message;
 	char		*message2;
 	int	ff;
+
+	(void)inflictor;
 
 	if (coop->value && attacker->client)
 		meansOfDeath |= MOD_FRIENDLY_FIRE;
@@ -501,6 +508,8 @@ player_die
 void player_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
 	int		n;
+
+	(void)point;
 
 	VectorClear (self->avelocity);
 
@@ -931,6 +940,10 @@ void InitBodyQue (void)
 void body_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
 	int	n;
+
+	(void)inflictor;
+	(void)attacker;
+	(void)point;
 
 	if (self->health < -40)
 	{

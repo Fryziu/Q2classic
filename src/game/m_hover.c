@@ -17,13 +17,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
-/*
-==============================================================================
 
-hover
+///		hover		///
 
-==============================================================================
-*/
 
 #include "g_local.h"
 #include "m_hover.h"
@@ -42,6 +38,8 @@ static int	sound_search2;
 
 void hover_sight (edict_t *self, edict_t *other)
 {
+	(void)other;
+
 	gi.sound (self, CHAN_VOICE, sound_sight, 1, ATTN_NORM, 0);
 }
 
@@ -498,6 +496,9 @@ void hover_attack(edict_t *self)
 
 void hover_pain (edict_t *self, edict_t *other, float kick, int damage)
 {
+	(void)other;
+	(void)kick;
+
 	if (self->health < (self->max_health / 2))
 		self->s.skinnum = 1;
 
@@ -555,6 +556,10 @@ void hover_dead (edict_t *self)
 
 void hover_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
+	(void)inflictor;
+	(void)attacker;
+	(void)point;
+	
 	int		n;
 
 // check for gib

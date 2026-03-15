@@ -78,6 +78,7 @@ static void ScreenSizeCallback( void *s )
 
 static void BrightnessCallback( void *s )
 {
+	(void)s;
 #ifndef GL_QUAKE
 	float gamma;
 	menuslider_s *slider = ( menuslider_s * ) s;
@@ -94,11 +95,13 @@ static void BrightnessCallback( void *s )
 
 static void ResetDefaults( void *unused )
 {
+	(void)unused;
 	VID_MenuInit();
 }
 
 static void ApplyChanges( void *unused )
 {
+	(void)unused;
 	float gamma;
 
 	/*

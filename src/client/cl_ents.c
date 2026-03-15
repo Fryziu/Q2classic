@@ -23,21 +23,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 extern struct model_s *cl_mod_powerscreen;
 
-/*
-=========================================================================
 
-FRAME PARSING
+///     FRAME PARSING     ///
 
-=========================================================================
-*/
 
-/*
-=================
-CL_ParseEntityBits
+///   CL_ParseEntityBits
 
-Returns the entity number and the header bits
-=================
-*/
+// Returns the entity number and the header bits
+
 // int	bitcounts[32];	/// just for protocol profiling
 int CL_ParseEntityBits(sizebuf_t *msg, unsigned int *bits) {
   unsigned int b, total, number;
@@ -57,9 +50,10 @@ int CL_ParseEntityBits(sizebuf_t *msg, unsigned int *bits) {
   }
 
   // count the bits for net profiling
-  /*for (i=0 ; i<32 ; i++)
+/*    for (i=0 ; i<32 ; i++)
           if (total&(1<<i))
-                  bitcounts[i]++;*/
+                  bitcounts[i]++;
+*/
 
   if (total & U_NUMBER16) {
     number = MSG_ReadShort(msg);
@@ -76,13 +70,11 @@ int CL_ParseEntityBits(sizebuf_t *msg, unsigned int *bits) {
 
 #define MAX_VISIBLE_ENTITIES 512
 
-/*
-==================
-CL_DeltaEntity_Discard
 
-Parses deltas but discards the result to handle overflow gracefully
-==================
-*/
+///   CL_DeltaEntity_Discard
+
+// Parses deltas but discards the result to handle overflow gracefully
+
 static void CL_DeltaEntity_Discard(sizebuf_t *msg, int newnum,
                                    const entity_state_t *old, int bits) {
   entity_state_t dummy;
@@ -90,15 +82,12 @@ static void CL_DeltaEntity_Discard(sizebuf_t *msg, int newnum,
   MSG_ParseDeltaEntity(msg, old, &dummy, newnum, bits, cls.protocolVersion);
 }
 
-/*
-==================
-CL_DeltaEntity
 
+///   CL_DeltaEntity
 
-Parses deltas from the given base and adds the resulting entity
-to the current frame
-==================
-*/
+// Parses deltas from the given base and adds the resulting entity
+// to the current frame
+
 static void CL_DeltaEntity(sizebuf_t *msg, frame_t *frame, int newnum,
                            const entity_state_t *old, int bits) {
   centity_t *ent;
@@ -145,14 +134,12 @@ static void CL_DeltaEntity(sizebuf_t *msg, frame_t *frame, int newnum,
   ent->current = *state;
 }
 
-/*
-==================
-CL_ParsePacketEntities
 
-An svc_packetentities has just been parsed, deal with the
-rest of the data stream.
-==================
-*/
+///   CL_ParsePacketEntities
+
+// An svc_packetentities has just been parsed, deal with the
+// rest of the data stream.
+
 static void CL_ParsePacketEntities(sizebuf_t *msg, const frame_t *oldframe,
                                    frame_t *newframe) {
   int newnum;
@@ -350,12 +337,10 @@ static void CL_DemoPacketEntities(sizebuf_t *buf,
   MSG_WriteShort(buf, 0); // end of packetentities
 }
 
-/*
-==================
-CL_FireEntityEvents
 
-==================
-*/
+///   CL_FireEntityEvents
+
+
 void CL_FireEntityEvents(const frame_t *frame) {
   entity_state_t *s1;
   int pnum, num;
@@ -372,11 +357,9 @@ void CL_FireEntityEvents(const frame_t *frame) {
   }
 }
 
-/*
-================
-CL_ParseFrame
-================
-*/
+
+///   CL_ParseFrame
+
 void CL_ParseFrame(sizebuf_t *msg, int extrabits) {
   int cmd, len;
   uint32 bits, extraflags = 0;
@@ -404,7 +387,7 @@ void CL_ParseFrame(sizebuf_t *msg, int extrabits) {
     cl.frame.serverframe = MSG_ReadLong(msg);
     cl.frame.deltaframe = MSG_ReadLong(msg);
 
-    /* BIG HACK to let old demos continue to work */
+    // BIG HACK to let old demos continue to work
     if (cls.serverProtocol != 26)
       cl.surpressCount = MSG_ReadByte(msg);
   }
@@ -453,7 +436,7 @@ void CL_ParseFrame(sizebuf_t *msg, int extrabits) {
   // read areabits
   len = MSG_ReadByte(msg);
   if (len) {
-    if (len > sizeof(cl.frame.areabits)) {
+    if (len > (int)sizeof(cl.frame.areabits)) {
       Com_Error(ERR_DROP, "CL_ParseFrame: invalid areabits length");
     }
     if (msg->readcount + len > msg->cursize) {
@@ -463,7 +446,7 @@ void CL_ParseFrame(sizebuf_t *msg, int extrabits) {
   }
 
   if (cls.serverProtocol > PROTOCOL_VERSION_DEFAULT) {
-    /* parse playerstate */
+    // parse playerstate 
     bits = MSG_ReadShort(msg);
     MSG_ParseDeltaPlayerstate_Enhanced(msg, from, &cl.frame.playerstate, bits,
                                        extraflags);
@@ -572,20 +555,17 @@ void CL_ParseFrame(sizebuf_t *msg, int extrabits) {
   CL_CheckPredictionError();
 }
 
-/*
-==========================================================================
 
-INTERPOLATE BETWEEN FRAMES TO GET RENDERING PARMS
 
-==========================================================================
-*/
+///     INTERPOLATE BETWEEN FRAMES TO GET RENDERING PARMS     ///
+
+
 extern int Developer_searchpath(void);
-/*
-===============
-CL_AddPacketEntities
 
-===============
-*/
+
+///   CL_AddPacketEntities
+
+
 void CL_AddPacketEntities(const frame_t *frame) {
   entity_t ent = {0};
   const entity_state_t *s1;
@@ -676,7 +656,8 @@ void CL_AddPacketEntities(const frame_t *frame) {
        cent->prev.origin[1] + cl.lerpfrac * (cent->current.origin[1] -
        cent->prev.origin[1]); ent.origin[2] = cent->prev.origin[2] + cl.lerpfrac
        * (cent->current.origin[2] - cent->prev.origin[2]);
-                    }*/
+                    }
+    */
     else { // interpolate origin
       ent.origin[0] = ent.oldorigin[0] =
           cent->prev.origin[0] +
@@ -993,7 +974,7 @@ void CL_AddPacketEntities(const frame_t *frame) {
         CL_FlagTrail(cent->lerp_origin, ent.origin, 115);
         V_AddLight(ent.origin, 225, 0.1f, 0.1f, 1.0f);
       }
-      //======
+      //
       // ROGUE
       else if (effects & EF_TAGTRAIL) {
         CL_TagTrail(cent->lerp_origin, ent.origin, 220);
@@ -1023,7 +1004,7 @@ void CL_AddPacketEntities(const frame_t *frame) {
 #endif
       }
       // ROGUE
-      //======
+      //
       //  RAFAEL
       else if (effects & EF_GREENGIB) {
         CL_DiminishingTrail(cent->lerp_origin, ent.origin, cent, effects);
@@ -1050,11 +1031,9 @@ void CL_AddPacketEntities(const frame_t *frame) {
   }
 }
 
-/*
-==============
-CL_AddViewWeapon
-==============
-*/
+
+///   CL_AddViewWeapon
+
 extern cvar_t *cl_gunalpha;
 extern cvar_t *info_hand;
 extern cvar_t *cl_gun_x, *cl_gun_y, *cl_gun_z;
@@ -1257,13 +1236,11 @@ static void CL_CalcViewValues(void) {
   CL_AddViewWeapon(ps, ops);
 }
 
-/*
-===============
-CL_AddEntities
 
-Emits all entities, particles, and lights to the refresh
-===============
-*/
+///   CL_AddEntities
+
+// Emits all entities, particles, and lights to the refresh
+
 void CL_AddEntities(void) {
   int server_fps = cl.settings[SVSET_FPS] ? cl.settings[SVSET_FPS] : 10;
   int player_updates =
@@ -1331,7 +1308,7 @@ void CL_GetEntitySoundOrigin (int ent, vec3_t org)
     // Używamy gotowego lerp_origin obliczonego przez silnik dla renderera
     VectorCopy(cl_entities[ent].lerp_origin, org);
 }
-        */
+*/
 
 /// original function
 /*

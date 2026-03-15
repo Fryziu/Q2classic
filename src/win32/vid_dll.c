@@ -24,9 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <float.h>
 
 #include "..\client\client.h"
-#ifdef CD_AUDIO
-#include <mmsystem.h>
-#endif
+
 #include "winquake.h"
 //#include "zmouse.h"
 
@@ -206,9 +204,7 @@ static void VID_AppActivate(BOOL fActive, BOOL minimize)
 
 	// minimize/restore mouse-capture on demand
 	IN_Activate (ActiveApp);
-#ifdef CD_AUDIO
-	CDAudio_Activate (ActiveApp);
-#endif
+
 	S_Activate (ActiveApp);
 
 	if ( win_noalttab->integer )
@@ -404,16 +400,6 @@ LONG WINAPI MainWndProc (
 	case WM_KEYUP:
 		Key_Event( MapKey( lParam ), false, sys_msg_time);
 		break;
-
-#ifdef CD_AUDIO
-	case MM_MCINOTIFY:
-		{
-			LONG lRet = 0;
-			LONG CDAudio_MessageHandler(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-			lRet = CDAudio_MessageHandler (hWnd, uMsg, wParam, lParam);
-		}
-		break;
-#endif
     }
 	// pass all unhandled messages to DefWindowProc
     // return 0 if handled message, 1 if not

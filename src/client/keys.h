@@ -50,9 +50,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define	K_F10			144
 #define	K_F11			145
 #define	K_F12			146
-// =======================================================================
+
 // M-AI-812: Dodane definicje dla rozszerzonych klawiszy funkcyjnych i multimedialnych
-// =======================================================================
+
 #define K_F13			246
 #define K_F14			247
 #define K_F15			248

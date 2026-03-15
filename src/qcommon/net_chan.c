@@ -91,6 +91,7 @@ Netchan_Init
 */
 static void OnChange_MaxMsgLen(cvar_t *self, const char *oldValue)
 {
+	(void)oldValue;
 	if (self->integer < 0)
 		Cvar_Set(self->name, "0");
 	else if (self->integer > MAX_USABLEMSG)
@@ -379,7 +380,7 @@ qboolean Netchan_Process (netchan_t *chan, sizebuf_t *msg)
 //
 // discard stale or duplicated packets
 //
-	if (sequence <= chan->incoming_sequence)
+	if ((int)sequence <= chan->incoming_sequence)
 	{
 		if (showdrop->integer)
 			Com_Printf ("%s:Out of order packet %i at %i\n"
@@ -406,7 +407,7 @@ qboolean Netchan_Process (netchan_t *chan, sizebuf_t *msg)
 // if the current outgoing reliable message has been acknowledged
 // clear the buffer to make way for the next
 //
-	if (reliable_ack == chan->reliable_sequence)
+	if ((int)reliable_ack == chan->reliable_sequence)
 		chan->reliable_length = 0;	// it has been received
 	
 //

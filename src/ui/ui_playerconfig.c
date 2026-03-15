@@ -20,13 +20,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "ui_local.h"
 
-/*
-=============================================================================
 
-PLAYER CONFIG MENU
+///		PLAYER CONFIG MENU		///
 
-=============================================================================
-*/
+
 static menuframework_s	s_player_config_menu;
 static menufield_s		s_player_name_field;
 static menulist_s		s_player_model_box;
@@ -60,22 +57,26 @@ static const char *rate_names[] = { "28.8 Modem", "33.6 Modem", "Single ISDN",
 
 void DownloadOptionsFunc( void *self )
 {
+	(void)self;
 	M_Menu_DownloadOptions_f();
 }
 
 static void HandednessCallback( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "hand", s_player_handedness_box.curvalue );
 }
 
 static void RateCallback( void *unused )
 {
+	(void)unused;
 	if (s_player_rate_box.curvalue != sizeof(rate_tbl) / sizeof(*rate_tbl) - 1)
 		Cvar_SetValue( "rate", rate_tbl[s_player_rate_box.curvalue] );
 }
 
 static void ModelCallback( void *unused )
 {
+	(void)unused;
 	s_player_skin_box.itemnames = (const char **)s_pmi[s_player_model_box.curvalue].skindisplaynames;
 	s_player_skin_box.curvalue = 0;
 }
@@ -124,9 +125,9 @@ static qboolean PlayerConfig_ScanDirectories( void )
 
 	s_numplayermodels = 0;
 
-	/*
-	** get a list of directories
-	*/
+	
+	// get a list of directories
+	
 	do 
 	{
 		path = FS_NextPath( path );
@@ -143,9 +144,9 @@ static qboolean PlayerConfig_ScanDirectories( void )
 	if ( !dirnames )
 		return false;
 
-	/*
-	** go through the subdirectories
-	*/
+	
+	// go through the subdirectories
+	
 	npms = ndirs;
 	if ( npms > MAX_PLAYERMODELS )
 		npms = MAX_PLAYERMODELS;
@@ -257,9 +258,9 @@ static int pmicmpfnc( const void *_a, const void *_b )
 	const playermodelinfo_s *a = ( const playermodelinfo_s * ) _a;
 	const playermodelinfo_s *b = ( const playermodelinfo_s * ) _b;
 
-	/*
-	** sort by male, female, then alphabetical
-	*/
+	
+	// sort by male, female, then alphabetical
+	
 	if ( strcmp( a->directory, "male" ) == 0 )
 		return -1;
 	else if ( strcmp( b->directory, "male" ) == 0 )
@@ -308,7 +309,7 @@ void PlayerConfig_MenuDraw( menuframework_s *self )
 		entity.backlerp = 0.0;
 		entity.angles[1] = yaw;
 
-		if (nextUpdate <= cls.realtime) {
+		if ((unsigned int)nextUpdate <= (unsigned int)cls.realtime) {
 			nextUpdate = cls.realtime + 2;
 			yaw++;
 			if ( yaw > 360 )
@@ -492,9 +493,9 @@ qboolean PlayerConfig_MenuInit( void )
 	s_player_handedness_box.curvalue = Cvar_VariableIntValue( "hand" );
 	s_player_handedness_box.itemnames = handedness;
 
-	for (i = 0; i < sizeof(rate_tbl) / sizeof(*rate_tbl) - 1; i++)
-		if (Cvar_VariableIntValue("rate") == rate_tbl[i])
-			break;
+        for (i = 0; (int)(sizeof(rate_tbl) / sizeof(*rate_tbl)) - 1 > i; i++)
+          if (Cvar_VariableIntValue("rate") == rate_tbl[i])
+            break;
 
 	s_player_rate_title.generic.type = MTYPE_SEPARATOR;
 	s_player_rate_title.generic.name = "connect speed";

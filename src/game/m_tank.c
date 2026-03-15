@@ -17,13 +17,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
-/*
-==============================================================================
 
-TANK
+///		TANK		///
 
-==============================================================================
-*/
 
 #include "g_local.h"
 #include "m_tank.h"
@@ -42,12 +38,12 @@ static int	sound_sight;
 static int	sound_windup;
 static int	sound_strike;
 
-//
+
 // misc
-//
 
 void tank_sight (edict_t *self, edict_t *other)
 {
+	(void)other;
 	gi.sound (self, CHAN_VOICE, sound_sight, 1, ATTN_NORM, 0);
 }
 
@@ -292,6 +288,8 @@ mmove_t	tank_move_pain3 = {FRAME_pain301, FRAME_pain316, tank_frames_pain3, tank
 
 void tank_pain (edict_t *self, edict_t *other, float kick, int damage)
 {
+	(void)other;
+	(void)kick;
 	if (self->health < (self->max_health / 2))
 			self->s.skinnum |= 1;
 
@@ -791,6 +789,9 @@ mmove_t	tank_move_death = {FRAME_death101, FRAME_death132, tank_frames_death1, t
 
 void tank_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
+	(void)inflictor;
+	(void)attacker;
+	(void)point;
 	int		n;
 
 // check for gib

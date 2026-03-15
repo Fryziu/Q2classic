@@ -1,23 +1,22 @@
 #ifndef GL_DECAL_H
 #define GL_DECAL_H
 
-// =======================================================================
-//        Publiczny Interfejs Modułu Renderowania Decali
-// =======================================================================
 
-// --- Dołączenia Zależności ---
+///			Publiczny Interfejs Modułu Renderowania Decali		///
+
+
+//		Dołączenia Zależności
 // Potrzebujemy definicji typów wektorów.
 #include "../game/q_shared.h"
 
-// =======================================================================
+
 //         Deklaracje Wstępne (Forward Declarations)
-// =======================================================================
-//
+
 // M-AI-812: Kluczowa poprawka. Zamiast dołączać cały "prywatny" nagłówek
 // renderera, używamy deklaracji wstępnej. Mówimy kompilatorowi, że typ
 // 'image_t' istnieje, co pozwala nam na używanie wskaźników (image_t *),
 // nie ujawniając wewnętrznej budowy tej struktury.
-//
+
 struct image_s;
 typedef struct image_s image_t;
 
@@ -27,14 +26,14 @@ typedef struct mnode_s mnode_t;
 struct msurface_s;
 typedef struct msurface_s msurface_t;
 
-// =======================================================================
-//                      Definicje i Typy Danych
-// =======================================================================
+
+///					Definicje i Typy Danych				///
+
 
 // --- Stałe Konfiguracyjne Modułu ---
 // M-AI-812: Przeniesione z gl_decal.c, ponieważ są używane przez
 // publiczną strukturę cdecal_t.
-#define MAX_DECALS				8192 //	2048 //256     // Maksymalna liczba aktywnych decali
+#define MAX_DECALS				32768 //16384 //8192 //	2048 //256     // Maksymalna liczba aktywnych decali
 #define MAX_DECAL_VERTS			64      // Maksymalna liczba wierzchołków na decal
 #define MAX_DECAL_FRAGMENTS		64      // Maksymalna liczba fragmentów przy cięciu
 
@@ -72,7 +71,7 @@ typedef struct cdecal_s
 	int			type;
 	int			flags;
 
-	// --- NOWE POLA ---
+	//		NOWE POLA
 	vec4_t		end_color;
 	float		fadetime;
 
@@ -81,9 +80,9 @@ typedef struct cdecal_s
 // for generating substitute image  conchars.pcx
 image_t* GL_GenerateImageFromSVG(const char* svg_data, int width, int height, const char* name);
 
-// =======================================================================
-//                       Prototypy Funkcji Publicznych
-// =======================================================================
+
+///			Prototypy Funkcji Publicznych			///
+
 
 void GL_InitDecals (void);
 void GL_ShutDownDecals (void);

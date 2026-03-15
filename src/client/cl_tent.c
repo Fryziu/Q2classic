@@ -121,11 +121,9 @@ struct model_s	*cl_mod_monster_heatbeam;
 struct model_s	*cl_mod_explo4_big;
 
 //ROGUE
-/*
-=================
-CL_RegisterTEntSounds
-=================
-*/
+
+///		CL_RegisterTEntSounds
+
 void CL_RegisterTEntSounds (void)
 {
 	int		i;
@@ -159,11 +157,9 @@ void CL_RegisterTEntSounds (void)
 //PGM
 }
 
-/*
-=================
-CL_RegisterTEntModels
-=================
-*/
+
+///		CL_RegisterTEntModels
+
 void CL_RegisterTEntModels (void)
 {
 	cl_mod_explode = R_RegisterModel ("models/objects/explode/tris.md2");
@@ -202,11 +198,9 @@ void CL_RegisterTEntModels (void)
 //ROGUE
 }
 
-/*
-=================
-CL_ClearTEnts
-=================
-*/
+
+///		CL_ClearTEnts
+
 void CL_ClearTEnts (void)
 {
 	int i;
@@ -229,11 +223,9 @@ void CL_ClearTEnts (void)
 //ROGUE
 }
 
-/*
-=================
-CL_AllocExplosion
-=================
-*/
+
+///		CL_AllocExplosion
+
 explosion_t *CL_AllocExplosion (void)
 {
 	explosion_t *ex;
@@ -262,11 +254,9 @@ explosion_t *CL_AllocExplosion (void)
 	return ex;
 }
 
-/*
-=================
-CL_FreeExplosion
-=================
-*/
+
+///		CL_FreeExplosion
+
 void CL_FreeExplosion ( explosion_t *ex )
 {
 	// remove from linked active list
@@ -278,11 +268,9 @@ void CL_FreeExplosion ( explosion_t *ex )
 	cl_free_expl = ex;
 }
 
-/*
-=================
-CL_SmokeAndFlash
-=================
-*/
+
+///		CL_SmokeAndFlash
+
 void CL_SmokeAndFlash(const vec3_t origin)
 {
 	explosion_t	*ex;
@@ -309,12 +297,11 @@ void CL_SmokeAndFlash(const vec3_t origin)
 	dl->die = cl.time + 70;
 }
 
+
+///		CL_ParseParticles
+
 /*
-=================
-CL_ParseParticles
-=================
-*/
-/*void CL_ParseParticles (void)
+void CL_ParseParticles (void)
 {
 	int		color, count;
 	vec3_t	pos, dir;
@@ -327,13 +314,12 @@ CL_ParseParticles
 	count = MSG_ReadByte (&net_message);
 
 	CL_ParticleEffect (pos, dir, color, count);
-}*/
-
-/*
-=================
-CL_ParseBeam
-=================
+}
 */
+
+
+///		CL_ParseBeam
+
 static int CL_ParseBeam (sizebuf_t *msg, struct model_s *model)
 {
 	int		ent;
@@ -378,11 +364,9 @@ static int CL_ParseBeam (sizebuf_t *msg, struct model_s *model)
 	return ent;
 }
 
-/*
-=================
-CL_ParseBeam2
-=================
-*/
+
+///		CL_ParseBeam2
+
 static int CL_ParseBeam2 (sizebuf_t *msg, struct model_s *model)
 {
 	int		ent;
@@ -430,12 +414,10 @@ static int CL_ParseBeam2 (sizebuf_t *msg, struct model_s *model)
 }
 
 // ROGUE
-/*
-=================
-CL_ParsePlayerBeam
-  - adds to the cl_playerbeam array instead of the cl_beams array
-=================
-*/
+
+///		CL_ParsePlayerBeam
+//  - adds to the cl_playerbeam array instead of the cl_beams array
+
 static int CL_ParsePlayerBeam (sizebuf_t *msg, struct model_s *model)
 {
 	int		ent;
@@ -493,11 +475,9 @@ static int CL_ParsePlayerBeam (sizebuf_t *msg, struct model_s *model)
 }
 //rogue
 
-/*
-=================
-CL_ParseLightning
-=================
-*/
+
+///		CL_ParseLightning
+
 static int CL_ParseLightning (sizebuf_t *msg, struct model_s *model)
 {
 	int		srcEnt, destEnt;
@@ -545,11 +525,9 @@ static int CL_ParseLightning (sizebuf_t *msg, struct model_s *model)
 	return srcEnt;
 }
 
-/*
-=================
-CL_ParseLaser
-=================
-*/
+
+///		CL_ParseLaser
+
 static void CL_ParseLaser (sizebuf_t *msg, int colors)
 {
 	vec3_t	start;
@@ -580,7 +558,6 @@ static void CL_ParseLaser (sizebuf_t *msg, int colors)
 	}
 }
 
-//=============
 //ROGUE
 static void CL_ParseSteam (sizebuf_t *msg)
 {
@@ -701,14 +678,10 @@ static void CL_ParseNuke (sizebuf_t *msg)
 }
 
 //ROGUE
-//=============
 
 
-/*
-=================
-CL_ParseTEnt
-=================
-*/
+///		CL_ParseTEnt
+
 static const byte splash_color[] = {0x00, 0xe0, 0xb0, 0x50, 0xd0, 0xe0, 0xe8};
 
 void CL_ParseTEnt (sizebuf_t *msg)
@@ -733,7 +706,7 @@ void CL_ParseTEnt (sizebuf_t *msg)
 
 	case TE_GUNSHOT:
 	    case TE_SPARKS:
-	    case TE_BULLET_SPARKS:
+	    case TE_BULLET_SPARKS:{
 
 	        // 1. Wspólna obsługa dla trzech typów zdarzeń, aby uniknąć duplikacji kodu.
 	        vec3_t pos, dir;
@@ -770,6 +743,7 @@ void CL_ParseTEnt (sizebuf_t *msg)
 	        }
 
 	        break;
+		}
 
 
 #ifdef GL_QUAKE
@@ -859,7 +833,7 @@ void CL_ParseTEnt (sizebuf_t *msg)
 		CL_HandleTempEntityForDecal(type, pos, dir);
 		CL_BlasterParticles (pos, dir);
 
-		R_AddStain(pos, 2, 10);
+		//R_AddStain(pos, 2, 10);
 
 		ex = CL_AllocExplosion ();
 		VectorCopy (pos, ex->ent.origin);
@@ -1058,7 +1032,6 @@ void CL_ParseTEnt (sizebuf_t *msg)
 		CL_ParticleEffect3 (pos, dir, color, cnt);
 		break;
 
-//=============
 //PGM
 		// PMM -following code integrated for flechette (different color)
 	case TE_BLASTER2:			// green blaster hitting wall
@@ -1232,18 +1205,15 @@ void CL_ParseTEnt (sizebuf_t *msg)
 		CL_WidowSplash (pos);
 		break;
 //PGM
-//==============
 
 	default:
 		Com_Error (ERR_DROP, "CL_ParseTEnt: bad type");
 	}
 }
 
-/*
-=================
-CL_AddBeams
-=================
-*/
+
+///		CL_AddBeams
+
 void CL_AddBeams (void)
 {
 	int			i;
@@ -1356,12 +1326,10 @@ void CL_AddBeams (void)
 
 extern cvar_t *info_hand;
 
-/*
-=================
-ROGUE - draw player locked beams
-CL_AddPlayerBeams
-=================
-*/
+
+///		ROGUE - draw player locked beams		///
+///		CL_AddPlayerBeams
+
 void CL_AddPlayerBeams (void)
 {
 	int			i,j;
@@ -1577,11 +1545,9 @@ void CL_AddPlayerBeams (void)
 	}
 }
 
-/*
-=================
-CL_AddExplosions
-=================
-*/
+
+///		CL_AddExplosions
+
 void CL_AddExplosions (void)
 {
 	entity_t	*ent;
@@ -1693,11 +1659,9 @@ void CL_AddExplosions (void)
 }
 
 
-/*
-=================
-CL_AddLasers
-=================
-*/
+
+///		CL_AddLasers
+
 void CL_AddLasers (void)
 {
 	laser_t		*l;
@@ -1728,11 +1692,9 @@ void CL_ProcessSustain (void)
 	}
 }
 
-/*
-=================
-CL_AddTEnts
-=================
-*/
+
+///		CL_AddTEnts
+
 void CL_AddTEnts (void)
 {
 	CL_AddBeams ();

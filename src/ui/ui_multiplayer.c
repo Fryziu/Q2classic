@@ -42,26 +42,31 @@ static void Multiplayer_MenuDraw ( menuframework_s *self )
 
 static void PlayerSetupFunc( void *unused )
 {
+	(void)unused;
 	M_Menu_PlayerConfig_f();
 }
 
 static void JoinNetworkServerFunc( void *unused )
-{	
+{
+	(void)unused;
 	M_Menu_JoinServer_f(false); // LAN + AddressBook
 }
 
 static void ServersBrowserFunc( void *unused )
 {
+	(void)unused;
 	M_Menu_JoinServer_f(true); // Internet (Master Server)
 }
 
 static void StartNetworkServerFunc( void *unused )
 {
+	(void)unused;
 	M_Menu_StartServer_f ();
 }
 
 static void AddressBookFunc( void *unused )
 {
+	(void)unused;
 	M_Menu_AddressBook_f();
 }
 

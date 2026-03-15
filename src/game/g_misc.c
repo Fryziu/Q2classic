@@ -30,6 +30,8 @@ Used to group brushes together just for editor convenience.
 
 void Use_Areaportal (edict_t *ent, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	ent->count ^= 1;		// toggle state
 //	gi.dprintf ("portalstate: %i = %i\n", ent->style, ent->count);
 	gi.SetAreaPortalState (ent->style, ent->count);
@@ -103,6 +105,9 @@ void gib_think (edict_t *self)
 
 void gib_touch (edict_t *self, edict_t *other, cplane_t *plane, csurface_t *surf)
 {
+	(void)other;
+	(void)plane;
+	(void)surf;
 	vec3_t	normal_angles, right;
 
 	if (!self->groundentity)
@@ -129,6 +134,11 @@ void gib_touch (edict_t *self, edict_t *other, cplane_t *plane, csurface_t *surf
 
 void gib_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
+	(void)self;
+	(void)inflictor;
+	(void)attacker;
+	(void)damage;
+	(void)point;
 	G_FreeEdict (self);
 }
 
@@ -280,6 +290,11 @@ debris
 */
 void debris_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
+	(void)self;
+	(void)inflictor;
+	(void)attacker;
+	(void)damage;
+	(void)point;
 	G_FreeEdict (self);
 }
 
@@ -341,6 +356,8 @@ Pathtarget: gets used when an entity that has
 
 void path_corner_touch (edict_t *self, edict_t *other, cplane_t *plane, csurface_t *surf)
 {
+	(void)plane;
+	(void)surf;
 	vec3_t		v;
 	edict_t		*next;
 
@@ -421,6 +438,8 @@ hold is selected, it will stay here.
 */
 void point_combat_touch (edict_t *self, edict_t *other, cplane_t *plane, csurface_t *surf)
 {
+	(void)plane;
+	(void)surf;
 	edict_t	*activator;
 
 	if (other->movetarget != self)
@@ -544,6 +563,8 @@ Default _cone value is 10 (used to set size of light for spotlights)
 
 static void light_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	if (self->spawnflags & START_OFF)
 	{
 		gi.configstring (CS_LIGHTS+self->style, "m");
@@ -592,6 +613,8 @@ START_ON		only valid for TRIGGER_SPAWN walls
 
 void func_wall_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	if (self->solid == SOLID_NOT)
 	{
 		self->solid = SOLID_BSP;
@@ -664,6 +687,7 @@ This is solid bmodel that will fall if it's support it removed.
 
 void func_object_touch (edict_t *self, edict_t *other, cplane_t *plane, csurface_t *surf)
 {
+	(void)surf;
 	// only squash thing we fall on top of
 	if (!plane)
 		return;
@@ -682,6 +706,8 @@ void func_object_release (edict_t *self)
 
 void func_object_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	self->solid = SOLID_BSP;
 	self->svflags &= ~SVF_NOCLIENT;
 	self->use = NULL;
@@ -744,6 +770,8 @@ one small chunk per 25 of mass (up to 16).  So 800 gives the most.
 */
 void func_explosive_explode (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
+	(void)damage;
+	(void)point;
 	vec3_t	origin;
 	vec3_t	chunkorigin;
 	vec3_t	size;
@@ -808,11 +836,15 @@ void func_explosive_explode (edict_t *self, edict_t *inflictor, edict_t *attacke
 
 void func_explosive_use(edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	func_explosive_explode (self, self, other, self->health, vec3_origin);
 }
 
 void func_explosive_spawn (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	self->solid = SOLID_BSP;
 	self->svflags &= ~SVF_NOCLIENT;
 	self->use = NULL;
@@ -871,8 +903,9 @@ health (80), and dmg (150).
 */
 
 void barrel_touch (edict_t *self, edict_t *other, cplane_t *plane, csurface_t *surf)
-
 {
+	(void)plane;
+	(void)surf;
 	float	ratio;
 	vec3_t	v;
 
@@ -965,6 +998,9 @@ void barrel_explode (edict_t *self)
 
 void barrel_delay (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
+	(void)inflictor;
+	(void)damage;
+	(void)point;
 	self->takedamage = DAMAGE_NO;
 	self->nextthink = level.time + 2 * FRAMETIME;
 	self->think = barrel_explode;
@@ -1020,6 +1056,8 @@ void SP_misc_explobox (edict_t *self)
 
 void misc_blackhole_use (edict_t *ent, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	/*
 	gi.WriteByte (svc_temp_entity);
 	gi.WriteByte (TE_BOSSTPORT);
@@ -1156,6 +1194,8 @@ void commander_body_think (edict_t *self)
 
 void commander_body_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	self->think = commander_body_think;
 	self->nextthink = level.time + FRAMETIME;
 	gi.sound (self, CHAN_BODY, gi.soundindex ("tank/pain.wav"), 1, ATTN_NORM, 0);
@@ -1216,6 +1256,9 @@ This is the dead player model. Comes in 6 exciting different poses!
 */
 void misc_deadsoldier_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
+	(void)inflictor;
+	(void)attacker;
+	(void)point;
 	int		n;
 
 	if (self->health > -80)
@@ -1329,6 +1372,9 @@ void SP_misc_bigviper (edict_t *ent)
 */
 void misc_viper_bomb_touch (edict_t *self, edict_t *other, cplane_t *plane, csurface_t *surf)
 {
+	(void)other;
+	(void)plane;
+	(void)surf;
 	G_UseTargets (self, self->activator);
 
 	self->s.origin[2] = self->absmin[2] + 1;
@@ -1357,6 +1403,7 @@ void misc_viper_bomb_prethink (edict_t *self)
 
 void misc_viper_bomb_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
 	edict_t	*viper;
 
 	self->solid = SOLID_BBOX;
@@ -1451,6 +1498,8 @@ void misc_satellite_dish_think (edict_t *self)
 
 void misc_satellite_dish_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	self->s.frame = 0;
 	self->think = misc_satellite_dish_think;
 	self->nextthink = level.time + FRAMETIME;
@@ -1576,6 +1625,8 @@ void SP_target_character (edict_t *self)
 
 void target_string_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	edict_t *e;
 	int		n, l;
 	char	c;
@@ -1739,6 +1790,7 @@ void func_clock_think (edict_t *self)
 
 void func_clock_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
 	if (!(self->spawnflags & 8))
 		self->use = NULL;
 	if (self->activator)
@@ -1782,6 +1834,8 @@ void SP_func_clock (edict_t *self)
 
 void teleporter_touch (edict_t *self, edict_t *other, cplane_t *plane, csurface_t *surf)
 {
+	(void)plane;
+	(void)surf;
 	edict_t		*dest;
 	int			i;
 

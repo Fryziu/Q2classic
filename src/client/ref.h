@@ -17,6 +17,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
+
+// ref.h
+
 #ifndef __REF_H
 #define __REF_H
 
@@ -54,22 +57,19 @@ typedef struct entity_s
 #ifdef GL_QUAKE
 	vec3_t				axis[3];
 #endif
-
-	/*
-	** most recent data
-	*/
+	
+	// most recent data
+	
 	float				origin[3];		// also used as RF_BEAM's "from"
 	int					frame;			// also used as RF_BEAM's diameter
 
-	/*
-	** previous data for lerping
-	*/
+	// previous data for lerping
+	
 	float				oldorigin[3];	// also used as RF_BEAM's "to"
 	int					oldframe;
 
-	/*
-	** misc
-	*/
+	// misc
+	
 	float	backlerp;				// 0.0 = current, 1.0 = old
 	int		skinnum;				// also used as RF_BEAM's palette index
 
@@ -134,12 +134,12 @@ typedef struct
 } refdef_t;
 
 
-/* REFIMPORT */
+///		REFIMPORT		///
 
 //void VID_MenuInit( void );
 void VID_NewWindow ( int width, int height);
 
-/* REFEXPORT */
+///		REFEXPORT		///
 void	R_BeginRegistration (const char *map);
 
 struct model_s	*R_RegisterModel (const char *name);

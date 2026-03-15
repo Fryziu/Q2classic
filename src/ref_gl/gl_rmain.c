@@ -1186,6 +1186,7 @@ static void OnChange_Scale(cvar_t *self, const char *oldValue)
 
 static void OnChange_WaterWaves(cvar_t *self, const char *oldValue)
 {
+	(void)oldValue;
 	if (self->value < 0)
 		Cvar_Set(self->name, "0");
 	else if (self->value > 4)
@@ -1195,12 +1196,14 @@ static void OnChange_WaterWaves(cvar_t *self, const char *oldValue)
 // texturemode stuff
 static void OnChange_TexMode(cvar_t *self, const char *oldValue)
 {
+	(void)oldValue;
 	GL_TextureMode( self->string );
 	self->modified = false;
 }
 
 static void OnChange_Skydistace(cvar_t *self, const char *oldValue)
 {
+	(void)oldValue;
 	GLdouble boxsize;
 
 	boxsize = self->integer;
@@ -1219,11 +1222,14 @@ static void OnChange_Skydistace(cvar_t *self, const char *oldValue)
 
 static void OnChange_Fog(cvar_t *self, const char *oldValue)
 {
+	(void)self;
+	(void)oldValue;
 	qglDisable(GL_FOG);
 }
 
 static void OnChangeCustomWidth(cvar_t *self, const char *oldValue)
 {
+	(void)oldValue;
 	if(gl_state.prev_mode == -1)
 		gl_state.prev_mode = 3;
 
@@ -1233,6 +1239,7 @@ static void OnChangeCustomWidth(cvar_t *self, const char *oldValue)
 
 static void OnChangeCustomHeight(cvar_t *self, const char *oldValue)
 {
+	(void)oldValue;
 	if(gl_state.prev_mode == -1)
 		gl_state.prev_mode = 3;
 
@@ -1272,15 +1279,21 @@ static void OnChangeMaxAnisotropy(cvar_t *self, const char *oldValue)
 }
 
 static void OnChange_SwapInterval(cvar_t *self, const char *oldValue) {
+	(void)self;
+	(void)oldValue;
 	VID_Restart_f();
 }
 
 static void OnChange_Multisample(cvar_t *self, const char *oldValue) {
+	(void)self;
+	(void)oldValue;
 	VID_Restart_f();
 }
 
 static void OnChange_ShellEffect(cvar_t *self, const char *oldValue)
 {
+	(void)self;
+	(void)oldValue;
 	if (!self->integer)
 		return;
 
@@ -1293,6 +1306,8 @@ static void OnChange_ShellEffect(cvar_t *self, const char *oldValue)
 
 static void OnChange_Caustics(cvar_t *self, const char *oldValue)
 {
+	(void)self;
+	(void)oldValue;
 	if (!self->integer)
 		return;
 
@@ -1699,9 +1714,9 @@ static void GL_SetupExtensions ( const char *extensions )
 		 strstr( extensions, "GL_SGI_compiled_vertex_array" ) )
 	{
 		if (gl_ext_compiled_vertex_array->integer) {
-			qglLockArraysEXT = qglGetProcAddress( "glLockArraysEXT" );
+			qglLockArraysEXT = (typeof(qglLockArraysEXT))(intptr_t)qglGetProcAddress( "glLockArraysEXT" );
 			if(qglLockArraysEXT)
-				qglUnlockArraysEXT = qglGetProcAddress( "glUnlockArraysEXT" );
+				qglUnlockArraysEXT = (typeof(qglUnlockArraysEXT))(intptr_t)qglGetProcAddress( "glUnlockArraysEXT" );
 
 			if(qglUnlockArraysEXT) {
 				Com_Printf ( "...enabling GL_EXT_compiled_vertex_array\n" );
@@ -1732,10 +1747,10 @@ static void GL_SetupExtensions ( const char *extensions )
 
 	if ( strstr( extensions, "GL_EXT_point_parameters" ) ) {
 		if ( gl_ext_pointparameters->integer ) {
-			qglPointParameterfEXT = ( void (APIENTRY *)( GLenum, GLfloat ) ) qglGetProcAddress( "glPointParameterfEXT" );
+			qglPointParameterfEXT = ( void (APIENTRY *)( GLenum, GLfloat ) ) (typeof(qglPointParameterfEXT))(intptr_t)qglGetProcAddress( "glPointParameterfEXT" );
 			
 			if (qglPointParameterfEXT)
-				qglPointParameterfvEXT = ( void (APIENTRY *)( GLenum, const GLfloat * ) ) qglGetProcAddress( "glPointParameterfvEXT" );
+				qglPointParameterfvEXT = ( void (APIENTRY *)( GLenum, const GLfloat * ) ) (typeof(qglPointParameterfvEXT))(intptr_t)qglGetProcAddress( "glPointParameterfvEXT" );
 			
 			if (qglPointParameterfvEXT) {
 				Com_Printf ( "...using GL_EXT_point_parameters\n" );
@@ -1756,16 +1771,16 @@ static void GL_SetupExtensions ( const char *extensions )
 	if ( strstr( extensions, "GL_ARB_multitexture" ) )
 	{
 		if ( gl_ext_multitexture->integer ) {
-			qglActiveTextureARB = qglGetProcAddress( "glActiveTextureARB" );
+			qglActiveTextureARB = (typeof(qglActiveTextureARB))(intptr_t)qglGetProcAddress( "glActiveTextureARB" );
 			if(qglActiveTextureARB)
-				qglClientActiveTextureARB = qglGetProcAddress( "glClientActiveTextureARB" );
+				qglClientActiveTextureARB = (typeof(qglActiveTextureARB))(intptr_t)qglGetProcAddress( "glClientActiveTextureARB" );
 
 			if (qglClientActiveTextureARB) {
 				Com_Printf ( "...using GL_ARB_multitexture\n" );
 				QGL_TEXTURE0 = GL_TEXTURE0_ARB;
 				QGL_TEXTURE1 = GL_TEXTURE1_ARB;
 				gl_state.multiTexture = true;
-				qglMTexCoord2fSGIS = qglGetProcAddress( "glMultiTexCoord2fARB" );
+				qglMTexCoord2fSGIS = (typeof(qglMTexCoord2fSGIS))(intptr_t)qglGetProcAddress( "glMultiTexCoord2fARB" );
 			} else {
 				Com_Printf ("...GL_ARB_multitexture not properly supported!\n");
 				qglActiveTextureARB = NULL;
@@ -1784,13 +1799,13 @@ static void GL_SetupExtensions ( const char *extensions )
 		if ( strstr( extensions, "GL_SGIS_multitexture" ) )
 		{
 			if ( gl_ext_multitexture->integer ) {
-				qglSelectTextureSGIS = qglGetProcAddress( "glSelectTextureSGIS" );
+				qglSelectTextureSGIS = (typeof(qglSelectTextureSGIS))(intptr_t)qglGetProcAddress( "glSelectTextureSGIS" );
 				if (qglSelectTextureSGIS) {
 					Com_Printf ( "...using GL_SGIS_multitexture\n" );
 					QGL_TEXTURE0 = GL_TEXTURE0_SGIS;
 					QGL_TEXTURE1 = GL_TEXTURE1_SGIS;
 					gl_state.multiTexture = true;
-					qglMTexCoord2fSGIS = qglGetProcAddress( "glMTexCoord2fSGIS" );
+					qglMTexCoord2fSGIS = (typeof(qglMTexCoord2fSGIS))(intptr_t) qglGetProcAddress( "glMTexCoord2fSGIS" );
 				} else {
 					Com_Printf ("...GL_SGIS_multitexture not properly supported!\n");
 					qglMTexCoord2fSGIS = NULL;

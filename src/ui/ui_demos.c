@@ -177,6 +177,7 @@ static void Build_List(void)
 
 static void Load_Demo (void *s)
 {
+	(void)s;
 	char *p;
 
 	if(!m_demos.list.count)

@@ -1003,7 +1003,7 @@ struct edict_s
 	int			headnode;			// unused if num_clusters != -1
 	int			areanum, areanum2;
 
-	//================================
+	//
 
 	int			svflags;
 	vec3_t		mins, maxs;
@@ -1016,7 +1016,7 @@ struct edict_s
 	// DO NOT MODIFY ANYTHING ABOVE THIS, THE SERVER
 	// EXPECTS THE FIELDS IN THAT ORDER!
 
-	//================================
+	//
 	int			movetype;
 	int			flags;
 

@@ -342,7 +342,6 @@ static int FS_FOpenFileWrite( fsFile_t *file, const char *name ) {
 }
 
 /*
-===========
 FS_FOpenFileRead
 
 Finds the file in the search path.
@@ -350,7 +349,8 @@ returns filesize and fills the fsFile_t
 Used for streaming data out of either a pak file or
 a seperate file.
 In case of GZIP files, returns *raw* (compressed) length!
-===========
+
+Zmienna length obliczana przez ftell(fp) ma typ int. Dla plików większych niż 2GB (co w starym Quake'u nie występuje, ale warto o tym pamiętać na przyszłość) ftell zwróciłoby błąd. 
 */
 qboolean fs_fileFromPak = false;
 
@@ -376,6 +376,7 @@ static int FS_FOpenFileRead ( fsFile_t *file, const char *name, qboolean unique 
 		if (fs_searchpaths != fs_base_searchpaths) {
 			end = fs_base_searchpaths;
 		}
+		/* fallthrough */
 	default:
 		search = fs_searchpaths;
 		break;
@@ -507,9 +508,7 @@ FS_ReadFile
 Properly handles partial reads
 =================
 */
-#ifdef CD_AUDIO
-void CDAudio_Stop(void);
-#endif
+
 #define	MAX_READ	0x40000		// read in blocks of 256k
 int FS_Read (void *buffer, int len, fileHandle_t hFile)
 {
@@ -517,9 +516,6 @@ int FS_Read (void *buffer, int len, fileHandle_t hFile)
 	int		read = 0;
 	byte	*buf = (byte *)buffer;
 	fsFile_t	*file = FS_FileForHandle( hFile );
-#ifdef CD_AUDIO
-	int		tries = 0;
-#endif
 
 	while (remaining)
 	{
@@ -539,13 +535,6 @@ int FS_Read (void *buffer, int len, fileHandle_t hFile)
 			break;
 		}
 		if (read == 0) {
-#ifdef CD_AUDIO
-			if (!tries) { // we might have been trying to read from a CD
-				tries = 1;
-				CDAudio_Stop();
-			}
-			else
-#endif
 			return len - remaining;
 		} else if (read == -1) {
 			Com_Error (ERR_FATAL, "FS_Read: -1 bytes read");
@@ -822,7 +811,7 @@ qboolean FS_CopyFile( const char *src, const char *dst )
 
 	size = FS_GetFileLength( hSrc );
 	while( size ) {
-		len = min(size, sizeof(buffer));
+		len = min(size, (int)sizeof(buffer));
 		if( !( len = FS_Read( buffer, len, hSrc ) ) ) {
 			break;
 		}
@@ -950,7 +939,7 @@ static pack_t *FS_LoadPakFile (const char *packfile)
 	}
 
 	info = Z_TagMalloc (numpackfiles * sizeof(dpackfile_t), TAG_FS_LOADPAK);
-	if (fread(info, 1, header.dirlen, packhandle) != header.dirlen) {
+	if ((int)fread(info, 1, header.dirlen, packhandle) != header.dirlen) {
 		fclose(packhandle);
 		Z_Free(info);
 		Com_Error (ERR_FATAL, "FS_LoadPakFile: error reading packfile directory from %s (failed to read %u bytes at %u)", packfile, header.dirofs, header.dirlen);
@@ -963,7 +952,7 @@ static pack_t *FS_LoadPakFile (const char *packfile)
 		namesLength += strlen( dfile->name ) + 1;
 	}
 
-	for (hashSize = 1; hashSize < numpackfiles; hashSize <<= 1);
+	for (hashSize = 1; hashSize < (unsigned int)numpackfiles; hashSize <<= 1);
 	
 	if( hashSize > 32 ) {
 		hashSize >>= 1;
@@ -1067,7 +1056,7 @@ static pack_t *FS_LoadZipFile( const char *packfile )
 		return NULL;
 	}
 
-	for (hashSize = 1; hashSize < numFiles; hashSize <<= 1);
+	for (hashSize = 1; hashSize < (unsigned int)numFiles; hashSize <<= 1);
 	
 	if( hashSize > 32 ) {
 		hashSize >>= 1;
@@ -1307,7 +1296,7 @@ static void FS_AddHomeAsGameDirectory (const char *dir)
 		Com_Printf("using %s for writing\n",gdir);
 		FS_CreatePath (gdir);
 
-		if ((len > 0) && (len < sizeof(gdir)) && (gdir[len-1] == '/'))
+		if ((len > 0) && (len < (int)sizeof(gdir)) && (int)(gdir[len-1] == '/'))
 			gdir[len-1] = 0;
 
 		FS_AddGameDirectory (gdir);
@@ -1739,7 +1728,7 @@ static void FS_Stats_f( void ) {
 		if( !( pack = path->pack ) ) {
 			continue;
 		}
-		for( i = 0; i < pack->hashSize; i++ ) {
+		for( i = 0; i < (int)pack->hashSize; i++ ) {
 			if( !( file = pack->fileHash[i] ) ) {
 				continue;
 			}
@@ -1972,7 +1961,7 @@ char **FS_FindMaps(void) {
 	for(path = fs_searchpaths; path; path = path->next) {
 		if(!(pack = path->pack))
 			continue;
-		for(int i = 0; i < pack->hashSize; i++) {
+		for(int i = 0; i < (int)pack->hashSize; i++) {
 			if(!(file = pack->fileHash[i]))
 				continue;
 			for( ; file ; file = file->hashNext) {

@@ -35,6 +35,7 @@ extern qboolean m_entersound;
 
 static void UpdateMenuFunc( void *unused )
 {
+	(void)unused;
 	curmenu = s_options_list.curvalue;
 	m_entersound = true;
 	M_PopMenu();
@@ -59,26 +60,31 @@ static menuaction_s		s_console_defaults_action;
 
 static void ConsoleNotFadeFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "con_notifyfade", s_console_notfade_box.curvalue );
 }
 
 static void ConsoleNotLinesFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "con_notifylines", s_console_notlines_slider.curvalue );
 }
 
 static void ConsoleAlphaFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "con_alpha", s_console_alpha_slider.curvalue / 10 );
 }
 
 static void ConsoleDropFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "scr_conheight", s_console_drop_slider.curvalue / 10 );
 }
 
 static void ConsoleScrollFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "con_scrlines", s_console_scroll_slider.curvalue );
 }
 
@@ -86,7 +92,7 @@ void Cvar_SetDefault(const char *var_name);
 
 static void ResetConsoleDefaultsFunc( void *unused )
 {
-
+	(void)unused;
 	Cvar_SetDefault("con_notifyfade");
 	Cvar_SetDefault("con_notifylines");
 	Cvar_SetDefault("con_alpha");
@@ -111,42 +117,49 @@ static menuaction_s		s_crosshair_defaults_action;
 
 static void CrosshairFunc2( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "crosshair", s_crosshair_number_box.curvalue );
 }
 
 static void CrosshairAlphaFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "ch_alpha", s_crosshair_alpha_slider.curvalue / 10 );
 }
 
 static void CrosshairPulseFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "ch_pulse", s_crosshair_pulse_slider.curvalue / 10 );
 }
 
 static void CrosshairScaleFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "ch_scale", s_crosshair_scale_slider.curvalue / 10 );
 }
 
 static void CrosshairRedFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "ch_red", s_crosshair_red_slider.curvalue / 10 );
 }
 
 static void CrosshairGreenFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "ch_green", s_crosshair_green_slider.curvalue / 10 );
 }
 
 static void CrosshairBlueFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "ch_blue", s_crosshair_blue_slider.curvalue / 10 );
 }
 
 static void ResetCrosshairDefaultsFunc( void *unused )
 {
-
+	(void)unused;
 	Cvar_SetDefault("crosshair");
 	Cvar_SetDefault("ch_alpha");
 	Cvar_SetDefault("ch_pulse");
@@ -172,37 +185,43 @@ static menuaction_s	s_misc_defaults_action;
 
 static void ShowCLOCKFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "cl_clock", s_misc_showclock_box.curvalue );
 }
 
 static void ShowFPSFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "cl_fps", s_misc_showfps_box.curvalue );
 }
 
 static void ShowCHATFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "cl_chathud", s_misc_showchat_box.curvalue );
 }
 
 static void ShowTIMEFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "cl_maptime", s_misc_showtime_box.curvalue );
 }
 
 static void TimeStampFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "cl_timestamps", s_misc_timestamp_box.curvalue );
 }
 
 static void HudAlphaFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "cl_hudalpha", s_misc_hudalpha_slider.curvalue / 10 );
 }
 
 static void ResetMiscDefaultsFunc( void *unused )
 {
-
+	(void)unused;
 	Cvar_SetDefault("cl_clock");
 	Cvar_SetDefault("cl_fps");
 	Cvar_SetDefault("cl_chathud");

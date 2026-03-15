@@ -27,7 +27,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define APPLICATION "Q2classic for Linux"
 
-#define VERSION "2026.02.22"
+#define VERSION "2026-03-15_clean_compilation"
 
 #define BASEDIRNAME "baseq2"
 

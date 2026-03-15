@@ -113,7 +113,7 @@ qboolean QGL_Init( const char *dllname )
 		Com_Printf ("Using %s for OpenGL...", dllname);
 	}
 
-#define QGL_FUNC(type,name,params) (q##name) = ( void * )dlsym( glw_state.OpenGLLib, #name ); \
+#define QGL_FUNC(type,name,params) (q##name) = (typeof(q##name))(intptr_t)dlsym( glw_state.OpenGLLib, #name ); \
 	if( !(q##name) ) { Com_Printf( "QGL_Init: Failed to get address for %s\n", #name ); return false; }
 #define QGL_EXT(type,name,params) (q##name) = NULL;
 #define QGL_GLX(type,name,params) (q##name) = ( void * )dlsym( glw_state.OpenGLLib, #name ); \

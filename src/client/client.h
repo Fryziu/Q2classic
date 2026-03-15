@@ -26,9 +26,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "screen.h"
 #include "sound.h"
 #include "vid.h"
-#ifdef CD_AUDIO
-#include "cdaudio.h"
-#endif
+
 
 #ifdef USE_CURL
 #define CURL_STATICLIB

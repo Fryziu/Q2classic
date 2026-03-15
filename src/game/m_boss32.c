@@ -560,6 +560,8 @@ void MakronHyperblaster (edict_t *self)
 
 void makron_pain (edict_t *self, edict_t *other, float kick, int damage)
 {
+	(void)other;
+	(void)kick;
 
 	if (self->health < (self->max_health / 2))
 			self->s.skinnum = 1;
@@ -611,6 +613,8 @@ void makron_pain (edict_t *self, edict_t *other, float kick, int damage)
 
 void makron_sight(edict_t *self, edict_t *other)
 {
+	(void)other;
+
 	self->monsterinfo.currentmove = &makron_move_sight;
 	    self->monsterinfo.currentmove_name = "makron_move_sight";
 }
@@ -684,6 +688,10 @@ void makron_dead (edict_t *self)
 
 void makron_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
+	(void)inflictor;
+	(void)attacker;
+	(void)point;
+
 	edict_t *tempent;
 
 	int		n;
@@ -882,12 +890,8 @@ void SP_monster_makron (edict_t *self)
 }
 
 
-/*
-=================
-MakronSpawn
+///		MakronSpawn
 
-=================
-*/
 void MakronSpawn (edict_t *self)
 {
 	vec3_t		vec;
@@ -908,13 +912,10 @@ void MakronSpawn (edict_t *self)
 	self->groundentity = NULL;
 }
 
-/*
-=================
-MakronToss
 
-Jorg is just about dead, so set up to launch Makron out
-=================
-*/
+///		MakronToss
+// Jorg is just about dead, so set up to launch Makron out
+
 void MakronToss (edict_t *self)
 {
 	edict_t	*ent;

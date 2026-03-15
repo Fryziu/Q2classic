@@ -545,6 +545,7 @@ void Con_Print (const char *txt)
 		{
 		case '\r':
 			cr = true;
+			/* fallthrough */
 		case '\n':
 			color = COLOR_WHITE;
 			con.x = 0;
@@ -717,7 +718,7 @@ void Con_DrawConsole (float frac, qboolean ingame)
 	if (lines <= 0)
 		return;
 
-	if (lines > viddef.height)
+	if (lines > (int)viddef.height)
 		lines = viddef.height;
 
 	// draw the background
@@ -773,7 +774,7 @@ void Con_DrawConsole (float frac, qboolean ingame)
 		x = con.linewidth - ((con.linewidth * 7) / 40);
 		y = x - strlen(text2) - 40;
 		i = con.linewidth/3;
-		if (strlen(text2) > i) {
+		if ((int)strlen(text2) > i) {
 			y = x - i - 11;
 			strncpy(dlbar, text2, i);
 			dlbar[i] = 0;

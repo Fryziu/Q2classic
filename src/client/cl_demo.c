@@ -123,11 +123,15 @@ void CL_Stop_f( void )
 	Com_Printf( "Stopped demo.\n" );
 }
 
+///
+
 void CL_StopAutoRecord (void)
 {
 	if(cl_autorecord->integer && cls.demorecording)
 		CL_Stop_f();
 }
+
+///
 
 void CL_StartRecording(char *name)
 {
@@ -180,7 +184,7 @@ void CL_StartRecording(char *name)
 		if( !string[0] )
 			continue;
 		
-		if( buf.cursize + strlen( string ) + 32 > buf.maxsize )
+		if( buf.cursize + (int)strlen( string ) + 32 > buf.maxsize )
 		{	// write it out
 			len = LittleLong (buf.cursize);
 			FS_Write(&len, 4, cls.demofile);

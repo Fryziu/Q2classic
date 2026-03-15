@@ -210,6 +210,8 @@ void SWimp_Init(void) {
 
 #ifdef GL_QUAKE
 int GLimp_Init(void *hInstance, void *wndProc) {
+	(void)hInstance;
+	(void)wndProc;
     SWimp_Init();
     return 1;
 }
@@ -299,6 +301,7 @@ static unsigned char *SDLimp_InitGraphics(viddef_t *vid) {
 
 #ifdef GL_QUAKE
 rserr_t GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen) {
+	(void)fullscreen;
     viddef_t vid;
     if (!R_GetModeInfo(pwidth, pheight, mode)) return rserr_invalid_mode;
 
@@ -314,7 +317,9 @@ rserr_t GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen) 
     return rserr_ok;
 }
 
-void GLimp_BeginFrame(float camera_seperation) {}
+void GLimp_BeginFrame(float camera_seperation) {
+	(void)camera_seperation;
+}
 
 void GLimp_EndFrame(void) {
     SDL_GL_SwapWindow(window);

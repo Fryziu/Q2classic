@@ -380,12 +380,13 @@ static const char *roguecredits[] =
 
 void M_Credits_MenuDraw( menuframework_s *self )
 {
-	unsigned int i, y;
+	(void)self;
+	int i, y;
 
-	/*
-	** draw the credits
-	*/
-	for ( i = 0, y = viddef.height - ( ( cls.realtime - credits_start_time ) / 40 ); credits[i] && y < viddef.height; y += 10, i++ )
+	
+	// draw the credits
+
+	for ( i = 0, y = (int)viddef.height - ( ( cls.realtime - credits_start_time ) / 40 ); credits[i] && y < (int)viddef.height; y += 10, i++ )
 	{
 		int j, stringoffset = 0;
 		int bold = false;
@@ -417,12 +418,13 @@ void M_Credits_MenuDraw( menuframework_s *self )
 		}
 	}
 
-	if ( y > viddef.height )
+	if ( y > (int)viddef.height )
 		credits_start_time = cls.realtime;
 }
 
 const char *M_Credits_Key( menuframework_s *self, int key )
 {
+	(void)self;
 	switch (key)
 	{
 	case K_ESCAPE:

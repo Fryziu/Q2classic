@@ -25,6 +25,8 @@ Fire an origin based temp entity event to the clients.
 */
 void Use_Target_Tent (edict_t *ent, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	gi.WriteByte (svc_temp_entity);
 	gi.WriteByte (ent->style);
 	gi.WritePosition (ent->s.origin);
@@ -57,6 +59,8 @@ Multiple identical looping sounds will just increase volume without any speed co
 */
 void Use_Target_Speaker (edict_t *ent, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	int		chan;
 
 	if (ent->spawnflags & 3)
@@ -117,6 +121,8 @@ void SP_target_speaker (edict_t *ent)
 
 void Use_Target_Help (edict_t *ent, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	if (ent->spawnflags & 1)
 		strncpy (game.helpmessage1, ent->message, sizeof(game.helpmessage2)-1);
 	else
@@ -153,6 +159,8 @@ These are single use targets.
 */
 void use_target_secret (edict_t *ent, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	gi.sound (ent, CHAN_VOICE, ent->noise_index, 1, ATTN_NORM, 0);
 
 	level.found_secrets++;
@@ -188,6 +196,8 @@ These are single use targets.
 */
 void use_target_goal (edict_t *ent, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	gi.sound (ent, CHAN_VOICE, ent->noise_index, 1, ATTN_NORM, 0);
 
 	level.found_goals++;
@@ -243,6 +253,7 @@ void target_explosion_explode (edict_t *self)
 
 void use_target_explosion (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
 	self->activator = activator;
 
 	if (!self->delay)
@@ -337,6 +348,8 @@ Set "sounds" to one of the following:
 
 void use_target_splash (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	gi.WriteByte (svc_temp_entity);
 	gi.WriteByte (TE_SPLASH);
 	gi.WriteByte (self->count);
@@ -379,6 +392,8 @@ void ED_CallSpawn (edict_t *ent);
 
 void use_target_spawner (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	edict_t	*ent;
 
 	ent = G_Spawn();
@@ -414,6 +429,8 @@ speed	default is 1000
 */
 void use_target_blaster (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	int effect;
 
 	if (self->spawnflags & 2)
@@ -450,6 +467,8 @@ Once this trigger is touched/used, any trigger_crosslevel_target with the same t
 */
 void trigger_crosslevel_trigger_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	game.serverflags |= self->spawnflags;
 	G_FreeEdict (self);
 }
@@ -575,6 +594,7 @@ void target_laser_off (edict_t *self)
 
 void target_laser_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
 	self->activator = activator;
 	if (self->spawnflags & 1)
 		target_laser_off (self);
@@ -678,6 +698,8 @@ void target_lightramp_think (edict_t *self)
 
 void target_lightramp_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	if (!self->enemy)
 	{
 		edict_t		*e;
@@ -784,6 +806,7 @@ void target_earthquake_think (edict_t *self)
 
 void target_earthquake_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
 	self->timestamp = level.time + self->count;
 	self->nextthink = level.time + FRAMETIME;
 	self->activator = activator;

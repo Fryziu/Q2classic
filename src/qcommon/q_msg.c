@@ -794,7 +794,7 @@ char *MSG_ReadString (sizebuf_t *msg_read)
 		if (c == 0xFF)
 			c = '.';
 		string[l++] = c;
-	} while (l < sizeof(string)-1);
+	} while (l < (int)sizeof(string)-1);
 	
 	string[l] = 0;
 	
@@ -814,7 +814,7 @@ char *MSG_ReadStringLine (sizebuf_t *msg_read)
 		if (c == 0xFF)
 			c = '.';
 		string[l++] = c;
-	} while (l < sizeof(string)-1);
+	} while (l < (int)sizeof(string)-1);
 	
 	string[l] = 0;
 	

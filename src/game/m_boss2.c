@@ -486,6 +486,8 @@ void boss2_reattack_mg (edict_t *self)
 
 void boss2_pain (edict_t *self, edict_t *other, float kick, int damage)
 {
+	(void)other;
+	(void)kick;
 	if (self->health < (self->max_health / 2))
 		self->s.skinnum = 1;
 
@@ -526,6 +528,10 @@ void boss2_dead (edict_t *self)
 
 void boss2_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
+	(void)inflictor;
+	(void)attacker;
+	(void)damage;
+	(void)point;
 	gi.sound (self, CHAN_VOICE, sound_death, 1, ATTN_NONE, 0);
 	self->deadflag = DEAD_DEAD;
 	self->takedamage = DAMAGE_NO;

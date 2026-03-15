@@ -115,6 +115,7 @@ void medic_search (edict_t *self)
 
 void medic_sight (edict_t *self, edict_t *other)
 {
+	(void)other;
 	gi.sound (self, CHAN_VOICE, sound_sight, 1, ATTN_NORM, 0);
 }
 
@@ -324,6 +325,10 @@ mmove_t medic_move_pain2 = {FRAME_painb1, FRAME_painb15, medic_frames_pain2, med
 
 void medic_pain (edict_t *self, edict_t *other, float kick, int damage)
 {
+	(void)other;
+	(void)kick;
+	(void)damage;
+
 	if (self->health < (self->max_health / 2))
 		self->s.skinnum = 1;
 
@@ -424,6 +429,10 @@ void medic_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage
 {
 	int		n;
 
+	(void)inflictor;
+	(void)attacker;
+	(void)point;
+
 	// if we had a pending patient, free him up for another medic
 	if ((self->enemy) && (self->enemy->owner == self))
 		self->enemy->owner = NULL;
@@ -504,6 +513,8 @@ mmove_t medic_move_duck = {FRAME_duck1, FRAME_duck16, medic_frames_duck, medic_r
 
 void medic_dodge (edict_t *self, edict_t *attacker, float eta)
 {
+	(void)eta;
+
 	if (random() > 0.25)
 		return;
 

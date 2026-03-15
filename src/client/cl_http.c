@@ -61,6 +61,8 @@ a way to cancel the transfer if required.
 */
 static int CL_HTTP_Progress (void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)
 {
+	(void)ultotal;
+	(void)ulnow;
 	dlhandle_t *dl;
 
 	dl = (dlhandle_t *)clientp;
@@ -217,6 +219,8 @@ static size_t CL_HTTP_Recv (void *ptr, size_t size, size_t nmemb, void *stream)
 
 int CL_CURL_Debug (CURL *c, curl_infotype type, char *data, size_t size, void * ptr)
 {
+	(void)c;
+	(void)ptr;
 	if (type == CURLINFO_TEXT)
 	{
 		char	buff[4096];
@@ -923,7 +927,7 @@ static void CL_FinishHTTPDownload (void)
 						CL_ParseFileList (dl);
 					break;
 				}
-
+				/* fallthrough */
 				//every other code is treated as fatal, fallthrough here
 
 			//fatal error, disable http

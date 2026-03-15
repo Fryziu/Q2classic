@@ -204,10 +204,9 @@ qboolean Field_Key( menufield_s *f, int key )
 			return false;
 		}
 	}
-
-	/*
-	** support pasting from the clipboard
-	*/
+	
+	// support pasting from the clipboard
+	
 	if ( ( toupper( key ) == 'V' && Key_IsDown(K_CTRL) ) ||
 		 ( ( ( key == K_INS ) || ( key == K_KP_INS ) ) && Key_IsDown(K_SHIFT) ) )
 	{
@@ -286,20 +285,16 @@ void Menu_AddItem( menuframework_s *menu, void *item )
 	((menucommon_s *)item)->parent = menu;
 }
 
-/*
-** Menu_AdjustCursor
-**
-** This function takes the given menu, the direction, and attempts
-** to adjust the menu's cursor so that it's at the next available
-** slot.
-*/
+// Menu_AdjustCursor
+// takes the given menu, the direction, and attempts
+// to adjust the menu's cursor so that it's at the next available slot.
+
 void Menu_AdjustCursor( menuframework_s *m, int dir )
 {
 	menucommon_s *citem;
-
-	/*
-	** see if it's in a valid spot
-	*/
+	
+	// see if it's in a valid spot
+	
 	if ( m->cursor >= 0 && m->cursor < m->nitems )
 	{
 		if ( ( citem = Menu_ItemAtCursor( m ) ) != 0 )
@@ -308,11 +303,10 @@ void Menu_AdjustCursor( menuframework_s *m, int dir )
 				return;
 		}
 	}
+	
+	// it's not in a valid spot, so crawl in the direction indicated until we
+	// find a valid spot
 
-	/*
-	** it's not in a valid spot, so crawl in the direction indicated until we
-	** find a valid spot
-	*/
 	if ( dir == 1 )
 	{
 		while ( 1 )
@@ -356,9 +350,9 @@ void Menu_Draw( menuframework_s *menu )
 	int i;
 	menucommon_s *item;
 
-	/*
-	** draw contents
-	*/
+	
+	// draw contents
+	
 	for ( i = 0; i < menu->nitems; i++ )
 	{
 		switch ( ( ( menucommon_s * ) menu->items[i] )->type )
@@ -584,7 +578,7 @@ void MenuList_Draw( menulist_s *l )
 			Draw_Fill( x, y-1, width, 10, 16 );
 
 		Q_strncpyz( buffer, *n, sizeof( buffer ) );
-		if(strlen(buffer) > (width/8))
+		if((int)strlen(buffer) > (width/8))
 			strcpy( buffer + (width/8) - 3, "..." );
 
 		DrawString( x, y, buffer );

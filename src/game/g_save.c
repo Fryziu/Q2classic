@@ -29,38 +29,38 @@ mmove_t mmove_reloc;
 void RegisterCoreMoves(void);
 
 field_t fields[] = {
-	{"classname", FOFS(classname), F_LSTRING},
-	{"model", FOFS(model), F_LSTRING},
-	{"spawnflags", FOFS(spawnflags), F_INT},
-	{"speed", FOFS(speed), F_FLOAT},
-	{"accel", FOFS(accel), F_FLOAT},
-	{"decel", FOFS(decel), F_FLOAT},
-	{"target", FOFS(target), F_LSTRING},
-	{"targetname", FOFS(targetname), F_LSTRING},
-	{"pathtarget", FOFS(pathtarget), F_LSTRING},
-	{"deathtarget", FOFS(deathtarget), F_LSTRING},
-	{"killtarget", FOFS(killtarget), F_LSTRING},
-	{"combattarget", FOFS(combattarget), F_LSTRING},
-	{"message", FOFS(message), F_LSTRING},
-	{"team", FOFS(team), F_LSTRING},
-	{"wait", FOFS(wait), F_FLOAT},
-	{"delay", FOFS(delay), F_FLOAT},
-	{"random", FOFS(random), F_FLOAT},
-	{"move_origin", FOFS(move_origin), F_VECTOR},
-	{"move_angles", FOFS(move_angles), F_VECTOR},
-	{"style", FOFS(style), F_INT},
-	{"count", FOFS(count), F_INT},
-	{"health", FOFS(health), F_INT},
-	{"sounds", FOFS(sounds), F_INT},
-	{"light", 0, F_IGNORE},
-	{"dmg", FOFS(dmg), F_INT},
-	{"mass", FOFS(mass), F_INT},
-	{"volume", FOFS(volume), F_FLOAT},
-	{"attenuation", FOFS(attenuation), F_FLOAT},
-	{"map", FOFS(map), F_LSTRING},
-	{"origin", FOFS(s.origin), F_VECTOR},
-	{"angles", FOFS(s.angles), F_VECTOR},
-	{"angle", FOFS(s.angles), F_ANGLEHACK},
+	{"classname", FOFS(classname), F_LSTRING, 0},
+	{"model", FOFS(model), F_LSTRING, 0},
+	{"spawnflags", FOFS(spawnflags), F_INT, 0},
+	{"speed", FOFS(speed), F_FLOAT, 0},
+	{"accel", FOFS(accel), F_FLOAT, 0},
+	{"decel", FOFS(decel), F_FLOAT, 0},
+	{"target", FOFS(target), F_LSTRING, 0},
+	{"targetname", FOFS(targetname), F_LSTRING, 0},
+	{"pathtarget", FOFS(pathtarget), F_LSTRING, 0},
+	{"deathtarget", FOFS(deathtarget), F_LSTRING, 0},
+	{"killtarget", FOFS(killtarget), F_LSTRING, 0},
+	{"combattarget", FOFS(combattarget), F_LSTRING, 0},
+	{"message", FOFS(message), F_LSTRING, 0},
+	{"team", FOFS(team), F_LSTRING, 0},
+	{"wait", FOFS(wait), F_FLOAT, 0},
+	{"delay", FOFS(delay), F_FLOAT, 0},
+	{"random", FOFS(random), F_FLOAT, 0},
+	{"move_origin", FOFS(move_origin), F_VECTOR, 0},
+	{"move_angles", FOFS(move_angles), F_VECTOR, 0},
+	{"style", FOFS(style), F_INT, 0},
+	{"count", FOFS(count), F_INT, 0},
+	{"health", FOFS(health), F_INT, 0},
+	{"sounds", FOFS(sounds), F_INT, 0},
+	{"light", 0, F_IGNORE, 0},
+	{"dmg", FOFS(dmg), F_INT, 0},
+	{"mass", FOFS(mass), F_INT, 0},
+	{"volume", FOFS(volume), F_FLOAT, 0},
+	{"attenuation", FOFS(attenuation), F_FLOAT, 0},
+	{"map", FOFS(map), F_LSTRING, 0},
+	{"origin", FOFS(s.origin), F_VECTOR, 0},
+	{"angles", FOFS(s.angles), F_VECTOR, 0},
+	{"angle", FOFS(s.angles), F_ANGLEHACK, 0},
 
 	{"goalentity", FOFS(goalentity), F_EDICT, FFL_NOSPAWN},
 	{"movetarget", FOFS(movetarget), F_EDICT, FFL_NOSPAWN},
@@ -106,7 +106,7 @@ field_t fields[] = {
 	{"noise", STOFS(noise), F_LSTRING, FFL_SPAWNTEMP},
 	{"pausetime", STOFS(pausetime), F_FLOAT, FFL_SPAWNTEMP},
 	{"item", STOFS(item), F_LSTRING, FFL_SPAWNTEMP},
-	{"item", FOFS(item), F_ITEM},
+	{"item", FOFS(item), F_ITEM, 0},
 	{"gravity", STOFS(gravity), F_LSTRING, FFL_SPAWNTEMP},
 	{"sky", STOFS(sky), F_LSTRING, FFL_SPAWNTEMP},
 	{"skyrotate", STOFS(skyrotate), F_FLOAT, FFL_SPAWNTEMP},
@@ -122,34 +122,31 @@ field_t fields[] = {
 
 field_t		levelfields[] =
 {
-	{"changemap", LLOFS(changemap), F_LSTRING},
+	{"changemap", LLOFS(changemap), F_LSTRING, 0},
                    
-	{"sight_client", LLOFS(sight_client), F_EDICT},
-	{"sight_entity", LLOFS(sight_entity), F_EDICT},
-	{"sound_entity", LLOFS(sound_entity), F_EDICT},
-	{"sound2_entity", LLOFS(sound2_entity), F_EDICT},
+	{"sight_client", LLOFS(sight_client), F_EDICT, 0},
+	{"sight_entity", LLOFS(sight_entity), F_EDICT, 0},
+	{"sound_entity", LLOFS(sound_entity), F_EDICT, 0},
+	{"sound2_entity", LLOFS(sound2_entity), F_EDICT, 0},
 
-	{NULL, 0, F_INT}
+	{NULL, 0, F_INT, 0}
 };
 
 field_t		clientfields[] =
 {
-	{"pers.weapon", CLOFS(pers.weapon), F_ITEM},
-	{"pers.lastweapon", CLOFS(pers.lastweapon), F_ITEM},
-	{"newweapon", CLOFS(newweapon), F_ITEM},
+	{"pers.weapon", CLOFS(pers.weapon), F_ITEM, 0},
+	{"pers.lastweapon", CLOFS(pers.lastweapon), F_ITEM, 0},
+	{"newweapon", CLOFS(newweapon), F_ITEM, 0},
 
-	{NULL, 0, F_INT}
+	{NULL, 0, F_INT, 0}
 };
 
-/*
-============
-InitGame
 
-This will be called when the dll is first loaded, which
-only happens when a new game is started or a save game
-is loaded.
-============
-*/
+///		InitGame
+
+// This will be called when the dll is first loaded, which
+// only happens when a new game is started or a save game is loaded.
+
 void InitGame (void)
 {
 	// ... (cała inicjalizacja cvarów bez zmian) ...
@@ -208,11 +205,12 @@ void InitGame (void)
 	globals.num_edicts = game.maxclients+1;
 }
 
-//=========================================================
+///
 
 
 void WriteField1 (FILE *f, field_t *field, byte *base)
 {
+	(void)f;
 	void		*p;
 	int			len;
 	int			index;
@@ -263,7 +261,7 @@ void WriteField1 (FILE *f, field_t *field, byte *base)
 		if (*(byte **)p == NULL)
 			index = 0;
 		else
-			index = *(byte **)p - ((byte *)InitGame);
+			index = (int)(*(intptr_t *)p - (intptr_t)InitGame);
 		*(int *)p = index;
 		break;
     // M-AI: F_MMOVE został usunięty, ponieważ zapisujemy teraz 'currentmove_name' jako F_LSTRING.
@@ -330,8 +328,8 @@ void ReadField (FILE *f, field_t *field, byte *base)
 		index = *(int *)p;
 		if ( index == 0 )
 			*(byte **)p = NULL;
-		else
-			*(byte **)p = ((byte *)InitGame) + index;
+		else			
+			*(intptr_t *)p = (intptr_t)InitGame + index;
 		break;
     // M-AI: F_MMOVE został usunięty. Po wczytaniu, 'currentmove' będzie NULL,
     // a my odtworzymy go w `M_MoveFrame` na podstawie `currentmove_name`.
@@ -342,8 +340,6 @@ void ReadField (FILE *f, field_t *field, byte *base)
 }
 
 // ... (reszta pliku: WriteField2, WriteClient, ReadClient, WriteGame, ReadGame, WriteEdict, itd. bez zmian) ...
-// NOTE: Nie ma potrzeby wklejać reszty pliku, ponieważ żadne inne funkcje nie wymagają modyfikacji
-// po wprowadzeniu powyższych zmian. Są one kompletne.
 
 void WriteField2 (FILE *f, field_t *field, byte *base)
 {
@@ -448,15 +444,12 @@ void ReadField (FILE *f, field_t *field, byte *base)
 	}
 }
 */
-//=========================================================
 
-/*
-==============
-WriteClient
 
-All pointer variables (except function pointers) must be handled specially.
-==============
-*/
+///		WriteClient
+
+// All pointer variables (except function pointers) must be handled specially.
+
 void WriteClient (FILE *f, gclient_t *client)
 {
 	field_t		*field;
@@ -474,7 +467,7 @@ void WriteClient (FILE *f, gclient_t *client)
 
 	// write the block
 	size = fwrite (&temp, sizeof(temp), 1, f);
-	(void)size; // M-AI-812: Suppress [-Wunused-but-set-variable]
+	(void)size;
 
 	// now write any allocated data following the edict
 	for (field=clientfields ; field->name ; field++)
@@ -483,20 +476,18 @@ void WriteClient (FILE *f, gclient_t *client)
 	}
 }
 
-/*
-==============
-ReadClient
 
-All pointer variables (except function pointers) must be handled specially.
-==============
-*/
+///		ReadClient
+
+// All pointer variables (except function pointers) must be handled specially.
+
 void ReadClient (FILE *f, gclient_t *client)
 {
 	field_t		*field;
 	size_t		size;
 
 	size = fread (client, sizeof(*client), 1, f);
-	(void)size; // M-AI-812: Suppress [-Wunused-but-set-variable]
+	(void)size;
 
 	for (field=clientfields ; field->name ; field++)
 	{
@@ -535,11 +526,11 @@ void WriteGame (char *filename, qboolean autosave)
 	memset (str, 0, sizeof(str));
 	strcpy (str, __DATE__);
 	size = fwrite (str, sizeof(str), 1, f);
-	(void)size; // M-AI-812: Suppress [-Wunused-but-set-variable]
+	(void)size;
 
 	game.autosaved = autosave;
 	size = fwrite (&game, sizeof(game), 1, f);
-	(void)size; // M-AI-812: Suppress [-Wunused-but-set-variable]
+	(void)size;
 	game.autosaved = false;
 
 	for (i=0 ; i<game.maxclients ; i++)
@@ -562,7 +553,7 @@ void ReadGame (char *filename)
 		gi.error ("Couldn't open %s", filename);
 
 	size = fread (str, sizeof(str), 1, f);
-	(void)size; // M-AI-812: Suppress [-Wunused-but-set-variable]
+	(void)size;
 	if (strcmp (str, __DATE__))
 	{
 		fclose (f);
@@ -573,7 +564,7 @@ void ReadGame (char *filename)
 	globals.edicts = g_edicts;
 
 	size = fread (&game, sizeof(game), 1, f);
-	(void)size; // M-AI-812: Suppress [-Wunused-but-set-variable]
+	(void)size;
 	game.clients = gi.TagMalloc (game.maxclients * sizeof(game.clients[0]), TAG_GAME);
 	for (i=0 ; i<game.maxclients ; i++)
 		ReadClient (f, &game.clients[i]);
@@ -581,16 +572,13 @@ void ReadGame (char *filename)
 	fclose (f);
 }
 
-//==========================================================
+//
 
 
-/*
-==============
-WriteEdict
+///		WriteEdict
 
-All pointer variables (except function pointers) must be handled specially.
-==============
-*/
+// All pointer variables (except function pointers) must be handled specially.
+
 void WriteEdict (FILE *f, edict_t *ent)
 {
 	field_t		*field;
@@ -608,7 +596,7 @@ void WriteEdict (FILE *f, edict_t *ent)
 
 	// write the block
 	size = fwrite (&temp, sizeof(temp), 1, f);
-	(void)size; // M-AI-812: Suppress [-Wunused-but-set-variable]
+	(void)size;
 
 	// now write any allocated data following the edict
 	for (field=fields ; field->name ; field++)
@@ -618,13 +606,11 @@ void WriteEdict (FILE *f, edict_t *ent)
 
 }
 
-/*
-==============
-WriteLevelLocals
 
-All pointer variables (except function pointers) must be handled specially.
-==============
-*/
+///		WriteLevelLocals
+
+// All pointer variables (except function pointers) must be handled specially.
+
 void WriteLevelLocals (FILE *f)
 {
 	field_t		*field;
@@ -642,7 +628,7 @@ void WriteLevelLocals (FILE *f)
 
 	// write the block
 	size = fwrite (&temp, sizeof(temp), 1, f);
-	(void)size; // M-AI-812: Suppress [-Wunused-but-set-variable]
+	(void)size;
 
 	// now write any allocated data following the edict
 	for (field=levelfields ; field->name ; field++)
@@ -652,20 +638,17 @@ void WriteLevelLocals (FILE *f)
 }
 
 
-/*
-==============
-ReadEdict
+///		ReadEdict
 
-All pointer variables (except function pointers) must be handled specially.
-==============
-*/
+// All pointer variables (except function pointers) must be handled specially.
+
 void ReadEdict (FILE *f, edict_t *ent)
 {
 	field_t		*field;
 	size_t		size;
 
 	size = fread (ent, sizeof(*ent), 1, f);
-	(void)size; // M-AI-812: Suppress [-Wunused-but-set-variable]
+	(void)size;
 
 	for (field=fields ; field->name ; field++)
 	{
@@ -673,20 +656,18 @@ void ReadEdict (FILE *f, edict_t *ent)
 	}
 }
 
-/*
-==============
-ReadLevelLocals
 
-All pointer variables (except function pointers) must be handled specially.
-==============
-*/
+///		ReadLevelLocals
+
+// All pointer variables (except function pointers) must be handled specially.
+
 void ReadLevelLocals (FILE *f)
 {
 	field_t		*field;
 	size_t 		size;
 
 	size = fread (&level, sizeof(level), 1, f);
-	(void)size; // M-AI-812: Suppress [-Wunused-but-set-variable]
+	(void)size;
 
 	for (field=levelfields ; field->name ; field++)
 	{
@@ -694,12 +675,9 @@ void ReadLevelLocals (FILE *f)
 	}
 }
 
-/*
-=================
-WriteLevel
 
-=================
-*/
+///		WriteLevel
+
 void WriteLevel (char *filename)
 {
 	int		i;
@@ -715,12 +693,12 @@ void WriteLevel (char *filename)
 	// write out edict size for checking
 	i = sizeof(edict_t);
 	size = fwrite (&i, sizeof(i), 1, f);
-	(void)size; // M-AI-812: Suppress [-Wunused-but-set-variable]
+	(void)size;
 
 	// write out a function pointer for checking
-	base = (void *)InitGame;
+	base = (void *)(intptr_t)InitGame;
 	size = fwrite (&base, sizeof(base), 1, f);
-	(void)size; // M-AI-812: Suppress [-Wunused-but-set-variable]
+	(void)size;
 
 	// write out level_locals_t
 	WriteLevelLocals (f);
@@ -732,12 +710,12 @@ void WriteLevel (char *filename)
 		if (!ent->inuse)
 			continue;
 		size = fwrite (&i, sizeof(i), 1, f);
-		(void)size; // M-AI-812: Suppress [-Wunused-but-set-variable]
+		(void)size;
 		WriteEdict (f, ent);
 	}
 	i = -1;
 	size = fwrite (&i, sizeof(i), 1, f);
-	(void)size; // M-AI-812: Suppress [-Wunused-but-set-variable]
+	(void)size;
 
 	fclose (f);
 }
@@ -782,7 +760,7 @@ void ReadLevel (char *filename)
 
 	// check edict size
 	size = fread (&i, sizeof(i), 1, f);
-	(void)size; // M-AI-812: Suppress [-Wunused-but-set-variable]
+	(void)size;
 	if (i != sizeof(edict_t))
 	{
 		fclose (f);
@@ -791,7 +769,7 @@ void ReadLevel (char *filename)
 
 	// check function pointer base address
 	size = fread (&base, sizeof(base), 1, f);
-	(void)size; // M-AI-812: Suppress [-Wunused-but-set-variable]
+	(void)size;
 #ifdef _WIN32
 	if (base != (void *)InitGame)
 	{
@@ -799,7 +777,7 @@ void ReadLevel (char *filename)
 		gi.error ("ReadLevel: function pointers have moved");
 	}
 #else
-	gi.dprintf("Function offsets %td\n", ((byte *)base) - ((byte *)InitGame));
+	gi.dprintf("Function offsets %td\n", (ptrdiff_t)((intptr_t)base - (intptr_t)InitGame));
 #endif
 
 	// load the level locals

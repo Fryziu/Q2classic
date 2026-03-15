@@ -78,7 +78,7 @@ typedef struct playsound_s
 	int			entchannel;
 	qboolean	fixed_origin;
 	vec3_t		origin;
-	unsigned	begin;
+	int			begin;
 } playsound_t;
 
 typedef struct

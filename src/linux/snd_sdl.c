@@ -46,6 +46,7 @@ void Snd_Memset (void* dest, const int val, const size_t count)
 
 static void sdl_audio_callback (void *unused, Uint8 * stream, int len)
 {
+	(void)unused;
 	if (!snd_inited)
 	{		
 		memset(stream, 0, len);
@@ -92,6 +93,7 @@ qboolean SNDDMA_Init (void)
     // Pobieramy s_khz i s_force_mono (już widoczne dzięki snd_loc.h)
     int freq = s_khz ? (int)s_khz->value : 44100;
     int force_mono = s_force_mono ? s_force_mono->integer : 0;
+	(void)force_mono;
 
     // Restrykcyjna walidacja: tylko 44100 lub 48000
     if (freq != 44100 && freq != 48000) {

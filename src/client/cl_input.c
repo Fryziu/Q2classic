@@ -588,11 +588,9 @@ void CL_InitInput (void)
 	cl_maxpackets = Cvar_Get( "cl_maxpackets", "0", 0 );
 }
 
-/*
-=================
-CL_SendCmd
-=================
-*/
+
+///		CL_SendCmd
+
 extern cvar_t *cl_async;
 
 void CL_SendCmd (void)
@@ -675,7 +673,7 @@ void CL_SendCmd (void)
 	}
 
 	cl.sendPacketNow = false;
-
+/*
 	if(cl_maxpackets->integer && !cl_async->integer) {
 		if( cl_maxpackets->integer < cl_maxfps->integer/3 )
 			Cvar_SetValue( "cl_maxpackets", cl_maxfps->integer/3 );
@@ -686,14 +684,44 @@ void CL_SendCmd (void)
 		if( prevTime > time )
 			prevTime = time;
 
-		if( !cls.netchan.message.cursize && time - prevTime < 1000 / cl_maxpackets->integer ) {
+		if( !cls.netchan.message.cursize && time - prevTime < (unsigned int)(1000 / cl_maxpackets->integer) ) {
 			// drop the packet, saving reliable contents
 			cls.netchan.outgoing_sequence++;
 			return;
 		}
 		prevTime = time;
 	}
+*/
+// improved mouse responsivness - send packet imidietly
+	if(cl_maxpackets->integer && !cl_async->integer) {
+		unsigned int throttle_delay;
+		qboolean force_packet = false;
 
+		if( cl_maxpackets->integer < cl_maxfps->integer/3 )
+			Cvar_SetValue( "cl_maxpackets", cl_maxfps->integer/3 );
+		else if( cl_maxpackets->value > cl_maxfps->integer )
+			Cvar_SetValue( "cl_maxpackets", cl_maxfps->integer );
+
+		time = cls.realtime;
+		if( prevTime > time )
+			prevTime = time;
+
+		// Sprawdzamy, czy wcisnięto (lub puszczono) przycisk ataku w tej klatce
+		// BUTTON_ATTACK to zazwyczaj wartość 1 w Q2
+		if ((cmd->buttons & BUTTON_ATTACK) != (oldcmd->buttons & BUTTON_ATTACK)) {
+			force_packet = true;
+		}
+
+		throttle_delay = (unsigned int)(1000 / cl_maxpackets->integer);
+
+		if( !cls.netchan.message.cursize && !force_packet && time - prevTime < throttle_delay ) {
+			// drop the packet, saving reliable contents
+			cls.netchan.outgoing_sequence++;
+			return;
+		}
+		prevTime = time;
+	}
+	
 	i = cls.netchan.message.cursize + buf.cursize + 10;
 	SCR_AddLagometerOutPacketInfo( i );
 	//

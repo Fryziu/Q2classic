@@ -1034,6 +1034,7 @@ void S_IssuePlaysound(playsound_t *ps) {
 
 void S_RawSamples(int samples, int rate, int width, int nchannels, byte *data)
 {
+	(void)rate;
 	if (!sound_started) return;
 
 	int len = samples * width * nchannels;	

@@ -114,6 +114,7 @@ static void Build_MapList(void)
 
 void DMOptionsFunc( void *self )
 {
+	(void)self;
 	if (s_rules_box.curvalue == 1)
 		return;
 	M_Menu_DMOptions_f();
@@ -121,6 +122,7 @@ void DMOptionsFunc( void *self )
 
 void RulesChangeFunc ( void *self )
 {
+	(void)self;
 	// DM
 	if (s_rules_box.curvalue == 0)
 	{
@@ -153,6 +155,7 @@ float ClampCvar( float min, float max, float value );
 
 void StartServerActionFunc( void *self )
 {
+	(void)self;
 	char	startmap[1024];
 	int		timelimit;
 	int		fraglimit;

@@ -565,7 +565,7 @@ void CL_LoadClientinfo (clientinfo_t *ci, char *s)
 
 	t = strchr(s, '\\');
 	if (t) {
-		if (t - s >= sizeof(ci->name)-1) {
+		if (t - s >= (int)sizeof(ci->name)-1) {
 			i = -1;
 		} else {
 			ci->name[t-s] = 0;
@@ -745,13 +745,7 @@ void CL_ParseConfigString (sizebuf_t *msg)
 	{
 		CL_SetLightstyle (i - CS_LIGHTS);
 	}
-	else if (i == CS_CDTRACK)
-	{
-#ifdef CD_AUDIO
-		if (cl.refresh_prepped)
-			CDAudio_Play (atoi(cl.configstrings[CS_CDTRACK]), true);
-#endif
-	}
+	
 	else if (i >= CS_MODELS && i < CS_MODELS+MAX_MODELS)
 	{
 		if( i == CS_MODELS + 1 ) {
@@ -880,7 +874,7 @@ static void CL_ParsePrint( char *s, int i )
 	int c, l = 0;
 
 	string = s;
-	while((c = *string++ & 127) && l < sizeof(text)-1) {
+	while((c = *string++ & 127) && l < (int)sizeof(text)-1) {
 		if(c > 31)
 			text[l++] = tolower(c);
 	}
@@ -964,7 +958,7 @@ void CL_ParseCenterPrint(const char *s)
 	SCR_CenterPrint (s);
 
 	string = s;
-	while((c = *string++ & 127) && l < sizeof(text)-1) {
+	while((c = *string++ & 127) && l < (int)sizeof(text)-1) {
 		if(c > 31)
 			text[l++] = c;
 	}
@@ -1682,7 +1676,7 @@ static void CL_IgnoreNick_f(void)
 	}
 
 	num = atoi(Cmd_Argv(1));
-	if((unsigned)num >= cl.maxclients) {
+	if(num >= cl.maxclients) {
 		Com_Printf("Bad player id\n");
 		return;
 	}

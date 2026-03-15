@@ -239,7 +239,7 @@ void SCR_CenterPrint (const char *str)
 	if (maxChars > longestLine)
 		maxChars = longestLine;
 
-	if (maxChars >= sizeof(line))
+	if (maxChars >= (int)sizeof(line))
 		maxChars = sizeof(line) - 1;
 	else if (maxChars < 40)
 		maxChars = 40;
@@ -639,9 +639,7 @@ void SCR_BeginLoadingPlaque (void)
 {
 	S_StopAllSounds ();
 	cl.sound_prepped = false;		// don't play ambients
-#ifdef CD_AUDIO
-	CDAudio_Stop ();
-#endif
+
 	if (cls.disable_screen)
 		return;
 	if (developer->integer)

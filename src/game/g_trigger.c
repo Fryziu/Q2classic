@@ -65,12 +65,15 @@ void multi_trigger (edict_t *ent)
 
 void Use_Multi (edict_t *ent, edict_t *other, edict_t *activator)
 {
+	(void)other;
 	ent->activator = activator;
 	multi_trigger (ent);
 }
 
 void Touch_Multi (edict_t *self, edict_t *other, cplane_t *plane, csurface_t *surf)
 {
+	(void)plane;
+	(void)surf;
 	if(other->client)
 	{
 		if (self->spawnflags & 2)
@@ -110,6 +113,8 @@ set "message" to text string
 */
 void trigger_enable (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	self->solid = SOLID_TRIGGER;
 	self->use = Use_Multi;
 	gi.linkentity (self);
@@ -188,6 +193,7 @@ This fixed size trigger cannot be touched, it can only be fired by other events.
 */
 void trigger_relay_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
 	G_UseTargets (self, activator);
 }
 
@@ -211,6 +217,7 @@ Use "item" to specify the required key, for example "key_data_cd"
 */
 void trigger_key_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
 	int			index;
 
 	if (!self->item)
@@ -325,6 +332,8 @@ After the counter has been triggered "count" times (default 2), it will fire all
 
 void trigger_counter_use(edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	if (self->count == 0)
 		return;
 	
@@ -393,6 +402,8 @@ static int windsound;
 
 void trigger_push_touch (edict_t *self, edict_t *other, cplane_t *plane, csurface_t *surf)
 {
+	(void)plane;
+	(void)surf;
 	if (strcmp(other->classname, "grenade") == 0)
 	{
 		VectorScale (self->movedir, self->speed * 10, other->velocity);
@@ -454,6 +465,8 @@ NO_PROTECTION	*nothing* stops the damage
 */
 void hurt_use (edict_t *self, edict_t *other, edict_t *activator)
 {
+	(void)other;
+	(void)activator;
 	if (self->solid == SOLID_NOT)
 		self->solid = SOLID_TRIGGER;
 	else
@@ -467,6 +480,8 @@ void hurt_use (edict_t *self, edict_t *other, edict_t *activator)
 
 void hurt_touch (edict_t *self, edict_t *other, cplane_t *plane, csurface_t *surf)
 {
+	(void)plane;
+	(void)surf;
 	int		dflags;
 
 	if (!other->takedamage)
@@ -531,6 +546,8 @@ gravity for the level.
 
 void trigger_gravity_touch (edict_t *self, edict_t *other, cplane_t *plane, csurface_t *surf)
 {
+	(void)plane;
+	(void)surf;
 	other->gravity = self->gravity;
 }
 
@@ -565,6 +582,8 @@ Walking monsters that touch this will jump in the direction of the trigger's ang
 
 void trigger_monsterjump_touch (edict_t *self, edict_t *other, cplane_t *plane, csurface_t *surf)
 {
+	(void)plane;
+	(void)surf;
 	if (other->flags & (FL_FLY | FL_SWIM) )
 		return;
 	if (other->svflags & SVF_DEADMONSTER)

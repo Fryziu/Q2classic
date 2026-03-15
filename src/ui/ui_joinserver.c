@@ -46,8 +46,12 @@ static char *server_shit[MAX_MENU_SERVERS + 1];
 static int sortedSList[MAX_MENU_SERVERS];
 
 static int m_num_servers = 0;
-static int m_num_adr_cvar = 0, m_num_adr_file = 0, m_num_addresses = 0;
-static qboolean addressesLoaded = false;
+static int m_num_adr_file = 0, m_num_addresses = 0;
+
+// wunused declarations?
+// static int m_num_adr_cvar = 0; 
+// static qboolean addressesLoaded = false;
+
 static qboolean joinMenuInitialized = false;
 qboolean masterQueryActive = false;
 
@@ -178,7 +182,8 @@ static void SearchServers(qboolean useMaster) {
 
 static void M_LoadServersFromFile(void) {
   char *buffer = NULL;
-  char *s, *p;
+  char *s;
+  const char *p;
   int len;
 
   m_num_addresses = 0;
@@ -487,7 +492,8 @@ static void JoinServer_MenuDraw(menuframework_s *self) {
 }
 
 static void SortFunc(void *unused) {
-  Cvar_SetValue("menu_serversort", s_joinserver_sort_box.curvalue);
+	(void)unused;
+  	Cvar_SetValue("menu_serversort", s_joinserver_sort_box.curvalue);
 }
 
 static void JoinServer_MenuInit(void) {

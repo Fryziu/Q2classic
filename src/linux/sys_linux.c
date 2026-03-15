@@ -190,7 +190,7 @@ char *Sys_ConsoleInput(void)
 	return text;
 }
 
-/*****************************************************************************/
+///
 
 static void *game_library;
 
@@ -282,7 +282,7 @@ void *Sys_GetGameAPI (void *parms)
 		}
 	}
 
-	GetGameAPI = (void *)dlsym (game_library, "GetGameAPI");
+	GetGameAPI = (typeof(GetGameAPI))(intptr_t)dlsym (game_library, "GetGameAPI");
 
 	if (!GetGameAPI)
 	{
@@ -293,7 +293,7 @@ void *Sys_GetGameAPI (void *parms)
 	return GetGameAPI (parms);
 }
 
-/*****************************************************************************/
+///
 
 void Sys_AppActivate (void)
 {

@@ -46,7 +46,7 @@ SCR_FadeAlpha
 */
 float SCR_FadeAlpha( unsigned int startTime, unsigned int visTime, unsigned int fadeTime )
 {
-	int timeLeft;
+	unsigned int timeLeft;
 
 	timeLeft = visTime - ( cls.realtime - startTime );
 	if( timeLeft < 1 )

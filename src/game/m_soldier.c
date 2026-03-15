@@ -17,13 +17,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
-/*
-==============================================================================
 
-SOLDIER
+///		SOLDIER		///
 
-==============================================================================
-*/
 
 #include "g_local.h"
 #include "m_soldier.h"
@@ -423,6 +419,10 @@ mmove_t soldier_move_pain4 = {FRAME_pain401, FRAME_pain417, soldier_frames_pain4
 
 void soldier_pain (edict_t *self, edict_t *other, float kick, int damage)
 {
+	(void)other;
+	(void)kick;
+	(void)damage;
+
 	float	r;
 	int		n;
 
@@ -826,6 +826,8 @@ void soldier_attack(edict_t *self)
 
 void soldier_sight(edict_t *self, edict_t *other)
 {
+	(void)other;
+
 	if (random() < 0.5)
 		gi.sound (self, CHAN_VOICE, sound_sight1, 1, ATTN_NORM, 0);
 	else
@@ -1193,6 +1195,8 @@ mmove_t soldier_move_death6 = {FRAME_death601, FRAME_death610, soldier_frames_de
 
 void soldier_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
+	(void)inflictor;
+	(void)attacker;
 	int		n;
 
 // check for gib

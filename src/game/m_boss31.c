@@ -424,6 +424,8 @@ void jorg_attack1(edict_t *self)
 
 void jorg_pain (edict_t *self, edict_t *other, float kick, int damage)
 {
+	(void)other;
+	(void)kick;
 
 	if (self->health < (self->max_health / 2))
 			self->s.skinnum = 1;
@@ -568,6 +570,8 @@ void jorg_attack(edict_t *self)
 
 void jorg_dead (edict_t *self)
 {
+	(void)self;
+
 #if 0
 	edict_t	*tempent;
 	/*
@@ -597,6 +601,11 @@ void jorg_dead (edict_t *self)
 
 void jorg_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
+	(void)inflictor;
+	(void)attacker;
+	(void)damage;
+	(void)point;
+	
 	gi.sound (self, CHAN_VOICE, sound_death, 1, ATTN_NORM, 0);
 	self->deadflag = DEAD_DEAD;
 	self->takedamage = DAMAGE_NO;

@@ -326,12 +326,6 @@ void CL_PrepRefresh (void)
 	SCR_UpdateScreen ();
 	cl.refresh_prepped = true;
 	cl.force_refdef = true;	// make sure we have a valid refdef
-
-	// start the cd track
-#ifdef CD_AUDIO
-	CDAudio_Play (atoi(cl.configstrings[CS_CDTRACK]), true);
-#endif
-
 	cls.lastSpamTime = 0;
 	cls.roundtime = 0;
 }

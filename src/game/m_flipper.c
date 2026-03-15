@@ -230,6 +230,10 @@ void flipper_pain (edict_t *self, edict_t *other, float kick, int damage)
 {
 	int		n;
 
+	(void)other;
+	(void)kick;
+	(void)damage;
+
 	if (self->health < (self->max_health / 2))
 		self->s.skinnum = 1;
 
@@ -334,12 +338,17 @@ mmove_t flipper_move_death = {FRAME_flpdth01, FRAME_flpdth56, flipper_frames_dea
 
 void flipper_sight (edict_t *self, edict_t *other)
 {
+	(void)other;
 	gi.sound (self, CHAN_VOICE, sound_sight, 1, ATTN_NORM, 0);
 }
 
 void flipper_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
 	int		n;
+
+	(void)inflictor;
+	(void)attacker;
+	(void)point;
 
 // check for gib
 	if (self->health <= self->gib_health)

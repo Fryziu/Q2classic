@@ -88,9 +88,7 @@ void ReadLevel (char *filename);
 void InitGame (void);
 void G_RunFrame (void);
 
-
-//===================================================================
-
+//
 
 void ShutdownGame (void)
 {
@@ -180,7 +178,7 @@ void Com_Error(int code, const char *fmt, ...){
 
 #endif
 
-//======================================================================
+//
 
 
 /*

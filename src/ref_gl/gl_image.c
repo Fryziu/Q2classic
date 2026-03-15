@@ -147,11 +147,9 @@ static const glmode_t modes[] = {
 //#define NUM_GL_MODES (sizeof(modes) / sizeof (glmode_t))
 static const int NUM_GL_MODES = (sizeof(modes) / sizeof (glmode_t));
 
-/*
-===============
-GL_TextureMode
-===============
-*/
+
+///		GL_TextureMode
+
 void GL_TextureMode( const char *string )
 {
 	int		i;
@@ -184,11 +182,9 @@ void GL_TextureMode( const char *string )
 	}
 }
 
-/*
-===============
-GL_TextureBits
-===============
-*/
+
+///		GL_TextureBits
+
 void GL_TextureBits(void)
 {
 	if (gl_texturebits->integer == 16) {
@@ -205,11 +201,8 @@ void GL_TextureBits(void)
 	}
 }
 
-/*
-===============
-GL_ImageList_f
-===============
-*/
+
+///		GL_ImageList_f
 
 static int ImageSort( const image_t *a, const image_t *b )
 {
@@ -284,16 +277,10 @@ void	GL_ImageList_f (void)
 }
 
 
-/*
-=============================================================================
+//  scrap allocation
 
-  scrap allocation
-
-  Allocate all the little status bar obejcts into a single texture
-  to crutch up inefficient hardware / drivers
-
-=============================================================================
-*/
+//  Allocate all the little status bar obejcts into a single texture
+//  to crutch up inefficient hardware / drivers
 
 #define	SCRAP_BLOCK_WIDTH	256
 #define	SCRAP_BLOCK_HEIGHT	256
@@ -342,20 +329,12 @@ void Scrap_Upload (void)
 	scrap_uploaded = true;
 }
 
-/*
-=================================================================
 
-PCX LOADING
-
-=================================================================
-*/
+///			PCX LOADING			///
 
 
-/*
-==============
-LoadPCX
-==============
-*/
+///		LoadPCX
+
 static void LoadPCX (const char *filename, byte **pic, byte **palette, int *width, int *height)
 {
 	byte	*pix, *out, *raw, *end;
@@ -368,7 +347,7 @@ static void LoadPCX (const char *filename, byte **pic, byte **palette, int *widt
 	if (!raw)
 		return;
 
-	if (len < sizeof(*pcx) + 768) {
+	if (len < (int)sizeof(*pcx) + 768) {
 		Com_Printf ("LoadPCX: Bad pcx file: %s\n", filename);
 		FS_FreeFile ((void *)raw);
 		return;
@@ -457,13 +436,9 @@ static void LoadPCX (const char *filename, byte **pic, byte **palette, int *widt
 	FS_FreeFile ((void *)pcx);
 }
 
-/*
-=========================================================
 
-TARGA LOADING
+///			TARGA LOADING			///
 
-=========================================================
-*/
 typedef struct _TargaHeader {
 	byte 	idLength, colorMapType, imageType;
 	byte	colorMapIndexLo, colorMapIndexHi;
@@ -496,11 +471,9 @@ typedef struct _TargaHeader {
 #define TGA_O_UPPER		0	// Origin in lower left-hand corner
 #define TGA_O_LOWER		1	// Origin in upper left-hand corner
 
-/*
-=============
-LoadTGA
-=============
-*/
+
+///		LoadTGA
+
 static void LoadTGA( const char *filename, byte **pic, int *width, int *height, int *samples )
 {
 	int			w, h, x, y, i, colorMapLenght, imageType, pixelSize, bytesPerPixel;
@@ -516,7 +489,7 @@ static void LoadTGA( const char *filename, byte **pic, int *width, int *height, 
 	if( !data )
 		return;
 
-	if( length < sizeof( *tgaHeader ) ) {
+	if( length < (int)sizeof( *tgaHeader ) ) {
 		Com_Printf( "LoadTGA: %s: bad tga file.\n", filename );
 		FS_FreeFile((void *)data);
 		return;
@@ -548,6 +521,7 @@ static void LoadTGA( const char *filename, byte **pic, int *width, int *height, 
 	switch( imageType ) {
 	case TGA_RLEMap:
 		rlencoded = true;
+		/* fallthrough */
 	case TGA_Map:
 		// uncompressed colormapped image
 		if (tgaHeader->colorMapType != 1) {
@@ -628,6 +602,7 @@ static void LoadTGA( const char *filename, byte **pic, int *width, int *height, 
 		break;
 	case TGA_RLERGB:
 		rlencoded = true;
+		/* fallthrough */
 	case TGA_RGB:
 		// uncompressed or RLE compressed RGB
 		switch( pixelSize ) {
@@ -644,6 +619,7 @@ static void LoadTGA( const char *filename, byte **pic, int *width, int *height, 
 		break;
 	case TGA_RLEMono:
 		rlencoded = true;
+		/* fallthrough */
 	case TGA_Mono:
 		// uncompressed or RLE compressed greyscale
 		if( pixelSize != 8 ) {
@@ -818,20 +794,17 @@ qboolean WriteTGA( const char *name, byte *buffer, int width, int height )
 	return true;
 } 
 
-/*
-=================================================================
 
-JPEG LOADING
-
-=================================================================
-*/
+///			JPEG LOADING			///
 
 static void jpg_null( j_decompress_ptr cinfo )
 {
+	(void)cinfo;
 }
 
 static boolean jpg_fill_input_buffer( j_decompress_ptr cinfo )
 {
+	(void)cinfo;
     Com_DPrintf("Premature end of JPEG data\n");
     return 1;
 }
@@ -854,11 +827,9 @@ static void jpg_mem_src(j_decompress_ptr cinfo, byte *mem, int len)
     cinfo->src->next_input_byte = mem;
 }
 
-/*
-==============
-LoadJPG
-==============
-*/
+
+///		LoadJPG
+
 static void LoadJPG (const char *filename, byte **pic, int *width, int *height, int *samples)
 {
 	struct jpeg_decompress_struct	cinfo;
@@ -983,12 +954,9 @@ qboolean WriteJPG( const char *name, byte *buffer, int width, int height, int qu
 }
 
 
-/*
-=============
-LoadPNG
-by R1CH
-=============
-*/
+///		LoadPNG
+// by R1CH
+
 #ifndef WITHOUT_PNG
 typedef struct {
     byte *Buffer;
@@ -1104,100 +1072,13 @@ static void LoadPNG (const char *filename, byte **pic, int *width, int *height, 
 #endif
 
 
-typedef struct
-{
-	unsigned int width, height;
-	unsigned int num, frame;
-	int format;
-	byte *buffer;
-} aviDump_t;
-
-static aviDump_t aviDump;
-/*
-==================
-R_BeginAviDemo
-==================
-*/
-void R_BeginAviDemo( int format )
-{
-	if( aviDump.buffer )
-		Z_Free( aviDump.buffer );
-
-	aviDump.width = vid.width;
-	aviDump.height = vid.height;
-	aviDump.buffer = Z_TagMalloc(aviDump.width * aviDump.height * 3 + 18, TAG_RENDER_SCRSHOT);
-	aviDump.num++;
-	aviDump.frame = 0;
-	aviDump.format = format;
-}
-
-/* 
-==================
-R_WriteAviFrame
-==================
-*/
-void R_WriteAviFrame( void )
-{
-	char checkname[MAX_OSPATH];
-
-	if( !aviDump.buffer )
-		return;
-	
-	if(aviDump.height != vid.height || aviDump.width != vid.width)
-	{	//Screen size changed, need to alloc new size for buffer
-		if( aviDump.buffer )
-			Z_Free( aviDump.buffer );
-
-		aviDump.width = vid.width;
-		aviDump.height = vid.height;
-		aviDump.buffer = Z_TagMalloc(aviDump.width * aviDump.height * 3 + 18, TAG_RENDER_SCRSHOT);
-	}
-
-	// create the avi directory if it doesn't exist
-	Com_sprintf( checkname, sizeof( checkname ), "%s/avi", FS_Gamedir() );
-	Sys_Mkdir( checkname );
-	Com_sprintf( checkname, sizeof( checkname ), "%s/avi/avi%i-%06i.%s", FS_Gamedir(), aviDump.num, aviDump.frame, ( aviDump.format > 0 ) ? "jpg" : "tga" );
-
-	if( aviDump.format > 0 ) {
-		qglReadPixels( 0, 0, aviDump.width, aviDump.height, GL_RGB, GL_UNSIGNED_BYTE, aviDump.buffer ); 
-		WriteJPG( checkname, aviDump.buffer, aviDump.width, aviDump.height, gl_screenshot_quality->integer );
-	} else {
-		qglReadPixels( 0, 0, aviDump.width, aviDump.height, GL_RGB, GL_UNSIGNED_BYTE, aviDump.buffer + 18 ); 
-		WriteTGA( checkname, aviDump.buffer, aviDump.width, aviDump.height );
-	}
-	aviDump.frame++;
-}
-
-/* 
-==================
-R_StopAviDemo
-==================
-*/
-void R_StopAviDemo( void )
-{
-	if( aviDump.buffer )
-		Z_Free( aviDump.buffer );
-
-	aviDump.buffer = NULL;
-	aviDump.width = aviDump.height = aviDump.frame = 0;
-}
-
-/*
-====================================================================
-
-IMAGE FLOOD FILLING
-
-====================================================================
-*/
+///			IMAGE FLOOD FILLING			///
 
 
-/*
-=================
-Mod_FloodFillSkin
+///		Mod_FloodFillSkin
 
-Fill background pixels so mipmapping doesn't have haloes
-=================
-*/
+// Fill background pixels so mipmapping doesn't have haloes
+
 
 typedef struct
 {
@@ -1262,13 +1143,11 @@ static void R_FloodFillSkin( byte *skin, int skinwidth, int skinheight )
 	}
 }
 
-//=======================================================
+//
 
-/*
-================
-GL_ResampleTexture
-================
-*/
+
+///		GL_ResampleTexture
+
 static int		resampleWidth = 0, resampleImgSize = 0;
 static byte		*resampleBuffer = NULL;
 extern qboolean	r_modelRegistering;
@@ -1338,10 +1217,9 @@ static byte *GL_ResampleTexture (const byte *in, int inwidth, int inheight, int 
 	return buf;
 }
 
-/*
- * @brief Clamps the components of the specified vector to 1.0, scaling the vector
- * down if necessary.
- */
+// @brief Clamps the components of the specified vector to 1.0, scaling the vector
+// down if necessary.
+
 static vec_t ColorNormalize(const vec3_t in, vec3_t out) {
 	vec_t max = 0.0;
 	int32_t i;
@@ -1363,9 +1241,8 @@ static vec_t ColorNormalize(const vec3_t in, vec3_t out) {
 	return max;
 }
 
-/*
- * @brief Applies brightness, saturation and contrast to the specified input color.
- */
+// @brief Applies brightness, saturation and contrast to the specified input color.
+
 static void ColorFilter(const vec3_t in, vec3_t out, float brightness, float saturation, float contrast) {
 	const vec3_t luminosity = { 0.2125, 0.7154, 0.0721 };
 	vec3_t intensity;
@@ -1401,9 +1278,8 @@ static void ColorFilter(const vec3_t in, vec3_t out, float brightness, float sat
 	}
 }
 
-/**
- * @brief Applies Quetoo brightness, saturation and contrast.
- */
+// @brief Applies Quetoo brightness, saturation and contrast.
+
 static void GL_FilterTexture(byte *data, int w, int h) {
 	int i, j, c = w * h;
 	byte *p = data;
@@ -1432,14 +1308,11 @@ static void GL_FilterTexture(byte *data, int w, int h) {
 	}
 }
 
-/*
-================
-GL_LightScaleTexture
 
-Scale up the pixel values in a texture to increase the
-lighting range
-================
-*/
+///  GL_LightScaleTexture
+
+// Scale up the pixel values in a texture to increase the lighting range
+
 static void GL_LightScaleTexture (byte *in, int inwidth, int inheight, qboolean only_gamma )
 {
 	int		i, c;
@@ -1466,13 +1339,11 @@ static void GL_LightScaleTexture (byte *in, int inwidth, int inheight, qboolean 
 	}
 }
 
-/*
-================
-GL_MipMap
 
-Operates in place, quartering the size of the texture
-================
-*/
+///		GL_MipMap
+
+// Operates in place, quartering the size of the texture
+
 static void GL_MipMap (byte *in, int width, int height)
 {
 	int		i, j, row;
@@ -1503,13 +1374,11 @@ static void GL_MipMap (byte *in, int width, int height)
 	}
 }
 
-/*
-===============
-GL_Upload32
 
-Returns has_alpha
-===============
-*/
+///		GL_Upload32
+
+// Returns has_alpha
+
 static int	upload_width, upload_height;
 
 static qboolean GL_Upload32 (byte *data, int width, int height, qboolean mipmap, qboolean is_pic, int samples)
@@ -1624,16 +1493,14 @@ done: ;
 	return alphaSamples;
 }
 
-/*
-===============
-GL_Upload8
 
-Returns has_alpha
-===============
-*/
+///		GL_Upload8
+
+// Returns has_alpha
 
 static qboolean GL_Upload8 (byte *data, int width, int height,  qboolean mipmap, qboolean is_sky, qboolean is_pic )
 {
+	(void)is_sky;
 	byte		trans[512*256*4], *dest, p;
 	int			i, s, samples = 3;
 
@@ -1674,13 +1541,11 @@ static qboolean GL_Upload8 (byte *data, int width, int height,  qboolean mipmap,
 }
 
 static char nullExtension[4] = "";
-/*
-================
-GL_LoadPic
 
-This is also used as an entry point for the generated r_notexture
-================
-*/
+///		GL_LoadPic
+
+// This is also used as an entry point for the generated r_notexture
+
 image_t *GL_LoadPic (const char *name, byte *pic, int width, int height, imagetype_t type, int flags, int samples)
 {
 	image_t		*image;
@@ -1723,7 +1588,7 @@ image_t *GL_LoadPic (const char *name, byte *pic, int width, int height, imagety
 				strcpy(buffer + length - 4, ".wal");
 				length = FS_FOpenFile(buffer, &h, FS_MODE_READ);
 				if (h) {
-					if(length > sizeof(mt)) {
+					if(length > (int)sizeof(mt)) {
 						FS_Read(&mt, sizeof(mt), h);
 						image->width = LittleLong(mt.width);
 						image->height = LittleLong(mt.height);
@@ -1736,7 +1601,7 @@ image_t *GL_LoadPic (const char *name, byte *pic, int width, int height, imagety
 				strcpy(buffer + length - 4, ".pcx");
 				length = FS_FOpenFile(buffer, &h, FS_MODE_READ);
 				if (h) {
-					if(length > sizeof(pcx)) {
+					if(length > (int)sizeof(pcx)) {
 						FS_Read(&pcx, sizeof(pcx), h);
 						image->width = LittleShort(pcx.xmax) + 1;
 						image->height = LittleShort(pcx.ymax) + 1;
@@ -1809,11 +1674,8 @@ image_t *GL_LoadPic (const char *name, byte *pic, int width, int height, imagety
 }
 
 
-/*
-================
-GL_LoadWal
-================
-*/
+///		GL_LoadWal
+
 static image_t *GL_LoadWal (const char *name)
 {
 	miptex_t	*mt;
@@ -1848,13 +1710,11 @@ static image_t *GL_LoadWal (const char *name)
 	return image;
 }
 
-/*
-===============
-GL_FindImage
 
-Finds or loads the given image
-===============
-*/
+///		GL_FindImage
+
+// Finds or loads the given image
+
 static void GL_LoadImage32 (char *pathname, char *ext, byte **pic, int *width, int *height, int *samples)
 {
 #ifndef WITHOUT_PNG
@@ -1996,25 +1856,19 @@ image_t	*GL_FindImage (const char *name, imagetype_t type)
 	return image;
 }
 
-/*
-===============
-R_RegisterSkin
-===============
-*/
+
+///		R_RegisterSkin
+
 struct image_s *R_RegisterSkin (const char *name)
 {
 	return GL_FindImage (name, it_skin);
 }
 
 
-/*
-================
-GL_FreeUnusedImages
+///		GL_FreeUnusedImages
 
-Any image that was not touched on this registration sequence
-will be freed.
-================
-*/
+// Any image that was not touched on this registration sequence will be freed.
+
 void GL_FreeUnusedImages (void)
 {
 	int		i;
@@ -2071,11 +1925,8 @@ void GL_FreeUnusedImages (void)
 }
 
 
-/*
-===============
-Draw_GetPalette
-===============
-*/
+///		Draw_GetPalette
+
 void Draw_GetPalette (void)
 {
 	int			i;	
@@ -2157,14 +2008,14 @@ void R_InitBuildInTextures (void)
 }
 
 static void OnChange_ImageParams(cvar_t *self, const char *oldValue) {
+	(void)self;
+	(void)oldValue;
 	Com_Printf("%s will be changed on vid_restart\n", self->name);
 }
 
-/*
-===============
-GL_InitImages
-===============
-*/
+
+///		GL_InitImages
+
 void	GL_InitImages (void)
 {
 	int		i, j;
@@ -2226,11 +2077,9 @@ void	GL_InitImages (void)
 	memset( gl_state.currentEnvModes, -1, sizeof(gl_state.currentEnvModes) );
 }
 
-/*
-===============
-GL_ShutdownImages
-===============
-*/
+
+///		GL_ShutdownImages
+
 void GL_ShutdownImages (void)
 {
 	int		i;
@@ -2261,6 +2110,5 @@ void GL_ShutdownImages (void)
 	resampleWidth = resampleImgSize = 0;
 	resampleBuffer = NULL;
 
-	R_StopAviDemo();
 }
 

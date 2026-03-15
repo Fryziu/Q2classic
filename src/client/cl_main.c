@@ -571,6 +571,8 @@ static int SortPlayers(const playerStatus_t *p1, const playerStatus_t *p2) {
   return strcmp(p1->name, p2->name);
 }
 
+///
+
 static qboolean CL_ServerStatusResponse(const char *status,
                                         const netadr_t *from,
                                         serverStatus_t *dest) {
@@ -580,13 +582,13 @@ static qboolean CL_ServerStatusResponse(const char *status,
 
   memset(dest, 0, sizeof(*dest));
 
-  s = strchr(status, '\n');
+  s = strchr((char *)status, '\n');
   if (!s)
     return false;
 
   length = s - status;
   // Zapewnienie miejsca na terminator
-  if (length >= sizeof(dest->infostring))
+  if (length >= (int)sizeof(dest->infostring))
     length = sizeof(dest->infostring) - 1;
 
   Q_strncpyz(dest->address, NET_AdrToString(from), sizeof(dest->address));
@@ -618,6 +620,8 @@ static qboolean CL_ServerStatusResponse(const char *status,
         (int (*)(const void *, const void *))SortPlayers);
   return true;
 }
+
+///
 
 void CL_DumpServerInfo(const serverStatus_t *status) {
   const playerStatus_t *player;
@@ -1952,7 +1956,7 @@ void CL_InitLocal(void) {
   CL_InitInput();
 
   adr0 = Cvar_Get("adr0", "tastyspleen.net", CVAR_ARCHIVE);
-  adr1 = Cvar_Get("adr1", "", CVAR_ARCHIVE);
+  adr1 = Cvar_Get("adr1", "217.182.73.153", CVAR_ARCHIVE);
   adr2 = Cvar_Get("adr2", "", CVAR_ARCHIVE);
   adr3 = Cvar_Get("adr3", "", CVAR_ARCHIVE);
   adr4 = Cvar_Get("adr4", "", CVAR_ARCHIVE);
@@ -2361,9 +2365,6 @@ void CL_Init(void) {
   SCR_Init();
   cls.disable_screen = true; // don't draw yet
 
-#ifdef CD_AUDIO
-  CDAudio_Init();
-#endif
   CL_InitLocal();
 
   IN_Init();
@@ -2399,10 +2400,6 @@ void CL_Shutdown(void) {
 
   CL_FreeLocs();
   CL_WriteConfiguration();
-
-#ifdef CD_AUDIO
-  CDAudio_Shutdown();
-#endif
   S_Shutdown();
 #if defined(_WIN32) || defined(WITH_XMMS) || defined(WITH_MPD)
   if (!dedicated->integer)

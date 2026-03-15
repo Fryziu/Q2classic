@@ -31,6 +31,7 @@ static menuframework_s	m_quitMenu;
 
 const char *M_Quit_Key (menuframework_s *self, int key)
 {
+	(void)self;
 	switch (key)
 	{
 	case K_ESCAPE:
@@ -57,6 +58,7 @@ const char *M_Quit_Key (menuframework_s *self, int key)
 
 void M_Quit_Draw (menuframework_s *self)
 {
+	(void)self;
 	int		w, h;
 
 	Draw_GetPicSize (&w, &h, "quit");

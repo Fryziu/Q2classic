@@ -49,59 +49,66 @@ static menuslider_s		s_options_sfxvolume_slider;
 #ifdef JOYSTICK
 static menulist_s		s_options_joystick_box;
 #endif
-#ifdef CD_AUDIO
-static menulist_s		s_options_cdvolume_box;
-#endif
+
 static menulist_s		s_options_quality_list;
 static menulist_s		s_options_compatibility_list;
 static menulist_s		s_options_console_action;
 
 static void CrosshairFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "crosshair", s_options_crosshair_box.curvalue );
 }
 
 #ifdef JOYSTICK
 static void JoystickFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "in_joystick", s_options_joystick_box.curvalue );
 }
 #endif
 
 static void CustomizeControlsFunc( void *unused )
 {
+	(void)unused;
 	M_Menu_Keys_f();
 }
 
 static void NewOptionsFunc( void *unused )
 {
+	(void)unused;
 	M_Menu_NewOptions_f();
 }
 
 static void DemosFunc( void *unused )
 {
+	(void)unused;
 	M_Menu_Demos_f();
 }
 
 #if defined(_WIN32) || defined(WITH_XMMS)
 static void MP3Func( void *unused )
 {
+	(void)unused;
 	M_Menu_MP3_f();
 }
 #endif
 
 static void AlwaysRunFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "cl_run", s_options_alwaysrun_box.curvalue );
 }
 
 static void FreeLookFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "freelook", s_options_freelook_box.curvalue );
 }
 
 static void MouseSpeedFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "sensitivity", s_options_sensitivity_slider.curvalue / 2.0F );
 }
 
@@ -115,10 +122,6 @@ float ClampCvar( float min, float max, float value )
 static void ControlsSetMenuItemValues( void )
 {
 	s_options_sfxvolume_slider.curvalue		= Cvar_VariableValue( "s_volume" ) * 10;
-#ifdef CD_AUDIO
-	s_options_cdvolume_box.curvalue 		= !Cvar_VariableValue("cd_nocd");
-#endif
-
 
 	s_options_quality_list.curvalue = ( (int)Cvar_VariableValue("sndspeed") == 48000 );
  
@@ -151,6 +154,7 @@ static void ControlsSetMenuItemValues( void )
 
 static void ControlsResetDefaultsFunc( void *unused )
 {
+	(void)unused;
 	Cbuf_AddText ("exec default.cfg\n");
 	Cbuf_Execute();
 
@@ -159,6 +163,7 @@ static void ControlsResetDefaultsFunc( void *unused )
 
 static void InvertMouseFunc( void *unused )
 {
+	(void)unused;
 	if ( s_options_invertmouse_box.curvalue == 0 )
 	{
 		Cvar_SetValue( "m_pitch", (float)fabs( m_pitch->value ) );
@@ -171,30 +176,27 @@ static void InvertMouseFunc( void *unused )
 
 static void LookspringFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "lookspring", s_options_lookspring_box.curvalue );
 }
 
 static void LookstrafeFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "lookstrafe", s_options_lookstrafe_box.curvalue );
 }
 
 static void UpdateVolumeFunc( void *unused )
 {
+	(void)unused;
 	Cvar_SetValue( "s_volume", s_options_sfxvolume_slider.curvalue / 10 );
 }
-
-#ifdef CD_AUDIO
-static void UpdateCDVolumeFunc( void *unused )
-{
-	Cvar_SetValue( "cd_nocd", !s_options_cdvolume_box.curvalue );
-}
-#endif
 
 extern void Key_ClearTyping( void );
 
 void ConsoleFunc( void *unused )
 {
+	(void)unused;
 	
 	// the proper way to do this is probably to have ToggleConsole_f accept a parameter
 	
@@ -213,8 +215,8 @@ void ConsoleFunc( void *unused )
 	
 	 
 static void UpdateSoundQualityFunc( void *unused )
- {
-
+{
+	(void)unused;
  	static int quality_values[] = { 44100, 48000 };
 	float engine_state = (float)s_options_compatibility_list.curvalue;
 
@@ -248,14 +250,6 @@ void Options_MenuInit( void )
 {
 	int squality = 0, y = 0;
 
-#ifdef CD_AUDIO
-	static const char *cd_music_items[] =
-	{
-		"disabled",
-		"enabled",
-		0
-	};
-#endif
 	static const char *quality_items[] =
 	{
 		"Standard (44,1kHz)",
@@ -306,15 +300,6 @@ void Options_MenuInit( void )
 	s_options_sfxvolume_slider.minvalue		= 0;
 	s_options_sfxvolume_slider.maxvalue		= 10;
 	s_options_sfxvolume_slider.curvalue		= Cvar_VariableValue( "s_volume" ) * 10;
-#ifdef CD_AUDIO
-	s_options_cdvolume_box.generic.type	= MTYPE_SPINCONTROL;
-	s_options_cdvolume_box.generic.x		= 0;
-	s_options_cdvolume_box.generic.y		= y += 10;
-	s_options_cdvolume_box.generic.name	= "CD music";
-	s_options_cdvolume_box.generic.callback	= UpdateCDVolumeFunc;
-	s_options_cdvolume_box.itemnames		= cd_music_items;
-	s_options_cdvolume_box.curvalue 		= !Cvar_VariableValue("cd_nocd");
-#endif
 
 	s_options_quality_list.generic.type	= MTYPE_SPINCONTROL;
 	s_options_quality_list.generic.x		= 0;
@@ -437,9 +422,7 @@ void Options_MenuInit( void )
 	s_options_menu.key = NULL;
 
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_sfxvolume_slider );
-#ifdef CD_AUDIO
-	Menu_AddItem( &s_options_menu, ( void * ) &s_options_cdvolume_box );
-#endif
+
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_quality_list );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_compatibility_list );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_sensitivity_slider );

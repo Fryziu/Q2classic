@@ -454,6 +454,7 @@ static void Grenade_Explode (edict_t *ent)
 
 static void Grenade_Touch (edict_t *ent, edict_t *other, cplane_t *plane, csurface_t *surf)
 {
+	(void)plane;
 	if (other == ent->owner)
 		return;
 

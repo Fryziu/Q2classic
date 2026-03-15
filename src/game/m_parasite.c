@@ -64,6 +64,7 @@ void parasite_reel_in (edict_t *self)
 
 void parasite_sight (edict_t *self, edict_t *other)
 {
+	(void)other;
 	gi.sound (self, CHAN_WEAPON, sound_sight, 1, ATTN_NORM, 0);
 }
 
@@ -298,6 +299,10 @@ mmove_t parasite_move_pain1 = {FRAME_pain101, FRAME_pain111, parasite_frames_pai
 
 void parasite_pain (edict_t *self, edict_t *other, float kick, int damage)
 {
+	(void)other;
+	(void)kick;
+	(void)damage;
+
 	if (self->health < (self->max_health / 2))
 		self->s.skinnum = 1;
 
@@ -498,6 +503,10 @@ mmove_t parasite_move_death = {FRAME_death101, FRAME_death107, parasite_frames_d
 void parasite_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
 	int		n;
+
+	(void)inflictor;
+	(void)attacker;
+	(void)point;
 
 // check for gib
 	if (self->health <= self->gib_health)

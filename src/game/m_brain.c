@@ -17,13 +17,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
-/*
-==============================================================================
 
-brain
+///		brain		///
 
-==============================================================================
-*/
 
 #include "g_local.h"
 #include "m_brain.h"
@@ -47,6 +43,7 @@ static int	sound_melee3;
 
 void brain_sight (edict_t *self, edict_t *other)
 {
+	(void)other;
 	gi.sound (self, CHAN_VOICE, sound_sight, 1, ATTN_NORM, 0);
 }
 
@@ -557,6 +554,10 @@ void brain_pain (edict_t *self, edict_t *other, float kick, int damage)
 {
 	float	r;
 
+	(void)other;
+	(void)kick;
+	(void)damage;
+
 	if (self->health < (self->max_health / 2))
 		self->s.skinnum = 1;
 
@@ -602,6 +603,10 @@ void brain_dead (edict_t *self)
 
 void brain_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damage, vec3_t point)
 {
+	(void)inflictor;
+	(void)attacker;
+	(void)point;
+	
 	int		n;
 
 	self->s.effects = 0;
