@@ -35,8 +35,7 @@ COMMON_OBJS = \
     src/qcommon/crc.o src/qcommon/cvar.o src/qcommon/files.o \
     src/qcommon/md4.o src/qcommon/net_chan.o src/qcommon/net.o \
     src/qcommon/pmove.o src/qcommon/q_msg.o \
-	src/game/q_shared.o src/game/m_flash.o \
-    src/game/q_shared.o \
+    src/game/q_shared.o src/game/m_flash.o \
     src/linux/q_shlinux.o src/linux/sys_linux.o src/linux/glob.o \
     src/include/minizip/ioapi.o src/include/minizip/unzip.o
 

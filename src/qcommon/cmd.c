@@ -327,7 +327,7 @@ qboolean Cbuf_AddLateCommands (void)
 	if (!s)
 		return false;
 		
-	text = Z_TagMalloc ((s+1)*2, TAG_TEMP);
+	text = Z_TagMalloc (s + 1, TAG_TEMP);
 	text[0] = 0;
 	for (i = 1; i < argc; i++)
 	{
@@ -337,8 +337,7 @@ qboolean Cbuf_AddLateCommands (void)
 	}
 	
 	// pull out the commands
-	//build = Z_TagMalloc (s+1, TAG_CMDBUFF);
-	build = text + s+1;
+	build = Z_TagMalloc (s + 1, TAG_TEMP);
 	build[0] = 0;
 	
 	for (i = 0; i < s-1; i++)
@@ -364,8 +363,8 @@ qboolean Cbuf_AddLateCommands (void)
 	if (ret)
 		Cbuf_AddText (build);
 	
+	Z_Free (build);
 	Z_Free (text);
-	//Z_Free (build);
 
 	return ret;
 }

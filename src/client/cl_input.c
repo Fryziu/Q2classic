@@ -17,6 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
+
 // cl.input.c  -- builds an intended movement command to send to the server
 
 #include "client.h"
@@ -406,44 +407,41 @@ static void CL_BaseMove (usercmd_t *cmd)
 	cmd->upmove += (int16)move[2];
 }
 
-/*
-================
-CL_ImmBaseMove
+//
+// CL_ImmBaseMove
+// Builds intended movement message for
+// local pmove sampling
 
-Builds intended movement message for
-local pmove sampling
-================
-*/
-static void CL_ImmBaseMove( void )
+static void CL_ImmBaseMove( float frametime )
 {
 	float	speed, tspeed;
 
 	if (in_speed.state & 1)
-		speed = cls.frametime * cl_anglespeedkey->value;
+		speed = frametime * cl_anglespeedkey->value;
 	else
-		speed = cls.frametime;
+		speed = frametime;
 
 	VectorClear( cl.move );
 	if( in_strafe.state & 1 ) {
 		cl.move[1] += cl_sidespeed->value * CL_ImmKeyState( &in_right );
 		cl.move[1] -= cl_sidespeed->value * CL_ImmKeyState( &in_left );
 	} else {
-		tspeed = speed*cl_yawspeed->value;
-		cl.viewangles[YAW] -= tspeed * CL_KeyState(&in_right);
-		cl.viewangles[YAW] += tspeed * CL_KeyState(&in_left);
+		tspeed = speed * cl_yawspeed->value;
+		cl.viewangles[YAW] -= tspeed * CL_ImmKeyState(&in_right);
+		cl.viewangles[YAW] += tspeed * CL_ImmKeyState(&in_left);
 	}
 
-	tspeed = speed*cl_pitchspeed->value;
+	tspeed = speed * cl_pitchspeed->value;
 	if (in_klook.state & 1) {
-		cl.viewangles[PITCH] -= tspeed * CL_KeyState(&in_forward);
-		cl.viewangles[PITCH] += tspeed * CL_KeyState(&in_back);
+		cl.viewangles[PITCH] -= tspeed * CL_ImmKeyState(&in_forward);
+		cl.viewangles[PITCH] += tspeed * CL_ImmKeyState(&in_back);
 	} else {	
 		cl.move[0] += cl_forwardspeed->value * CL_ImmKeyState(&in_forward);
 		cl.move[0] -= cl_forwardspeed->value * CL_ImmKeyState(&in_back);
 	}
 
-	cl.viewangles[PITCH] -= tspeed * CL_KeyState(&in_lookup);
-	cl.viewangles[PITCH] += tspeed * CL_KeyState(&in_lookdown);
+	cl.viewangles[PITCH] -= tspeed * CL_ImmKeyState(&in_lookup);
+	cl.viewangles[PITCH] += tspeed * CL_ImmKeyState(&in_lookdown);
 
 	cl.move[1] += cl_sidespeed->value * CL_ImmKeyState( &in_moveright );
 	cl.move[1] -= cl_sidespeed->value * CL_ImmKeyState( &in_moveleft );
@@ -480,9 +478,9 @@ static void CL_ClampPitch (void)
 
 
 // CL_UpdateCmd
-void CL_UpdateCmd( int msec )
+void CL_UpdateCmd( int msec, float frametime )
 {
-	CL_ImmBaseMove();
+	CL_ImmBaseMove( frametime );
 
 	// allow mice or other external controllers to add to the move
 	IN_Move(&cl.cmd);
@@ -494,8 +492,19 @@ void CL_UpdateCmd( int msec )
 	cl.cmd.angles[1] = ANGLE2SHORT(cl.viewangles[1]);
 	cl.cmd.angles[2] = ANGLE2SHORT(cl.viewangles[2]);
 
-	// update cmd->msec for CL_PredictMove
-	cl.cmd.msec += msec;
+	// update cmd->msec for CL_PredictMove without byte wrap-around
+	if (cls.state == ca_active && !cls.demoplaying) {
+		cl.cmd_msec += msec;
+		if (cl.cmd_msec > 250)
+			cl.cmd.msec = 250;
+		else if (cl.cmd_msec < 0)
+			cl.cmd.msec = 0;
+		else
+			cl.cmd.msec = (byte)cl.cmd_msec;
+	} else {
+		cl.cmd_msec = 0;
+		cl.cmd.msec = 0;
+	}
 }
 
 // CL_FinalizeCmd
@@ -516,8 +525,13 @@ void CL_FinalizeCmd (void)
 	if (anykeydown && cls.key_dest == key_game)
 		cl.cmd.buttons |= BUTTON_ANY;
 
-	if (cl.cmd.msec > 250)
+	if (cl.cmd_msec > 250)
 		cl.cmd.msec = 100;
+	else if (cl.cmd_msec < 1)
+		cl.cmd.msec = 1;
+	else
+		cl.cmd.msec = (byte)cl.cmd_msec;
+	cl.cmd_msec = 0;
 
 	CL_BaseMove(&cl.cmd);
 
@@ -592,7 +606,6 @@ void CL_InitInput (void)
 ///		CL_SendCmd
 
 extern cvar_t *cl_async;
-
 void CL_SendCmd (void)
 {
 	sizebuf_t	buf;
@@ -602,6 +615,7 @@ void CL_SendCmd (void)
 	int			checksumIndex = 0;
 	static unsigned int	prevTime;
 	unsigned int			time;
+	qboolean	instant_send = cl.sendPacketNow; // Bezpiecznie zapamiętaj flagę przed jej wyzerowaniem
 
 	if (cls.state < ca_connected || cls.demoplaying)
 		return;
@@ -654,6 +668,7 @@ void CL_SendCmd (void)
 
 	// send this and the previous cmds in the message, so
 	// if the last packet was dropped, it can be recovered
+	// PRZYWRÓCONO: cls.protocolVersion zamiast cls.serverProtocol
 	cmd = &cl.cmds[(cls.netchan.outgoing_sequence-2) & CMD_MASK];
 	MSG_WriteDeltaUsercmd(&buf, NULL, cmd, cls.protocolVersion);
 	oldcmd = cmd;
@@ -673,26 +688,8 @@ void CL_SendCmd (void)
 	}
 
 	cl.sendPacketNow = false;
-/*
-	if(cl_maxpackets->integer && !cl_async->integer) {
-		if( cl_maxpackets->integer < cl_maxfps->integer/3 )
-			Cvar_SetValue( "cl_maxpackets", cl_maxfps->integer/3 );
-		else if( cl_maxpackets->value > cl_maxfps->integer )
-			Cvar_SetValue( "cl_maxpackets", cl_maxfps->integer );
 
-		time = cls.realtime;
-		if( prevTime > time )
-			prevTime = time;
-
-		if( !cls.netchan.message.cursize && time - prevTime < (unsigned int)(1000 / cl_maxpackets->integer) ) {
-			// drop the packet, saving reliable contents
-			cls.netchan.outgoing_sequence++;
-			return;
-		}
-		prevTime = time;
-	}
-*/
-// improved mouse responsivness - send packet imidietly
+	// Ogranicznik wysyłania (cl_maxpackets)
 	if(cl_maxpackets->integer && !cl_async->integer) {
 		unsigned int throttle_delay;
 		qboolean force_packet = false;
@@ -706,9 +703,8 @@ void CL_SendCmd (void)
 		if( prevTime > time )
 			prevTime = time;
 
-		// Sprawdzamy, czy wcisnięto (lub puszczono) przycisk ataku w tej klatce
-		// BUTTON_ATTACK to zazwyczaj wartość 1 w Q2
-		if ((cmd->buttons & BUTTON_ATTACK) != (oldcmd->buttons & BUTTON_ATTACK)) {
+		// Sprawdzamy, czy wymuszono natychmiastowy pakiet lub zmienił się stan BUTTON_ATTACK
+		if (instant_send || (cmd->buttons & BUTTON_ATTACK) != (oldcmd->buttons & BUTTON_ATTACK)) {
 			force_packet = true;
 		}
 
@@ -728,6 +724,4 @@ void CL_SendCmd (void)
 	// deliver the message
 	//
 	Netchan_Transmit (&cls.netchan, buf.cursize, buf.data);
-
 }
-

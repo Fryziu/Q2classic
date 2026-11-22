@@ -276,7 +276,7 @@ void R_TranslateForEntity (const vec3_t origin)
 	isModelMatrix = true;
 }
 
-void R_RotateForEntity (const vec3_t origin, vec3_t axis[3])
+void R_RotateForEntity (const vec3_t origin, vec3_t *axis)
 {
 	float	*wM = r_WorldViewMatrix;
 
@@ -1092,6 +1092,8 @@ static void R_MotionBlur(void)
 
 static void	R_SetGL2D (void)
 {
+	GL_FlushScrap();
+
 	// set 2D virtual screen size
 	qglViewport (0,0, vid.width, vid.height);
 
@@ -1278,12 +1280,6 @@ static void OnChangeMaxAnisotropy(cvar_t *self, const char *oldValue)
 	}
 }
 
-static void OnChange_SwapInterval(cvar_t *self, const char *oldValue) {
-	(void)self;
-	(void)oldValue;
-	VID_Restart_f();
-}
-
 static void OnChange_Multisample(cvar_t *self, const char *oldValue) {
 	(void)self;
 	(void)oldValue;
@@ -1397,7 +1393,6 @@ static void GL_Register( void )
 
 	gl_drawbuffer = Cvar_Get( "gl_drawbuffer", "GL_BACK", 0 );
 	gl_swapinterval = Cvar_Get( "gl_swapinterval", "1", CVAR_ARCHIVE );
-	gl_swapinterval->OnChange = OnChange_SwapInterval;
 
 	gl_3dlabs_broken = Cvar_Get( "gl_3dlabs_broken", "1", CVAR_ARCHIVE|CVAR_LATCHED );
 

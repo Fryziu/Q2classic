@@ -329,6 +329,13 @@ void Scrap_Upload (void)
 	scrap_uploaded = true;
 }
 
+void GL_FlushScrap (void)
+{
+	if (scrap_dirty) {
+		Scrap_Upload();
+	}
+}
+
 
 ///			PCX LOADING			///
 
@@ -1580,8 +1587,8 @@ image_t *GL_LoadPic (const char *name, byte *pic, int width, int height, imagety
 		fileHandle_t h = 0;
 
 		length = strlen( image->name );
-		if (length > 4 && image->name[length - 4] == '.') {
-			strncpy( buffer, image->name, length - 4 );
+		if (length > 4 && length < (int)sizeof(buffer) && image->name[length - 4] == '.') {
+			memcpy( buffer, image->name, length - 4 );
 			if (flags & IT_REPLACE_WAL) {
 				miptex_t mt;
 

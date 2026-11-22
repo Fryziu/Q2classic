@@ -224,6 +224,7 @@ void CL_PredictMovement (void)
 	}
 
 	// copy current state to pmove
+	memset(&pm, 0, sizeof(pm));
 	pm.snapinitial = false;
 	pm.trace = CL_PMTrace;
 	pm.pointcontents = CL_PMpointcontents;
@@ -261,6 +262,14 @@ void CL_PredictMovement (void)
 		VectorCopy (pm.s.origin, cl.predicted_origins[frame & CMD_MASK]);
 	} else {
 		frame = current - 1;
+		if (pm.s.pm_flags & PMF_TIME_TELEPORT) {
+			pm.viewangles[YAW] = SHORT2ANGLE(cl.cmd.angles[YAW] + pm.s.delta_angles[YAW]);
+			pm.viewangles[PITCH] = pm.viewangles[ROLL] = 0;
+		} else {
+			pm.viewangles[0] = cl.viewangles[0] + SHORT2ANGLE(pm.s.delta_angles[0]);
+			pm.viewangles[1] = cl.viewangles[1] + SHORT2ANGLE(pm.s.delta_angles[1]);
+			pm.viewangles[2] = cl.viewangles[2] + SHORT2ANGLE(pm.s.delta_angles[2]);
+		}
 	}
 
 	step = pm.s.origin[2] - cl.predicted_origins[(frame-1) & CMD_MASK][2];

@@ -22,6 +22,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 //#include <zlib.h>
 #include "../include/minizip/unzip.h"
 
+#ifndef _WIN32
+#include <sys/stat.h>
+#endif
+
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #endif
@@ -95,6 +99,7 @@ static cvar_t	*fs_basedir = &nullCvar;
 cvar_t	*fs_gamedirvar;
 static cvar_t	*fs_allpakloading;
 static cvar_t	*fs_developer = &nullCvar;
+static cvar_t	*fs_cache = &nullCvar;
 #ifndef _WIN32
 static cvar_t	*fs_usehomedir;
 #endif
@@ -105,6 +110,76 @@ static searchpath_t	*fs_base_searchpaths;	// without gamedirs
 static fsFile_t		fs_files[MAX_FILE_HANDLES];
 
 static qboolean fs_initialized = false;
+
+#define FS_NEG_HASH_SIZE	2048
+#define FS_NEG_MAX_ENTRIES	4096
+
+typedef struct fsNegEntry_s {
+	char name[MAX_QPATH];
+	struct fsNegEntry_s *next;
+} fsNegEntry_t;
+
+static fsNegEntry_t fs_negPool[FS_NEG_MAX_ENTRIES];
+static fsNegEntry_t *fs_negHash[FS_NEG_HASH_SIZE];
+static int fs_negCount = 0;
+
+void FS_FlushCache(void)
+{
+	memset(fs_negHash, 0, sizeof(fs_negHash));
+	fs_negCount = 0;
+}
+
+static qboolean FS_NegCacheLookup(const char *name, unsigned int hash)
+{
+	const fsNegEntry_t *e;
+
+	if (!fs_cache->integer)
+		return false;
+
+	for (e = fs_negHash[hash & (FS_NEG_HASH_SIZE - 1)]; e; e = e->next) {
+		if (!Q_stricmp(e->name, name))
+			return true;
+	}
+	return false;
+}
+
+static void FS_NegCacheAdd(const char *name, unsigned int hash)
+{
+	fsNegEntry_t *e;
+	unsigned int bucket;
+
+	if (!fs_cache->integer)
+		return;
+	if (!name[0] || strlen(name) >= MAX_QPATH)
+		return;
+
+	bucket = hash & (FS_NEG_HASH_SIZE - 1);
+	for (e = fs_negHash[bucket]; e; e = e->next) {
+		if (!Q_stricmp(e->name, name))
+			return;
+	}
+
+	if (fs_negCount >= FS_NEG_MAX_ENTRIES) {
+		FS_FlushCache();
+	}
+
+	e = &fs_negPool[fs_negCount++];
+	Q_strncpyz(e->name, name, sizeof(e->name));
+	e->next = fs_negHash[bucket];
+	fs_negHash[bucket] = e;
+}
+
+#ifndef _WIN32
+static qboolean FS_HasUpperCase(const char *s)
+{
+	while (*s) {
+		if (*s >= 'A' && *s <= 'Z')
+			return true;
+		s++;
+	}
+	return false;
+}
+#endif
 
 
 #define FS_DPrintf (!fs_developer->integer) ? (void)0 : Com_Printf
@@ -325,6 +400,8 @@ static int FS_FOpenFileWrite( fsFile_t *file, const char *name ) {
 
 	FS_DPrintf( "FS_FOpenFileWrite( '%s' )\n", file->fullpath );
 
+	FS_FlushCache();
+
 	file->fp = fp;
 	file->type = type;
 	file->length = 0;
@@ -385,6 +462,9 @@ static int FS_FOpenFileRead ( fsFile_t *file, const char *name, qboolean unique 
 // search through the path, one element at a time
 //
 	hash = Com_HashValuePath(name);
+	if ((file->mode & (FS_PATH_MASK | FS_TYPE_MASK)) == 0 && FS_NegCacheLookup(name, hash)) {
+		return -1;
+	}
 	for (; search != end; search = search->next)
 	{
 	// is the element a pak file?
@@ -456,7 +536,7 @@ static int FS_FOpenFileRead ( fsFile_t *file, const char *name, qboolean unique 
 			
 			fp = fopen(file->fullpath, "rb");
 #ifndef _WIN32
-			if (!fp) {
+			if (!fp && FS_HasUpperCase(file->fullpath)) {
 				Q_strlwr(file->fullpath);
 				fp = fopen(file->fullpath, "rb");
 			}
@@ -497,6 +577,9 @@ static int FS_FOpenFileRead ( fsFile_t *file, const char *name, qboolean unique 
 		}
 	}
 	
+	if ((file->mode & (FS_PATH_MASK | FS_TYPE_MASK)) == 0) {
+		FS_NegCacheAdd(name, hash);
+	}
 	FS_DPrintf ("FS_FOpenFileRead: can't find %s\n", name);
 	return -1;
 }
@@ -722,6 +805,86 @@ Filename are relative to the quake search path
 a null buffer will just return the file length without loading
 ============
 */
+static int FS_FileExistsLength(const char *name, uint32 mode)
+{
+	unsigned int hash;
+	const searchpath_t *search, *end = NULL;
+	const pack_t *pak;
+	const packfile_t *pakfile;
+	char fullpath[MAX_OSPATH];
+
+	fs_fileFromPak = false;
+
+	switch (mode & FS_PATH_MASK) {
+	case FS_PATH_BASE:
+		search = fs_base_searchpaths;
+		break;
+	case FS_PATH_GAME:
+		if (fs_searchpaths != fs_base_searchpaths) {
+			end = fs_base_searchpaths;
+		}
+		/* fallthrough */
+	default:
+		search = fs_searchpaths;
+		break;
+	}
+
+	hash = Com_HashValuePath(name);
+	if ((mode & (FS_PATH_MASK | FS_TYPE_MASK)) == 0 && FS_NegCacheLookup(name, hash)) {
+		return -1;
+	}
+
+	for (; search != end; search = search->next) {
+		if (search->pack) {
+			if ((mode & FS_TYPE_MASK) == FS_TYPE_REAL) {
+				continue;
+			}
+			pak = search->pack;
+			for (pakfile = pak->fileHash[hash & (pak->hashSize - 1)]; pakfile; pakfile = pakfile->hashNext) {
+				if (Q_stricmp(pakfile->name, name))
+					continue;
+				fs_fileFromPak = true;
+				return pakfile->filelen;
+			}
+		} else {
+			if ((mode & FS_TYPE_MASK) == FS_TYPE_PAK) {
+				continue;
+			}
+			Com_sprintf(fullpath, sizeof(fullpath), "%s/%s", search->filename, name);
+#ifndef _WIN32
+			{
+				struct stat st;
+				if (stat(fullpath, &st) == 0 && S_ISREG(st.st_mode)) {
+					return (int)st.st_size;
+				}
+				if (FS_HasUpperCase(fullpath)) {
+					Q_strlwr(fullpath);
+					if (stat(fullpath, &st) == 0 && S_ISREG(st.st_mode)) {
+						return (int)st.st_size;
+					}
+				}
+			}
+#else
+			{
+				FILE *fp = fopen(fullpath, "rb");
+				if (fp) {
+					int len;
+					fseek(fp, 0, SEEK_END);
+					len = ftell(fp);
+					fclose(fp);
+					return len;
+				}
+			}
+#endif
+		}
+	}
+
+	if ((mode & (FS_PATH_MASK | FS_TYPE_MASK)) == 0) {
+		FS_NegCacheAdd(name, hash);
+	}
+	return -1;
+}
+
 int FS_LoadFileEx( const char *path, void **buffer, uint32 flags ) {
 	fsFile_t *file;
 	fileHandle_t f;
@@ -740,9 +903,13 @@ int FS_LoadFileEx( const char *path, void **buffer, uint32 flags ) {
 		return -1; // not yet initialized
 	}
 
+	flags &= ~FS_MODE_MASK;
+	if( !buffer ) {
+		return FS_FileExistsLength( path, flags | FS_MODE_READ );
+	}
+
 	// allocate new file handle
 	file = FS_AllocHandle( &f );
-	flags &= ~FS_MODE_MASK;
 	file->mode = flags | FS_MODE_READ;
 
 	// look for it in the filesystem or pack files
@@ -860,6 +1027,7 @@ qboolean FS_RenameFile( const char *src, const char *dst )
 		FS_DPrintf( "failed\n" );
 		return false;
 	}
+	FS_FlushCache();
 	FS_DPrintf( "ok\n" );
 
 	return true;
@@ -1811,6 +1979,7 @@ void FS_Restart( void )
 	fs_searchpaths = fs_base_searchpaths;
 
 	FS_SetupGamedir();
+	FS_FlushCache();
 
 	Com_Printf( "--------------------------------\n" );
 }
@@ -1828,6 +1997,7 @@ void FS_InitFilesystem (void)
 	Cmd_AddCommand ("paklist", FS_PakList_f );
 	Cmd_AddCommand ("copyfile", FS_CopyFile_f );
 	Cmd_AddCommand ("whereis", FS_WhereIs_f);
+	Cmd_AddCommand ("fs_flushcache", FS_FlushCache);
 
 	//
 	// basedir <path>
@@ -1836,6 +2006,7 @@ void FS_InitFilesystem (void)
 	fs_developer = Cvar_Get ("fs_developer", "0", 0);
 	fs_basedir = Cvar_Get ("basedir", ".", 0);
 	fs_allpakloading = Cvar_Get ("fs_allpakloading", "1", CVAR_ARCHIVE);
+	fs_cache = Cvar_Get ("fs_cache", "1", CVAR_ARCHIVE);
 
 	//
 	// cddir <path>
@@ -1955,44 +2126,43 @@ char **FS_FindMaps(void) {
 	pack_t *pack;
 	packfile_t *file;
 
-	static char *maps[1024];
+	static char mapBuffers[1024][MAX_QPATH];
+	static char *maps[1025];
 	int mapCount = 0;
 
-	for(path = fs_searchpaths; path; path = path->next) {
-		if(!(pack = path->pack))
+	for (path = fs_searchpaths; path; path = path->next) {
+		if (!(pack = path->pack))
 			continue;
-		for(int i = 0; i < (int)pack->hashSize; i++) {
-			if(!(file = pack->fileHash[i]))
+		for (int i = 0; i < (int)pack->hashSize; i++) {
+			if (!(file = pack->fileHash[i]))
 				continue;
-			for( ; file ; file = file->hashNext) {
-				char *fileName = strdup(file->name);
-				
-				if(!fileName)
+			for ( ; file ; file = file->hashNext) {
+				const char *dot = strrchr(file->name, '.');
+				if (!dot || strcmp(dot, ".bsp") != 0)
 					continue;
 
-				char *dot = strrchr(fileName, '.');
-				if (dot && !strcmp(dot, ".bsp")) {
+				const char *slash = strrchr(file->name, '/');
+				const char *base = slash ? slash + 1 : file->name;
+				size_t len = (size_t)(dot - base);
+				if (len == 0 || len >= MAX_QPATH)
+					continue;
 
-					char *token = strtok(fileName, "/");
-					char *mapName;
-					while(token != NULL) {
-						mapName = token;
-			      token = strtok(NULL, "/");
-			   	}
-			   	
-			    mapName[strlen(mapName)-4] = '\0';
+				char candidate[MAX_QPATH];
+				memcpy(candidate, base, len);
+				candidate[len] = '\0';
 
-			    qboolean alreadyFound = false;
-			    for(int o = 0; o < mapCount; o++) {
-			    	if(strcmp(maps[o], mapName) == 0) {
-			    		alreadyFound = true;
-			    		break;
-			    	}
-			    }
+				qboolean alreadyFound = false;
+				for (int o = 0; o < mapCount; o++) {
+					if (strcmp(maps[o], candidate) == 0) {
+						alreadyFound = true;
+						break;
+					}
+				}
 
-			    if(!alreadyFound) {
-			    	maps[mapCount++] = mapName;
-			    }
+				if (!alreadyFound && mapCount < 1024) {
+					memcpy(mapBuffers[mapCount], candidate, len + 1);
+					maps[mapCount] = mapBuffers[mapCount];
+					mapCount++;
 				}
 			}
 		}

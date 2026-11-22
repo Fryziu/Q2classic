@@ -613,6 +613,7 @@ SYSTEM SPECIFIC
 extern	unsigned int curtime;		// time returned by last Sys_Milliseconds
 
 unsigned int Sys_Milliseconds (void);
+uint64_t	Sys_Microseconds (void);
 void		Sys_Mkdir ( const char *path );
 qboolean	Sys_RemoveFile ( const char *path );
 qboolean	Sys_RenameFile ( const char *from, const char *to );

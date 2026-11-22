@@ -17,6 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
+
 // cl_main.c  -- client main loop
 
 #include "cl_decals.h"
@@ -430,6 +431,7 @@ static void CL_Rcon_f(void) {
 /// CL_ClearState
 
 void CL_ClearState(void) {
+  CL_ResetDeferredAssets();
   S_StopAllSounds();
   CL_ClearEffects();
   CL_ClearTEnts();
@@ -683,8 +685,10 @@ static void CL_ParsePrintMessage(sizebuf_t *msg, netadr_t *remoteAdr) {
       return;
     }
 
-    if (broadcastRequest.time >= cls.realtime)
+    if (broadcastRequest.time >= cls.realtime) {
+      r = &broadcastRequest;
       type = broadcastRequest.type;
+    }
 
     if (!type) {
       if (NET_IsLocalAddress(&net_from))
@@ -1737,8 +1741,17 @@ void CL_Precache_f(void) {
 
 static void OnChange_MaxFps(cvar_t *self, const char *oldValue) {
   (void)oldValue;
-  if (self->integer < 5)
-    Cvar_Set(self->name, "5");
+  if (self == r_maxfps) {
+    if (self->integer < 0)
+      Cvar_Set(self->name, "0");
+    else if (self->integer > 0 && self->integer < 5)
+      Cvar_Set(self->name, "5");
+  } else {
+    if (self->integer < 5)
+      Cvar_Set(self->name, "5");
+    else if (self->integer > 1000)
+      Cvar_Set(self->name, "1000");
+  }
 }
 
 static void OnChange_Protocol(cvar_t *self, const char *oldValue) {
@@ -1989,9 +2002,9 @@ void CL_InitLocal(void) {
   cl_noskins = Cvar_Get("cl_noskins", "0", 0);
   //	cl_autoskins = Cvar_Get ("cl_autoskins", "0", 0);
   cl_predict = Cvar_Get("cl_predict", "1", 0);
-  r_maxfps = Cvar_Get("r_maxfps", "250", 0);
-  cl_maxfps = Cvar_Get("cl_maxfps", "125", 0);
-  cl_async = Cvar_Get("cl_async", "0", CVAR_ARCHIVE);
+  r_maxfps = Cvar_Get("r_maxfps", "0", CVAR_ARCHIVE);
+  cl_maxfps = Cvar_Get("cl_maxfps", "125", CVAR_ARCHIVE);
+  cl_async = Cvar_Get("cl_async", "1", CVAR_ARCHIVE);
 
   cl_upspeed = Cvar_Get("cl_upspeed", "200", 0);
   cl_forwardspeed = Cvar_Get("cl_forwardspeed", "200", 0);
@@ -2204,76 +2217,302 @@ qboolean CL_CheatsOK(void) {
 /// CL_Frame
 
 void CL_DemoFrame(int msec);
-void CL_UpdateCmd(int msec);
+
+static uint64_t cl_last_frame_us;
+static uint64_t cl_packet_accum_us;
+static uint64_t cl_render_accum_us;
+static uint64_t cl_render_last_us;
+static uint64_t cl_input_accum_us;
+static uint64_t cl_poll_accum_us;
+static uint64_t cl_misc_accum_us = 1000000ULL;
+static int cl_input_msec;
+static int cl_packet_msec;
+static int cl_last_async = -1;
+
+uint64_t CL_NextFrameWaitUsec(void) {
+  uint64_t now_us, elapsed_us;
+  uint64_t packet_period_us, render_period_us;
+
+  if (dedicated->integer || !cl_last_frame_us)
+    return 0ULL;
+
+  if (!cl_timedemo || cl_timedemo->integer)
+    return 0ULL;
+
+  if (!cl_maxfps || !r_maxfps || !cl_async)
+    return 0ULL;
+
+  now_us = Sys_Microseconds();
+  elapsed_us = (now_us > cl_last_frame_us) ? (now_us - cl_last_frame_us) : 0ULL;
+
+  if (cls.state == ca_connected) {
+    packet_period_us = 100000ULL;
+    render_period_us = 100000ULL;
+  } else {
+    int pkt_fps = cl_maxfps->integer > 0 ? cl_maxfps->integer : 125;
+    packet_period_us = 1000000ULL / (uint64_t)pkt_fps;
+    render_period_us = (r_maxfps->integer > 0)
+                           ? (1000000ULL / (uint64_t)r_maxfps->integer)
+                           : 0ULL;
+  }
+
+  if (!cl_async->integer) {
+    uint64_t cur = cl_packet_accum_us + elapsed_us;
+    return (cur < packet_period_us) ? (packet_period_us - cur) : 0ULL;
+  }
+
+  if (render_period_us == 0ULL)
+    return 0ULL;
+
+  {
+    uint64_t pkt_cur = cl_packet_accum_us + elapsed_us;
+    uint64_t rnd_cur = cl_render_accum_us + elapsed_us;
+    uint64_t wait_pkt = (pkt_cur < packet_period_us) ? (packet_period_us - pkt_cur) : 0ULL;
+    uint64_t wait_rnd = (rnd_cur < render_period_us) ? (render_period_us - rnd_cur) : 0ULL;
+    return (wait_pkt < wait_rnd) ? wait_pkt : wait_rnd;
+  }
+}
+
+static void CL_RunRenderFrame(uint64_t now_us) {
+  float render_dt;
+
+  if (cl_render_last_us && now_us > cl_render_last_us)
+    render_dt = (float)(now_us - cl_render_last_us) * 1e-6f;
+  else
+    render_dt = 0.001f;
+  cl_render_last_us = now_us;
+
+  if (render_dt > 0.2f)
+    render_dt = 0.2f;
+  cls.frametime = render_dt;
+
+  // predict all unacknowledged movements
+  CL_PredictMovement();
+
+  // allow rendering DLL change
+  VID_CheckChanges();
+  if (!cl.refresh_prepped && cls.state == ca_active)
+    CL_PrepRefresh();
+
+  // update audio
+  S_Update(cl.refdef.vieworg, cl.v_forward, cl.v_right, cl.v_up);
+
+  // update the screen
+  if (host_speeds->integer) {
+    extern unsigned int time_before_ref, time_after_ref;
+    time_before_ref = Sys_Milliseconds();
+    SCR_UpdateScreen();
+    time_after_ref = Sys_Milliseconds();
+  } else {
+    SCR_UpdateScreen();
+  }
+
+  // Incremental loading of deferred map models and mid-game player skins/assets
+  CL_LoadDeferredAssets();
+
+  if (cl_misc_accum_us >= 100000ULL) {
+    // let the mouse activate or deactivate
+    IN_Frame();
+    if (cls.spamTime && cls.spamTime < cls.realtime) {
+      Cbuf_AddText("say \"" APPLICATION " v" VERSION " " CPUSTRING
+                   " " BUILDSTRING "\"\n");
+      cls.lastSpamTime = cls.realtime;
+      cls.spamTime = 0;
+    }
+    cl_misc_accum_us = 0;
+  }
+
+  // advance local effects for next frame
+  CL_RunDLights();
+  CL_RunLightStyles();
+  SCR_RunCinematic();
+  SCR_RunConsole();
+}
 
 void CL_Frame(int msec) {
-  static int packet_delta, render_delta, misc_delta = 1000;
+  uint64_t now_us, delta_us;
+  uint64_t packet_period_us, render_period_us;
   qboolean packet_frame = true;
   qboolean render_frame = true;
+  int async_mode;
 
   if (dedicated->integer)
     return;
 
-  packet_delta += msec;
-  render_delta += msec;
+  now_us = Sys_Microseconds();
+  if (!cl_last_frame_us) {
+    cl_last_frame_us = now_us;
+    delta_us = (uint64_t)msec * 1000ULL;
+  } else {
+    delta_us = now_us - cl_last_frame_us;
+    cl_last_frame_us = now_us;
+  }
+
+  // if in the debugger last frame, don't timeout
+  if (delta_us > 5000000ULL || msec > 5000) {
+    cls.netchan.last_received = Sys_Milliseconds();
+    if (delta_us > 5000000ULL)
+      delta_us = 100000ULL;
+  }
+
+  async_mode = cl_async->integer ? 1 : 0;
+  if (cl_last_async != async_mode) {
+    cl_packet_accum_us = 0;
+    cl_render_accum_us = 0;
+    cl_last_async = async_mode;
+  }
+
+  cl_packet_accum_us += delta_us;
+  cl_render_accum_us += delta_us;
+  cl_input_accum_us += delta_us;
+  cl_poll_accum_us += delta_us;
+  cl_misc_accum_us += delta_us;
+  cl_input_msec += msec;
+  cl_packet_msec += msec;
+
+  cls.realtime = curtime;
+
+  if (cls.state == ca_connected) {
+    packet_period_us = 100000ULL;
+    render_period_us = 100000ULL;
+  } else {
+    int pkt_fps = cl_maxfps->integer > 0 ? cl_maxfps->integer : 125;
+    packet_period_us = 1000000ULL / (uint64_t)pkt_fps;
+    render_period_us = (r_maxfps->integer > 0)
+                           ? (1000000ULL / (uint64_t)r_maxfps->integer)
+                           : 0ULL;
+  }
+
+  if (!async_mode) {
+    // Synchronous mode: packet and render coupled to cl_maxfps
+    if (!cl_timedemo->integer) {
+      if (cl_packet_accum_us < packet_period_us) {
+        if (cls.state == ca_connected) {
+#ifdef USE_CURL
+          CL_RunHTTPDownloads();
+#endif
+        } else if (cl_poll_accum_us >= 1000ULL) {
+          Sys_SendKeyEvents();
+          IN_Commands();
+          Cbuf_Execute();
+          cl_poll_accum_us = 0;
+        }
+
+        if (!((cl.sendPacketNow || userinfo_modified) &&
+              cls.state >= ca_connected &&
+              (cl_packet_msec >= 1 || cls.state == ca_connected))) {
+          return;
+        }
+      }
+    }
+
+    if (cl_timedemo->integer || cl_packet_accum_us >= packet_period_us * 2ULL)
+      cl_packet_accum_us = 0;
+    else if (cl_packet_accum_us >= packet_period_us)
+      cl_packet_accum_us -= packet_period_us;
+    else
+      cl_packet_accum_us = 0;
+    cl_render_accum_us = 0;
+
+    if (cl_packet_msec > 0 || cl_timedemo->integer)
+      CL_DemoFrame(cl_packet_msec);
+
+    Sys_SendKeyEvents();
+    CL_ReadPackets();
+    IN_Commands();
+    Cbuf_Execute();
+    cl_poll_accum_us = 0;
+
+    {
+      float input_dt = (float)cl_input_accum_us * 1e-6f;
+      if (input_dt > 0.2f)
+        input_dt = 0.2f;
+      CL_UpdateCmd(cl_input_msec, input_dt);
+      cl_input_msec = 0;
+      cl_input_accum_us = 0;
+    }
+
+    CL_SendCmd();
+    cl_packet_msec = 0;
+
+    if (!cls.demoplaying)
+      CL_CheckForResend();
+#ifdef USE_CURL
+    CL_RunHTTPDownloads();
+#endif
+
+    CL_RunRenderFrame(now_us);
+    return;
+  }
+
+  // Asynchronous mode: decoupled network (cl_maxfps) and rendering (r_maxfps / VSync)
+  if (!cls.demoplaying) {
+    if (msec > 0)
+      cl.time += msec;
+  } else if (!cl_timedemo->integer && msec > 0) {
+    CL_DemoFrame(msec);
+  }
 
   if (!cl_timedemo->integer) {
     if (cls.state == ca_connected) {
-      if (packet_delta < 100) {
+      if (cl_packet_accum_us < 100000ULL) {
         packet_frame = false;
 #ifdef USE_CURL
         CL_RunHTTPDownloads(); // we run full speed when connecting
 #endif
       }
-      if (render_delta < 100)
+      if (cl_render_accum_us < 100000ULL)
         render_frame = false; // don't flood packets out while connecting
     } else {
-      if (packet_delta < 1000 / cl_maxfps->integer)
+      if (cl_packet_accum_us < packet_period_us)
         packet_frame = false; // packetrate is too high
-      if (render_delta < 1000 / r_maxfps->integer)
+      if (render_period_us > 0ULL && cl_render_accum_us < render_period_us)
         render_frame = false; // framerate is too high
     }
-
-    if (!packet_frame && !render_frame)
-      return;
   }
 
-  cls.realtime = curtime;
-  cls.frametime = packet_delta * 0.001f;
-  // don't extrapolate too far ahead
-  if (cls.frametime > 0.2f)
-    cls.frametime = 0.2f;
+  if (packet_frame || render_frame || cl_poll_accum_us >= 1000ULL) {
+    Sys_SendKeyEvents();
+    IN_Commands();
+    Cbuf_Execute();
+    CL_ReadPackets();
+    cl_poll_accum_us = 0;
+  }
 
-  CL_DemoFrame(packet_delta);
+  // Jeśli gracz generuje impuls (strzał/użycie) lub zmienia userinfo, wymuś pakiet
+  if (!cl_timedemo->integer && (cl.sendPacketNow || userinfo_modified)) {
+    if (cls.state < ca_connected) {
+      userinfo_modified = false;
+      cl.sendPacketNow = false;
+    } else if (cl_packet_msec >= 1 || cls.state == ca_connected) {
+      packet_frame = true;
+    }
+  }
 
-  // if in the debugger last frame, don't timeout
-  if (msec > 5000)
-    cls.netchan.last_received = Sys_Milliseconds();
+  if (!packet_frame && !render_frame)
+    return;
+
+  // Aktualizuj wejście i bieżący usercmd przed wysłaniem pakietu i/lub renderowaniem
+  {
+    float input_dt = (float)cl_input_accum_us * 1e-6f;
+    if (input_dt > 0.2f)
+      input_dt = 0.2f;
+    CL_UpdateCmd(cl_input_msec, input_dt);
+    cl_input_msec = 0;
+    cl_input_accum_us = 0;
+  }
 
   if (packet_frame) {
-    // process packets from server
-    CL_ReadPackets();
-
-    // get new key events
-    Sys_SendKeyEvents();
-
-    // allow mice or other external controllers to add commands
-    IN_Commands();
-
-    if (cl.sendPacketNow || userinfo_modified) {
-      if (cls.state < ca_connected)
-        userinfo_modified = false;
-      else
-        packet_frame = true;
-    }
-
-    CL_UpdateCmd(packet_delta);
-
-    // process console commands
-    Cbuf_Execute();
+    if (cl_timedemo->integer || cl_packet_accum_us >= packet_period_us * 2ULL)
+      cl_packet_accum_us = 0;
+    else if (cl_packet_accum_us >= packet_period_us)
+      cl_packet_accum_us -= packet_period_us;
+    else
+      cl_packet_accum_us = 0;
 
     // send intentions now
     CL_SendCmd();
+    cl_packet_msec = 0;
 
     // resend a connection request if necessary
     if (!cls.demoplaying)
@@ -2282,58 +2521,22 @@ void CL_Frame(int msec) {
     // we run less often in game
     CL_RunHTTPDownloads();
 #endif
-    packet_delta = 0;
   }
 
   if (render_frame) {
-    misc_delta += render_delta;
+    if (cls.demoplaying && cl_timedemo->integer)
+      CL_DemoFrame(msec);
 
-    // Render the display
-    //  predict all unacknowledged movements
-    CL_PredictMovement();
+    if (render_period_us == 0ULL || cl_timedemo->integer ||
+        cl_render_accum_us >= render_period_us * 2ULL)
+      cl_render_accum_us = 0;
+    else if (cl_render_accum_us >= render_period_us)
+      cl_render_accum_us -= render_period_us;
+    else
+      cl_render_accum_us = 0;
 
-    // allow rendering DLL change
-    VID_CheckChanges();
-    if (!cl.refresh_prepped && cls.state == ca_active)
-      CL_PrepRefresh();
-
-    // update audio
-    S_Update(cl.refdef.vieworg, cl.v_forward, cl.v_right, cl.v_up);
-
-    // update the screen
-    if (host_speeds->integer) {
-      extern unsigned int time_before_ref, time_after_ref;
-      time_before_ref = Sys_Milliseconds();
-      SCR_UpdateScreen();
-      time_after_ref = Sys_Milliseconds();
-    } else {
-      SCR_UpdateScreen();
-    }
-
-    // IF sound makes lagging videou move S_Update HERE
-
-    if (misc_delta > 99) { // don't need to do this stuff much.
-      // let the mouse activate or deactivate
-      IN_Frame();
-      if (cls.spamTime && cls.spamTime < cls.realtime) {
-        Cbuf_AddText("say \"" APPLICATION " v" VERSION " " CPUSTRING
-                     " " BUILDSTRING "\"\n");
-        cls.lastSpamTime = cls.realtime;
-        cls.spamTime = 0;
-      }
-      misc_delta = 0;
-    }
-
-    // advance local effects for next frame
-    CL_RunDLights();
-    CL_RunLightStyles();
-    SCR_RunCinematic();
-    SCR_RunConsole();
-
-    render_delta = 0;
+    CL_RunRenderFrame(now_us);
   }
-
-  // cls.framecount++;
 }
 
 /// CL_Init

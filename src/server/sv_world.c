@@ -445,9 +445,6 @@ int SV_PointContents (vec3_t p)
 		// might intersect, so do an exact clip
 		headnode = SV_HullForEntity (hit);
 
-		if (hit->solid != SOLID_BSP)
-
-
 		c2 = CM_TransformedPointContents (p, headnode, hit->s.origin, hit->s.angles);
 
 		contents |= c2;

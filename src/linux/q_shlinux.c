@@ -30,6 +30,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/time.h>
+#include <time.h>
 
 #include "../linux/glob.h"
 
@@ -88,28 +89,39 @@ void Hunk_Free (void *base)
 
 /*
 ================
-Sys_Milliseconds
+Sys_Microseconds / Sys_Milliseconds
 ================
 */
 unsigned int curtime;
-static unsigned long sys_timeBase = 0;
+static struct timespec sys_timeBase;
+static qboolean sys_timeBaseInit = false;
+
+uint64_t Sys_Microseconds (void)
+{
+	struct timespec ts;
+	int64_t sec, nsec;
+
+	if (!sys_timeBaseInit)
+	{
+		clock_gettime(CLOCK_MONOTONIC, &sys_timeBase);
+		sys_timeBaseInit = true;
+	}
+
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	sec = (int64_t)ts.tv_sec - (int64_t)sys_timeBase.tv_sec;
+	nsec = (int64_t)ts.tv_nsec - (int64_t)sys_timeBase.tv_nsec;
+	if (nsec < 0)
+	{
+		sec -= 1;
+		nsec += 1000000000LL;
+	}
+
+	return (uint64_t)(sec * 1000000LL + nsec / 1000LL);
+}
 
 unsigned int Sys_Milliseconds (void)
 {
-	struct timeval tp;
-	//struct timezone tzp;
-	//static unsigned int	secbase = 0;
-
-	gettimeofday(&tp, NULL);
-	
-	if (!sys_timeBase)
-	{
-		sys_timeBase = tp.tv_sec;
-		return tp.tv_usec/1000;
-	}
-
-	curtime = (tp.tv_sec - sys_timeBase)*1000 + tp.tv_usec/1000;
-	
+	curtime = (unsigned int)(Sys_Microseconds() / 1000ULL);
 	return curtime;
 }
 

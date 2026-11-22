@@ -138,6 +138,7 @@ typedef struct {
 
   qboolean sendPacketNow;
   usercmd_t cmd;
+  int cmd_msec;
   usercmd_t cmds[CMD_BACKUP]; // each mesage will send several old cmds
   int cmdNumber;
   int16 predicted_origins[CMD_BACKUP][3]; // for debug comparing against server
@@ -435,7 +436,7 @@ extern centity_t cl_entities[MAX_EDICTS];
 // the cl_parse_entities must be large enough to hold UPDATE_BACKUP frames of
 // entities, so that when a delta compressed message arives from the server
 // it can be un-deltad from the original
-#define MAX_PARSE_ENTITIES 1024
+#define MAX_PARSE_ENTITIES 16384
 #define PARSE_ENTITIES_MASK (MAX_PARSE_ENTITIES - 1)
 extern entity_state_t cl_parse_entities[MAX_PARSE_ENTITIES];
 
@@ -584,6 +585,13 @@ void CL_AddLightStyles(void);
 
 void CL_PrepRefresh(void);
 void CL_RegisterSounds(void);
+void CL_ResetDeferredAssets(void);
+void CL_StartDeferredMapLoad(void);
+void CL_QueueClientinfo(int player);
+void CL_QueueModel(int index);
+void CL_QueueSound(int index);
+void CL_LoadDeferredAssets(void);
+void CL_SetClientinfoNameOnly(clientinfo_t *ci, const char *s);
 
 void CL_Quit_f(void);
 
@@ -622,6 +630,7 @@ extern kbutton_t in_strafe;
 extern kbutton_t in_speed;
 
 void CL_InitInput(void);
+void CL_UpdateCmd(int msec, float frametime);
 void CL_SendCmd(void);
 
 void CL_ClearState(void);

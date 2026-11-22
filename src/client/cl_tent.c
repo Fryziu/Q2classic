@@ -151,6 +151,27 @@ void CL_RegisterTEntSounds (void)
 		cl_sfx_footsteps[i] = S_RegisterSound (name);
 	}
 
+	// Precache weapon muzzleflash, entity event and chat sounds to avoid mid-game disk/resample hitches
+	S_RegisterSound ("weapons/blastf1a.wav");
+	S_RegisterSound ("weapons/hyprbf1a.wav");
+	for (i = 1; i <= 5; i++)
+	{
+		Com_sprintf (name, sizeof(name), "weapons/machgf%ib.wav", i);
+		S_RegisterSound (name);
+	}
+	S_RegisterSound ("weapons/shotgf1b.wav");
+	S_RegisterSound ("weapons/shotgr1b.wav");
+	S_RegisterSound ("weapons/sshotf1b.wav");
+	S_RegisterSound ("weapons/rocklf1a.wav");
+	S_RegisterSound ("weapons/rocklr1b.wav");
+	S_RegisterSound ("weapons/grenlf1a.wav");
+	S_RegisterSound ("weapons/grenlr1b.wav");
+	S_RegisterSound ("weapons/bfg__f1y.wav");
+	S_RegisterSound ("items/respawn1.wav");
+	S_RegisterSound ("misc/tele1.wav");
+	S_RegisterSound ("misc/talk.wav");
+	S_RegisterSound ("misc/talk1.wav");
+
 //PGM
 	cl_sfx_lightning = S_RegisterSound ("weapons/tesla.wav");
 	cl_sfx_disrexp = S_RegisterSound ("weapons/disrupthit.wav");

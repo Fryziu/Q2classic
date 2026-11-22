@@ -526,13 +526,6 @@ void SpawnEntities (char *mapname, char *entities, char *spawnpoint)
 	const char	*com_token;
 	int			i;
 	float		skill_level;
-	// fixme delete debug login function
-	gi.dprintf("===== //Mentor Log: SpawnEntities Loading map '%s'. spawnpoint: '%s'. level.nextmap: '%s'. level.changemap: '%s' =====\n",
-	        mapname, spawnpoint, level.nextmap, level.changemap);
-
-	// ==
-
-
 
 	skill_level = floor (skill->value);
 	if (skill_level < 0)
@@ -825,10 +818,10 @@ void SP_worldspawn (edict_t *ent)
 	if (ent->message && ent->message[0])
 	{
 		gi.configstring (CS_NAME, ent->message);
-		strncpy (level.level_name, ent->message, sizeof(level.level_name));
+		Q_strncpyz (level.level_name, ent->message, sizeof(level.level_name));
 	}
 	else
-		strncpy (level.level_name, level.mapname, sizeof(level.level_name));
+		Q_strncpyz (level.level_name, level.mapname, sizeof(level.level_name));
 
 	if (st.sky && st.sky[0])
 		gi.configstring (CS_SKY, st.sky);

@@ -39,7 +39,16 @@ void S_TransferPaintBuffer(int endtime)
     if (count > PAINTBUFFER_SIZE) count = PAINTBUFFER_SIZE;
 
     static short pcm_buffer[PAINTBUFFER_SIZE * 2] __attribute__((aligned(16)));
-    
+
+    if (dma.channels == 1) {
+        for (int i = 0; i < count; i++) {
+            int m = (paintbuffer[i].left + paintbuffer[i].right) >> 9;
+            pcm_buffer[i] = (short)bound(-32768, m, 32767);
+        }
+        S_Audio_Write(pcm_buffer, count * sizeof(short));
+        return;
+    }
+
     int i = 0;
     // Przetwarzamy po 8 sampli (16 wartości L/R) na raz
     for (; i <= count - 8; i += 8)
@@ -73,17 +82,7 @@ void S_TransferPaintBuffer(int endtime)
         pcm_buffer[i * 2 + 1] = (short)bound(-32768, r, 32767);
     }
 
-    S_Audio_Write(pcm_buffer, count * dma.channels * sizeof(short));
-}
-
-///
-void S_PaintChannelFrom8 (channel_t *ch, sfxcache_t *sc, int count, int offset)
-{
-	(void)ch;
-	(void)sc;
-	(void)count;
-	(void)offset;
-	/* Implement if needed */
+    S_Audio_Write(pcm_buffer, count * 2 * sizeof(short));
 }
 
 
@@ -189,12 +188,12 @@ void S_PaintChannels(int endtime)
         for (int i = 0; i < MAX_CHANNELS; i++)
         {
             channel_t *ch = &channels[i];
-            if (!ch->sfx || (!ch->leftvol && !ch->rightvol)) continue;
+            if (!ch->sfx) continue;
 
-              // DYNAMICZNA AKTUALIZACJA:
-            // Jeśli dźwięk podąża za encją (!fixed_origin), uaktualnij jego pozycję L/R
-            if (!ch->fixed_origin) {
-                S_Spatialize(ch); 
+            // DYNAMICZNA AKTUALIZACJA:
+            // Jeśli dźwięk śledzi encję lub może odziedziczyć gracza (CHAN_ITEM), uaktualnij pozycję L/R
+            if (ch->origin_mode != SND_ORIGIN_FIXED || !ch->inherit_checked) {
+                S_Spatialize(ch);
             }
 
             sfxcache_t *sc = ch->sfx->cache;

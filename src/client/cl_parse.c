@@ -98,6 +98,8 @@ static void CL_FinishDownload (void)
 	if (!FS_RenameFile(oldn, newn))
 		Com_Printf ("failed to rename.\n");
 
+	FS_FlushCache();
+
 	cls.failed_download = false;
 	cls.downloadname[0] = 0;
 	cls.downloadposition = 0;
@@ -248,6 +250,26 @@ void	CL_Download_f (void)
 	CL_CheckOrDownloadFile (filename);
 }
 
+static void CL_PrecacheSexedSoundsForModel (const char *model)
+{
+	int i;
+
+	if (!model || !model[0])
+		return;
+
+	for (i = 1; i < MAX_SOUNDS; i++)
+	{
+		if (!cl.configstrings[CS_SOUNDS+i][0])
+			break;
+		if (cl.configstrings[CS_SOUNDS+i][0] == '*')
+			S_PrecacheSexedSound (model, cl.configstrings[CS_SOUNDS+i]);
+	}
+
+	// Also used directly by CL_EntityEvent regardless of CS_SOUNDS
+	S_PrecacheSexedSound (model, "*fall1.wav");
+	S_PrecacheSexedSound (model, "*fall2.wav");
+}
+
 /*
 ======================
 CL_RegisterSounds
@@ -255,7 +277,9 @@ CL_RegisterSounds
 */
 void CL_RegisterSounds (void)
 {
-	int		i;
+	int		i, j;
+	char	models[MAX_CLIENTS][MAX_QPATH];
+	int		num_models = 0;
 
 	S_BeginRegistration ();
 	CL_RegisterTEntSounds ();
@@ -266,6 +290,48 @@ void CL_RegisterSounds (void)
 		cl.sound_precache[i] = S_RegisterSound (cl.configstrings[CS_SOUNDS+i]);
 		Sys_SendKeyEvents ();	// pump message loop
 	}
+
+	// Precache sexed sounds for base player models and currently connected players
+	CL_PrecacheSexedSoundsForModel ("male");
+	CL_PrecacheSexedSoundsForModel ("female");
+	CL_PrecacheSexedSoundsForModel ("cyborg");
+
+	for (i = 0; i < MAX_CLIENTS; i++)
+	{
+		const char *cs = cl.configstrings[CS_PLAYERSKINS + i];
+		const char *slash;
+		char model[MAX_QPATH];
+		char *p;
+		qboolean seen = false;
+
+		if (!cs[0])
+			continue;
+		slash = strchr (cs, '\\');
+		if (!slash || !slash[1])
+			continue;
+
+		Q_strncpyz (model, slash + 1, sizeof(model));
+		p = strchr (model, '/');
+		if (!p)
+			p = strchr (model, '\\');
+		if (p)
+			*p = 0;
+
+		if (!model[0] || !Q_stricmp (model, "male") || !Q_stricmp (model, "female") || !Q_stricmp (model, "cyborg"))
+			continue;
+
+		for (j = 0; j < num_models; j++) {
+			if (!Q_stricmp (models[j], model)) {
+				seen = true;
+				break;
+			}
+		}
+		if (!seen && num_models < MAX_CLIENTS) {
+			Q_strncpyz (models[num_models++], model, sizeof(models[0]));
+			CL_PrecacheSexedSoundsForModel (model);
+		}
+	}
+
 	S_EndRegistration ();
 }
 
@@ -529,13 +595,18 @@ void CL_ParseZPacket (sizebuf_t *msg)
 	if (uncompressed_len <= 0)
 		Com_Error (ERR_DROP, "CL_ParseZPacket: uncompressed_len <= 0");
 
-	if (compressed_len <= 0)
-		Com_Error (ERR_DROP, "CL_ParseZPacket: compressed_len <= 0");
+	if (compressed_len <= 0 || compressed_len > MAX_MSGLEN)
+		Com_Error (ERR_DROP, "CL_ParseZPacket: invalid compressed_len %u", compressed_len);
+
+	if (msg->readcount + compressed_len > msg->cursize)
+		Com_Error (ERR_DROP, "CL_ParseZPacket: read past end of message");
 
 	MSG_ReadData (msg, buff_in, compressed_len);
 
 	SZ_Init (&sb, buff_out, uncompressed_len);
 	sb.cursize = ZLibDecompress (buff_in, compressed_len, buff_out, uncompressed_len, -15);
+	if (sb.cursize <= 0)
+		Com_Error (ERR_DROP, "CL_ParseZPacket: decompression failed");
 
 	CL_ParseServerMessage(&sb);
 
@@ -696,6 +767,343 @@ void CL_ParseClientinfo (int player)
 	CL_LoadClientinfo (ci, s);
 }
 
+void CL_SetClientinfoNameOnly (clientinfo_t *ci, const char *s)
+{
+	const char *t;
+
+	Q_strncpyz (ci->cinfo, s, sizeof(ci->cinfo));
+	Q_strncpyz (ci->name, s, sizeof(ci->name));
+
+	t = strchr (s, '\\');
+	if (t && (t - s) < (int)sizeof(ci->name) - 1) {
+		ci->name[t - s] = 0;
+	}
+}
+
+/*
+=====================================================================
+
+DEFERRED / INCREMENTAL ASSET LOADING (anti-stutter)
+
+=====================================================================
+*/
+typedef struct {
+	qboolean		active;
+	int				stage;
+	int				weapon_idx;
+	int				sexed_idx;
+	qboolean		custom_model;
+	qboolean		fallback_default;
+	char			cinfo[MAX_QPATH];
+	char			model_name[MAX_QPATH];
+	char			skin_name[MAX_QPATH];
+	clientinfo_t	staging;
+} cl_clientinfo_job_t;
+
+static int					cl_deferred_model_index = MAX_MODELS;
+static qboolean				cl_deferred_end_reg = false;
+static qboolean				cl_model_pending[MAX_MODELS];
+static qboolean				cl_sound_pending[MAX_SOUNDS];
+static cl_clientinfo_job_t	cl_ci_jobs[MAX_CLIENTS];
+
+void CL_ResetDeferredAssets (void)
+{
+	cl_deferred_model_index = MAX_MODELS;
+	cl_deferred_end_reg = false;
+	memset (cl_model_pending, 0, sizeof(cl_model_pending));
+	memset (cl_sound_pending, 0, sizeof(cl_sound_pending));
+	memset (cl_ci_jobs, 0, sizeof(cl_ci_jobs));
+}
+
+void CL_StartDeferredMapLoad (void)
+{
+	cl_deferred_model_index = 2;
+	cl_deferred_end_reg = true;
+}
+
+void CL_QueueModel (int index)
+{
+	if (index >= 2 && index < MAX_MODELS)
+		cl_model_pending[index] = true;
+}
+
+void CL_QueueSound (int index)
+{
+	if (index >= 1 && index < MAX_SOUNDS)
+		cl_sound_pending[index] = true;
+}
+
+void CL_QueueClientinfo (int player)
+{
+	cl_clientinfo_job_t *job;
+	const char *s;
+
+	if ((unsigned)player >= MAX_CLIENTS)
+		return;
+
+	s = cl.configstrings[CS_PLAYERSKINS + player];
+	CL_SetClientinfoNameOnly (&cl.clientinfo[player], s);
+
+	job = &cl_ci_jobs[player];
+	memset (job, 0, sizeof(*job));
+	job->active = true;
+	Q_strncpyz (job->cinfo, s, sizeof(job->cinfo));
+}
+
+static void CL_StepClientinfoJob (int player)
+{
+	cl_clientinfo_job_t *job = &cl_ci_jobs[player];
+	char filename[MAX_QPATH];
+
+	if (!job->active)
+		return;
+
+	if (job->stage == 0)
+	{
+		const char *s = job->cinfo;
+		const char *t;
+		int bad = 0;
+
+		memset (&job->staging, 0, sizeof(job->staging));
+		CL_SetClientinfoNameOnly (&job->staging, s);
+
+		t = strchr (s, '\\');
+		if (t) {
+			if (t - s >= (int)sizeof(job->staging.name) - 1)
+				bad = -1;
+			else
+				s = t + 1;
+		}
+		t = s;
+		while (*t) {
+			if (*t <= 32) {
+				bad = -1;
+				break;
+			}
+			t++;
+		}
+
+		if (cl_noskins->integer || *s == 0 || bad == -1)
+		{
+			job->fallback_default = true;
+			Q_strncpyz (job->model_name, "male", sizeof(job->model_name));
+			Q_strncpyz (job->skin_name, "grunt", sizeof(job->skin_name));
+			job->staging.model = R_RegisterModel ("players/male/tris.md2");
+			job->custom_model = false;
+			job->stage = 1;
+			return;
+		}
+
+		job->fallback_default = false;
+		Q_strncpyz (job->model_name, s, sizeof(job->model_name));
+		{
+			char *sep = strchr (job->model_name, '/');
+			if (!sep)
+				sep = strchr (job->model_name, '\\');
+			if (!sep) {
+				Q_strncpyz (job->model_name, "male", sizeof(job->model_name));
+				Q_strncpyz (job->skin_name, "grunt", sizeof(job->skin_name));
+			} else {
+				*sep = 0;
+				Q_strncpyz (job->skin_name, s + strlen(job->model_name) + 1, sizeof(job->skin_name));
+			}
+		}
+
+		Com_sprintf (filename, sizeof(filename), "players/%s/tris.md2", job->model_name);
+		job->staging.model = R_RegisterModel (filename);
+		if (!job->staging.model) {
+			Q_strncpyz (job->model_name, "male", sizeof(job->model_name));
+			job->staging.model = R_RegisterModel ("players/male/tris.md2");
+		}
+
+		job->custom_model = (Q_stricmp(job->model_name, "male") &&
+		                     Q_stricmp(job->model_name, "female") &&
+		                     Q_stricmp(job->model_name, "cyborg"));
+		job->stage = 1;
+		return;
+	}
+
+	if (job->stage == 1)
+	{
+		if (job->fallback_default)
+		{
+			Q_strncpyz (job->staging.iconname, "/players/male/grunt_i.pcx", sizeof(job->staging.iconname));
+			job->staging.skin = R_RegisterSkin ("players/male/grunt.pcx");
+			job->staging.icon = Draw_FindPic (job->staging.iconname);
+		}
+		else
+		{
+			Com_sprintf (filename, sizeof(filename), "players/%s/%s.pcx", job->model_name, job->skin_name);
+			job->staging.skin = R_RegisterSkin (filename);
+
+			if (!job->staging.skin && Q_stricmp (job->model_name, "male"))
+			{
+				Q_strncpyz (job->model_name, "male", sizeof(job->model_name));
+				job->staging.model = R_RegisterModel ("players/male/tris.md2");
+				job->custom_model = false;
+				Com_sprintf (filename, sizeof(filename), "players/%s/%s.pcx", job->model_name, job->skin_name);
+				job->staging.skin = R_RegisterSkin (filename);
+			}
+
+			if (!job->staging.skin)
+			{
+				Com_sprintf (filename, sizeof(filename), "players/%s/grunt.pcx", job->model_name);
+				job->staging.skin = R_RegisterSkin (filename);
+			}
+
+			Com_sprintf (job->staging.iconname, sizeof(job->staging.iconname),
+				"/players/%s/%s_i.pcx", job->model_name, job->skin_name);
+			job->staging.icon = Draw_FindPic (job->staging.iconname);
+		}
+
+		job->weapon_idx = 0;
+		job->stage = 2;
+		return;
+	}
+
+	if (job->stage == 2)
+	{
+		if (job->fallback_default)
+		{
+			job->staging.weaponmodel[0] = R_RegisterModel ("players/male/weapon.md2");
+			job->weapon_idx = num_cl_weaponmodels;
+		}
+		else if (job->weapon_idx < num_cl_weaponmodels)
+		{
+			int wi = job->weapon_idx++;
+			Com_sprintf (filename, sizeof(filename), "players/%s/%s", job->model_name, cl_weaponmodels[wi]);
+			job->staging.weaponmodel[wi] = R_RegisterModel (filename);
+			if (!job->staging.weaponmodel[wi] && strcmp(job->model_name, "cyborg") == 0)
+			{
+				Com_sprintf (filename, sizeof(filename), "players/male/%s", cl_weaponmodels[wi]);
+				job->staging.weaponmodel[wi] = R_RegisterModel (filename);
+			}
+			if (!cl_vwep->integer)
+				job->weapon_idx = num_cl_weaponmodels;
+		}
+
+		if (job->weapon_idx >= num_cl_weaponmodels)
+		{
+			clientinfo_t *ci = &cl.clientinfo[player];
+
+			if (!job->staging.skin || !job->staging.icon || !job->staging.model || !job->staging.weaponmodel[0])
+			{
+				job->staging.skin = NULL;
+				job->staging.icon = NULL;
+				job->staging.model = NULL;
+				job->staging.weaponmodel[0] = NULL;
+			}
+
+			// Commit atomically while keeping latest name/cinfo
+			Q_strncpyz (job->staging.cinfo, ci->cinfo, sizeof(job->staging.cinfo));
+			Q_strncpyz (job->staging.name, ci->name, sizeof(job->staging.name));
+			*ci = job->staging;
+
+			if (job->custom_model)
+			{
+				job->sexed_idx = 1;
+				job->stage = 3;
+			}
+			else
+			{
+				job->active = false;
+			}
+		}
+		return;
+	}
+
+	if (job->stage == 3)
+	{
+		while (job->sexed_idx < MAX_SOUNDS)
+		{
+			int si = job->sexed_idx++;
+			if (!cl.configstrings[CS_SOUNDS + si][0])
+			{
+				job->sexed_idx = MAX_SOUNDS;
+				break;
+			}
+			if (cl.configstrings[CS_SOUNDS + si][0] == '*')
+			{
+				S_PrecacheSexedSound (job->model_name, cl.configstrings[CS_SOUNDS + si]);
+				return;
+			}
+		}
+		job->active = false;
+	}
+}
+
+void CL_LoadDeferredAssets (void)
+{
+	int i;
+
+	if (!cl.refresh_prepped || cls.state != ca_active)
+		return;
+
+	// 1. Deferred map models from CL_PrepRefresh (cl_defermodels 1)
+	while (cl_deferred_model_index < MAX_MODELS)
+	{
+		int idx = cl_deferred_model_index++;
+		const char *name = cl.configstrings[CS_MODELS + idx];
+
+		if (!name[0])
+			continue;
+		if (name[0] == '#' || name[0] == '*')
+			continue;
+		if (cl.model_draw[idx])
+			continue;
+
+		cl.model_draw[idx] = R_RegisterModel (name);
+		cl.model_clip[idx] = NULL;
+		return;
+	}
+
+	// 2. Dynamic models received via CS_MODELS during gameplay
+	for (i = 2; i < MAX_MODELS; i++)
+	{
+		if (!cl_model_pending[i])
+			continue;
+		cl_model_pending[i] = false;
+		if (cl.configstrings[CS_MODELS + i][0] &&
+		    cl.configstrings[CS_MODELS + i][0] != '#' &&
+		    cl.configstrings[CS_MODELS + i][0] != '*')
+		{
+			cl.model_draw[i] = R_RegisterModel (cl.configstrings[CS_MODELS + i]);
+			cl.model_clip[i] = NULL;
+		}
+		return;
+	}
+
+	// 3. Dynamic sounds received via CS_SOUNDS during gameplay
+	for (i = 1; i < MAX_SOUNDS; i++)
+	{
+		if (!cl_sound_pending[i])
+			continue;
+		cl_sound_pending[i] = false;
+		if (cl.configstrings[CS_SOUNDS + i][0])
+		{
+			cl.sound_precache[i] = S_RegisterSound (cl.configstrings[CS_SOUNDS + i]);
+		}
+		return;
+	}
+
+	// 4. Incremental player clientinfo loading (1 step per frame)
+	for (i = 0; i < MAX_CLIENTS; i++)
+	{
+		if (cl_ci_jobs[i].active)
+		{
+			CL_StepClientinfoJob (i);
+			return;
+		}
+	}
+
+	// 5. All deferred map assets finished -> release unused models/textures from previous map
+	if (cl_deferred_end_reg)
+	{
+		cl_deferred_end_reg = false;
+		R_EndRegistration ();
+	}
+}
+
 
 /*
 ================
@@ -748,6 +1156,7 @@ void CL_ParseConfigString (sizebuf_t *msg)
 	
 	else if (i >= CS_MODELS && i < CS_MODELS+MAX_MODELS)
 	{
+		int idx = i - CS_MODELS;
 		if( i == CS_MODELS + 1 ) {
 			if( length > 9 ) {
 				Q_strncpyz( cls.mapname, s + 5, sizeof( cls.mapname ) ); // skip "maps/"
@@ -757,19 +1166,72 @@ void CL_ParseConfigString (sizebuf_t *msg)
 		}
 		if (cl.refresh_prepped)
 		{
-			cl.model_draw[i-CS_MODELS] = R_RegisterModel (cl.configstrings[i]);
-			if (cl.configstrings[i][0] == '*')
-				cl.model_clip[i-CS_MODELS] = CM_InlineModel (cl.configstrings[i]);
+			if (!cl.configstrings[i][0])
+			{
+				cl.model_draw[idx] = NULL;
+				cl.model_clip[idx] = NULL;
+				cl_model_pending[idx] = false;
+			}
+			else if (cl.configstrings[i][0] == '*')
+			{
+				cl.model_draw[idx] = R_RegisterModel (cl.configstrings[i]);
+				cl.model_clip[idx] = CM_InlineModel (cl.configstrings[i]);
+				cl_model_pending[idx] = false;
+			}
+			else if (cl.configstrings[i][0] == '#')
+			{
+				if (num_cl_weaponmodels < MAX_CLIENTWEAPONMODELS)
+				{
+					int w;
+					qboolean exists = false;
+					for (w = 0; w < num_cl_weaponmodels; w++) {
+						if (!strcmp(cl_weaponmodels[w], cl.configstrings[i] + 1)) {
+							exists = true;
+							break;
+						}
+					}
+					if (!exists) {
+						Q_strncpyz(cl_weaponmodels[num_cl_weaponmodels], cl.configstrings[i] + 1,
+							sizeof(cl_weaponmodels[num_cl_weaponmodels]));
+						num_cl_weaponmodels++;
+					}
+				}
+			}
+			else if (cls.state == ca_active && !cl_timedemo->integer && idx >= 2)
+			{
+				cl.model_draw[idx] = NULL;
+				cl.model_clip[idx] = NULL;
+				CL_QueueModel (idx);
+			}
 			else
-				cl.model_clip[i-CS_MODELS] = NULL;
+			{
+				cl.model_draw[idx] = R_RegisterModel (cl.configstrings[i]);
+				cl.model_clip[idx] = NULL;
+			}
 		}
 	}
-	else if (i >= CS_SOUNDS && i < CS_SOUNDS+MAX_MODELS)
+	else if (i >= CS_SOUNDS && i < CS_SOUNDS+MAX_SOUNDS)
 	{
 		if (cl.refresh_prepped)
-			cl.sound_precache[i-CS_SOUNDS] = S_RegisterSound (cl.configstrings[i]);
+		{
+			int idx = i - CS_SOUNDS;
+			if (!cl.configstrings[i][0])
+			{
+				cl.sound_precache[idx] = NULL;
+				cl_sound_pending[idx] = false;
+			}
+			else if (cls.state == ca_active && !cl_timedemo->integer && cl.configstrings[i][0] != '*')
+			{
+				cl.sound_precache[idx] = NULL;
+				CL_QueueSound (idx);
+			}
+			else
+			{
+				cl.sound_precache[idx] = S_RegisterSound (cl.configstrings[i]);
+			}
+		}
 	}
-	else if (i >= CS_IMAGES && i < CS_IMAGES+MAX_MODELS)
+	else if (i >= CS_IMAGES && i < CS_IMAGES+MAX_IMAGES)
 	{
 		if (cl.refresh_prepped)
 			cl.image_precache[i-CS_IMAGES] = Draw_FindPic (cl.configstrings[i]);
@@ -782,7 +1244,26 @@ void CL_ParseConfigString (sizebuf_t *msg)
 	else if (i >= CS_PLAYERSKINS && i < CS_PLAYERSKINS+MAX_CLIENTS)
 	{
 		if (cl.refresh_prepped && strcmp(olds, s))
-			CL_ParseClientinfo (i-CS_PLAYERSKINS);
+		{
+			int player = i - CS_PLAYERSKINS;
+			const char *old_skin = strchr (olds, '\\');
+			const char *new_skin = strchr (s, '\\');
+
+			if (old_skin && new_skin && !strcmp(old_skin, new_skin) &&
+			    cl.clientinfo[player].model && !cl_ci_jobs[player].active)
+			{
+				// Only player name changed - no need to reload models/skins
+				CL_SetClientinfoNameOnly (&cl.clientinfo[player], s);
+			}
+			else if (cls.state == ca_active && !cl_timedemo->integer)
+			{
+				CL_QueueClientinfo (player);
+			}
+			else
+			{
+				CL_ParseClientinfo (player);
+			}
+		}
 	}
 }
 
@@ -853,8 +1334,14 @@ void CL_ParseStartSoundPacket(sizebuf_t *msg)
 	else	// use entity number
 		pos = NULL;
 
-	if (!cl.sound_precache[sound_num])
-		return;
+	if (!cl.sound_precache[sound_num]) {
+		if (cl_sound_pending[sound_num] && cl.configstrings[CS_SOUNDS+sound_num][0]) {
+			cl_sound_pending[sound_num] = false;
+			cl.sound_precache[sound_num] = S_RegisterSound (cl.configstrings[CS_SOUNDS+sound_num]);
+		}
+		if (!cl.sound_precache[sound_num])
+			return;
+	}
 
 	S_StartSound (pos, ent, channel, cl.sound_precache[sound_num], volume, attenuation, ofs);
 }       

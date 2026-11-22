@@ -65,6 +65,7 @@ typedef struct sfx_s
 	int			registration_sequence;
 	sfxcache_t	*cache;
 	char 		*truename;
+	qboolean	missing;
 	struct sfx_s *hashNext;
 } sfx_t;
 
@@ -93,6 +94,13 @@ typedef struct
 } dma_t;
 
 
+typedef enum
+{
+	SND_ORIGIN_ENTITY = 0,	// śledzi pozycję encji ch->entnum
+	SND_ORIGIN_FIXED  = 1,	// stała pozycja w przestrzeni (np. wybuch, entnum == 0)
+	SND_ORIGIN_TRACK  = 2	// startuje z SND_POS, ale śledzi ch->entnum gdy encja jest w PVS
+} snd_origin_mode_t;
+
 typedef struct
 {
 	sfx_t		*sfx;			// sfx number
@@ -102,11 +110,15 @@ typedef struct
 	int 		pos;			// sample position in sfx	
 	int			entnum;			// to allow overriding a specific sound
 	int			entchannel;		//
-	vec3_t		origin;			// only use if fixed_origin is set
+	vec3_t		origin;			// fixed or last known origin
 	vec_t		dist_mult;		// distance multiplier (attenuation/clipK)
 	int			master_vol;		// 0-255 master volume
 	qboolean	fixed_origin;	// use origin instead of fetching entnum's origin
 	qboolean	autosound;		// from an entity->sound, cleared each frame
+	snd_origin_mode_t origin_mode;
+	qboolean	has_last_origin;
+	qboolean	inherit_checked;
+	int			start_time;		// cls.realtime przy starcie kanału (okno dziedziczenia CHAN_ITEM)
 } channel_t;
 
 //HRTF
@@ -130,18 +142,14 @@ extern	playsound_t	s_pendingplays;
 
 extern cvar_t	*s_volume;
 extern cvar_t	*s_show;
-extern cvar_t	*s_loadas8bit;
-extern cvar_t	*s_quality;	//unused - to remove?
 extern cvar_t	*s_mixahead;
-extern cvar_t 	*s_khz;
-extern cvar_t 	*s_force_mono;
+extern cvar_t	*s_khz;
+extern cvar_t	*s_force_mono;
+extern cvar_t	*s_swapstereo;
+extern cvar_t	*s_ambient;
 
 extern qboolean sound_started;
 extern SDL_mutex *s_sound_mutex;
-
-extern cvar_t *s_ambient;
-extern cvar_t *s_volume;
-extern cvar_t *s_show;
 
 extern vec3_t listener_origin;
 extern vec3_t listener_forward;
@@ -169,6 +177,7 @@ void S_Audio_Write(const void* src, int count);
 
 void S_AddLoopSounds(void);
 void S_Spatialize(channel_t *ch);
+qboolean S_GetChannelOrigin(channel_t *ch, vec3_t origin);
 
 // System specific functions
 qboolean SNDDMA_Init(void);
@@ -190,7 +199,6 @@ void S_IssuePlaysound (playsound_t *ps);
 
 void S_PaintChannels(int endtime);
 void S_TransferPaintBuffer(int endtime);
-void S_PaintChannelFrom8 (channel_t *ch, sfxcache_t *sc, int count, int offset);
 void S_PaintChannelFrom16 (channel_t *ch, sfxcache_t *sc, int count, int offset);
 
 #endif

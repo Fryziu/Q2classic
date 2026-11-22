@@ -52,11 +52,7 @@ static void S_DebugLog(void)
         if (!ch->sfx) continue;
 
         vec3_t origin, diff;
-        if (ch->fixed_origin) {
-            VectorCopy(ch->origin, origin);
-        } else {
-            CL_GetEntitySoundOrigin(ch->entnum, origin);
-        }
+        S_GetChannelOrigin(ch, origin);
 
         // Naprawa: VectorDistance -> VectorSubtract + VectorLength
         VectorSubtract(origin, listener_origin, diff);
@@ -84,22 +80,30 @@ void S_ProcessChannelSamples(channel_t *ch, int samples_done)
 {
     if (!ch->sfx) return;
     sfxcache_t *sc = ch->sfx->cache;
-    
+    if (!sc || sc->length <= 0) {
+        memset(ch, 0, sizeof(*ch));
+        return;
+    }
+
     ch->pos += samples_done;
 
     if (ch->pos >= sc->length)
     {
         if (sc->loopstart >= 0)
-        {   // Precyzyjne zawijanie pętli
+        {   // Precyzyjne zawijanie pętli WAV (chunk cue)
             int loop_len = sc->length - sc->loopstart;
             if (loop_len > 0)
                 ch->pos = sc->loopstart + (ch->pos - sc->length) % loop_len;
             else
                 ch->pos = sc->loopstart;
         }
+        else if (ch->autosound)
+        {   // Płynne zapętlanie dla autosound (rakiety, railgun, bfg, ambient)
+            ch->pos %= sc->length;
+        }
         else
         {
-            ch->sfx = NULL; // Koniec odtwarzania
+            memset(ch, 0, sizeof(*ch)); // Koniec odtwarzania — zwalnia slot kanału
         }
     }
 }
@@ -164,8 +168,8 @@ void S_Audio_Write(const void* src, int count)
 /// CONSTANTS & GLOBALS
 
 #define		SOUND_FULLVOLUME	80
-#define		MAX_SFX				(MAX_SOUNDS*2)
-#define		SND_HASH_SIZE		32
+#define		MAX_SFX				(MAX_SOUNDS*4)
+#define		SND_HASH_SIZE		128
 #define		MAX_PLAYSOUNDS		128
 
 channel_t   channels[MAX_CHANNELS];
@@ -175,10 +179,8 @@ int         paintedtime;
 playsound_t s_pendingplays;
 SDL_mutex  *s_sound_mutex = NULL;
 
-cvar_t *s_volume, *s_show, *s_loadas8bit;
-cvar_t *s_testsound, *s_khz, *s_mixahead, *s_primary;
-cvar_t *s_swapstereo, *s_ambient, *s_oldresample, *s_quality;
-cvar_t *s_sdl_resample, *s_force_mono, *s_sound_overlap;
+cvar_t *s_volume, *s_show, *s_khz, *s_mixahead;
+cvar_t *s_swapstereo, *s_ambient, *s_force_mono, *s_sound_overlap;
 
 static playsound_t s_freeplays;
 static playsound_t s_playsounds[MAX_PLAYSOUNDS];
@@ -228,20 +230,14 @@ void S_Init(void)
 	s_occlusion = Cvar_Get("s_occlusion", "0", CVAR_ARCHIVE | CVAR_LATCHED);
 
 	s_volume = Cvar_Get ("s_volume", "0.7", CVAR_ARCHIVE);
-	s_loadas8bit = Cvar_Get ("s_loadas8bit", "0", CVAR_ARCHIVE|CVAR_LATCHED);
 	s_khz = Cvar_Get ("s_khz", "44100", CVAR_ARCHIVE|CVAR_LATCHED);
 	s_mixahead = Cvar_Get ("s_mixahead", "0.03", CVAR_ARCHIVE);
 	s_show = Cvar_Get ("s_show", "0", 0);
-	s_testsound = Cvar_Get ("s_testsound", "0", 0);
-	s_swapstereo = Cvar_Get( "s_swapstereo", "0", CVAR_ARCHIVE );
+	s_swapstereo = Cvar_Get ("s_swapstereo", "0", CVAR_ARCHIVE);
 	s_ambient = Cvar_Get ("s_ambient", "1", 0);
-	s_oldresample = Cvar_Get ("s_oldresample", "0", CVAR_LATCHED);
-	s_quality = Cvar_Get ("s_quality", "0", CVAR_ARCHIVE);
-	s_sdl_resample = Cvar_Get("s_sdl_resample", "1", CVAR_LATCHED);
 	s_force_mono = Cvar_Get("s_force_mono", "0", CVAR_LATCHED | CVAR_ARCHIVE);
 	s_sound_overlap = Cvar_Get("s_sound_overlap", "0", CVAR_ARCHIVE);
 
-	s_sdl_resample->OnChange = OnChange_SoundRestart;
 	s_force_mono->OnChange = OnChange_SoundRestart;
 
 	// Wybór backendu przed uruchomieniem DMA
@@ -325,6 +321,36 @@ void S_Shutdown(void)
 
 /// SOUND LOADING
 
+static int S_FindWavLoopStart(const byte *raw_data, int raw_len)
+{
+	if (!raw_data || raw_len < 12)
+		return -1;
+	if (memcmp(raw_data, "RIFF", 4) != 0 || memcmp(raw_data + 8, "WAVE", 4) != 0)
+		return -1;
+
+	int pos = 12;
+	while (pos + 8 <= raw_len) {
+		uint32 chunk_len;
+		memcpy(&chunk_len, raw_data + pos + 4, sizeof(chunk_len));
+		chunk_len = (uint32)LittleLong((int)chunk_len);
+
+		if (memcmp(raw_data + pos, "cue ", 4) == 0) {
+			if (pos + 36 <= raw_len && chunk_len >= 28) {
+				int loopstart;
+				memcpy(&loopstart, raw_data + pos + 32, sizeof(loopstart));
+				loopstart = LittleLong(loopstart);
+				return (loopstart >= 0) ? loopstart : -1;
+			}
+			return -1;
+		}
+
+		if (chunk_len > (uint32)(raw_len - pos - 8))
+			break;
+		pos += 8 + (int)((chunk_len + 1u) & ~1u);
+	}
+	return -1;
+}
+
 sfxcache_t *S_LoadSound(sfx_t *s)
 {
 	byte *raw_data;
@@ -333,9 +359,11 @@ sfxcache_t *S_LoadSound(sfx_t *s)
 	SDL_AudioSpec spec;
 	Uint8 *wav_buffer;
 	Uint32 wav_length;
+	int raw_loopstart;
 
 	if (s->name[0] == '*') return NULL;
 	if (s->cache) return s->cache;
+	if (s->missing) return NULL;
 
 	// Ścieżka pliku
 	if (s->truename) Com_sprintf(path, sizeof(path), "sound/%s", s->truename);
@@ -343,19 +371,31 @@ sfxcache_t *S_LoadSound(sfx_t *s)
 	else Com_sprintf(path, sizeof(path), "sound/%s", s->name);
 
 	raw_len = FS_LoadFile(path, (void **)&raw_data);
-	if (!raw_data) return NULL;
+	if (!raw_data) {
+		s->missing = true;
+		return NULL;
+	}
+
+	raw_loopstart = S_FindWavLoopStart(raw_data, raw_len);
 
 	SDL_RWops *rw = SDL_RWFromConstMem(raw_data, raw_len);
 	if (!SDL_LoadWAV_RW(rw, 1, &spec, &wav_buffer, &wav_length)) {
 		Com_Printf("S_LoadSound: SDL_LoadWAV failed %s\n", path);
 		FS_FreeFile(raw_data);
+		s->missing = true;
 		return NULL;
 	}
 	FS_FreeFile(raw_data);
 	
+	int target_channels = (spec.channels == 2) ? 2 : 1;
 	SDL_AudioCVT cvt;
-	SDL_BuildAudioCVT(&cvt, spec.format, spec.channels, spec.freq, 
-	                        AUDIO_S16LSB, dma.channels, dma.speed);
+	if (SDL_BuildAudioCVT(&cvt, spec.format, spec.channels, spec.freq, 
+	                        AUDIO_S16LSB, target_channels, dma.speed) < 0) {
+		Com_Printf("S_LoadSound: SDL_BuildAudioCVT failed %s (%s)\n", path, SDL_GetError());
+		SDL_FreeWAV(wav_buffer);
+		s->missing = true;
+		return NULL;
+	}
 
 	// Alokujemy jeden bufor roboczy dla CVT
 	cvt.len = wav_length;
@@ -363,16 +403,25 @@ sfxcache_t *S_LoadSound(sfx_t *s)
 	memcpy(cvt.buf, wav_buffer, wav_length);
 	SDL_FreeWAV(wav_buffer);
 
-	SDL_ConvertAudio(&cvt);
+	if (cvt.needed) {
+		SDL_ConvertAudio(&cvt);
+	} else {
+		cvt.len_cvt = cvt.len;
+	}
 
-	// Finalna paczka dźwiękowa
+	// Finalna paczka dźwiękowa (zachowujemy mono jako 1ch, stereo jako 2ch)
 	int final_len = cvt.len_cvt;
 	sfxcache_t *sc = Z_TagMalloc(sizeof(sfxcache_t) + final_len, TAG_CL_SFX);
-	sc->length = final_len / (dma.channels * 2);
+	sc->length = final_len / (target_channels * 2);
 	sc->speed = dma.speed;
 	sc->width = 2;
-	sc->channels = dma.channels;
-	sc->loopstart = -1;
+	sc->channels = target_channels;
+	if (raw_loopstart >= 0 && spec.freq > 0) {
+		int scaled_loop = (int)((long long)raw_loopstart * dma.speed / spec.freq);
+		sc->loopstart = (scaled_loop < sc->length) ? scaled_loop : -1;
+	} else {
+		sc->loopstart = -1;
+	}
 	memcpy(sc->data, cvt.buf, final_len);
 
 	Z_Free(cvt.buf);
@@ -438,7 +487,7 @@ void S_StartSound(const vec3_t origin, int entnum, int entchannel, sfx_t *sfx, f
 		if(entnum < 1 || entnum >= MAX_EDICTS ) {
 			Com_Error( ERR_DROP, "S_StartSound: bad entnum: %d", entnum );
 		}
-		sfx = S_RegisterSexedSound(cl_entities[entnum].current.number, sfx->name);
+		sfx = S_RegisterSexedSound(entnum, sfx->name);
 		if (!sfx) return;
 	}
 
@@ -499,10 +548,10 @@ void S_AddLoopSounds (void)
         sfxcache_t *sc = S_LoadSound(sfx);
         if (!sc) continue;
 
-        // Szukaj istniejącego kanału dla tej encji i tego dźwięku
+        // Szukaj istniejącego kanału pętli dla tej encji i tego dźwięku
         channel_t *ch = NULL;
         for (int j=0 ; j<MAX_CHANNELS ; j++) {
-            if (channels[j].entnum == entnum && channels[j].sfx == sfx) {
+            if (channels[j].entnum == entnum && channels[j].sfx == sfx && channels[j].entchannel == 0) {
                 ch = &channels[j];
                 break;
             }
@@ -512,6 +561,7 @@ void S_AddLoopSounds (void)
             ch = S_PickChannel(entnum, 0);
             if (!ch) continue;
             ch->entnum = entnum;
+            ch->entchannel = 0;
             ch->sfx = sfx;
             ch->pos = 0;
             ch->end = paintedtime + sc->length;
@@ -519,13 +569,10 @@ void S_AddLoopSounds (void)
 
         ch->autosound = true;
         ch->master_vol = 127;
-
-        // FIX DLA RAKIET: 
-        // 1. fixed_origin = false zmusza S_Spatialize do wołania CL_GetEntitySoundOrigin
-        ch->fixed_origin = false; 
-        
-        // 2. Rakiety używają zazwyczaj ATTN_NORM (1.0) -> 0.0005f
-        ch->dist_mult = 1.0f * 0.002f;  //1.0f * 0.0005f;  // dźwięk "lotu" rakiety? 
+        ch->fixed_origin = false;
+        ch->origin_mode = SND_ORIGIN_ENTITY;
+        ch->inherit_checked = true;
+        ch->dist_mult = 1.0f * 0.002f;
 
         S_Spatialize(ch);
     }
@@ -555,9 +602,16 @@ void S_Update(const vec3_t origin, const vec3_t v_forward, const vec3_t v_right,
 static channel_t *S_PickChannel(int entnum, int entchannel)
 {
 	int first_to_die = -1;
+	int free_slot = -1;
 	int life_left = 0x7fffffff;
 
 	for (int i=0; i < MAX_CHANNELS; i++) {
+		if (!channels[i].sfx) {
+			if (free_slot == -1)
+				free_slot = i;
+			continue;
+		}
+
 		// ZMIANA: Wymuszamy nadpisywanie dla kanału broni (1),
 		// aby przerwać dźwięk ładowania/odbezpieczania (Granat, BFG)
 		// niezależnie od ustawienia overlap.
@@ -569,127 +623,26 @@ static channel_t *S_PickChannel(int entnum, int entchannel)
 			}
 		}
 
-		if (channels[i].entnum == cl.playernum+1 && entnum != cl.playernum+1 && channels[i].sfx) continue;
+		if (channels[i].entnum == cl.playernum+1 && entnum != cl.playernum+1) continue;
 		if (channels[i].end - paintedtime < life_left) {
 			life_left = channels[i].end - paintedtime;
 			first_to_die = i;
 		}
 	}
+
+	if (first_to_die == -1 || (free_slot != -1 && (entchannel == 0 || (s_sound_overlap && s_sound_overlap->integer && entchannel != 1) ||
+		!(channels[first_to_die].entnum == entnum && channels[first_to_die].entchannel == entchannel)))) {
+		if (free_slot != -1)
+			first_to_die = free_slot;
+	}
+
 	if (first_to_die == -1) return NULL;
 	memset(&channels[first_to_die], 0, sizeof(channel_t));
 	return &channels[first_to_die];
 }
 
 
-// snd_dma.c
-/*
-// advanced panning and logarithmic volume version (needs modified MODIFIERS :-)
 static void S_SpatializeOrigin(vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol)
-{
-    vec3_t source_vec;
-    float dist, scale;
-
-    if (cls.state != ca_active) {
-        *left_vol = *right_vol = (int)master_vol;
-        return;
-    }
-
-    VectorSubtract(origin, listener_origin, source_vec);
-    dist = VectorNormalize(source_vec);
-
-    // 1. Model Logarytmiczny
-    if (dist <= SOUND_FULLVOLUME) {
-        scale = 1.0f;
-    } else {
-        // scale = ref / (ref + rolloff * (dist - ref))
-        // dist_mult w Q2 to zazwyczaj wartości typu 1.0, 2.0, 4.0
-        scale = SOUND_FULLVOLUME / (SOUND_FULLVOLUME + dist_mult * (dist - SOUND_FULLVOLUME));
-    }
-
-    if (scale <= 0.001f) { // Hard cutoff dla wydajności miksera (niesłyszalne)
-        *left_vol = *right_vol = 0;
-        return;
-    }
-
-    if (dma.channels == 1 || !dist_mult) {
-        *left_vol = *right_vol = (int)(master_vol * scale);
-    } else {
-        float dot = DotProduct(listener_right, source_vec);
-
-        // Panning: Constant Power z progiem 10% (SSE)
-        float p_right = 0.5f * (1.0f + dot);
-        float p_left  = 0.5f * (1.0f - dot);
-
-        __m128 v_p = _mm_set_ps(0.0f, 0.0f, p_left, p_right);
-        __m128 v_sqrt = _mm_sqrt_ps(v_p);
-        
-        float res[4];
-        _mm_storeu_ps(res, v_sqrt);
-
-        // Aplikujemy 10% floor i master volume
-        float rscale = (0.1f + 0.9f * res[0]);
-        float lscale = (0.1f + 0.9f * res[1]);
-
-        *right_vol = (int)(master_vol * scale * rscale);
-        *left_vol  = (int)(master_vol * scale * lscale);
-    }
-}
-*/
-
-// advanced panning version
-static void S_SpatializeOrigin(vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol)
-{
-    vec3_t source_vec;
-    float dot, dist, scale;
-
-    if (cls.state != ca_active) {
-        *left_vol = *right_vol = (int)master_vol;
-        return;
-    }
-
-    VectorSubtract(origin, listener_origin, source_vec);
-    dist = VectorNormalize(source_vec);
-
-    dist -= SOUND_FULLVOLUME;
-    if (dist < 0) dist = 0;
-
-    dist *= dist_mult;
-    scale = 1.0f - dist;
-
-    if (scale <= 0) {
-        *left_vol = *right_vol = 0;
-        return;
-    }
-
-    if (dma.channels == 1 || !dist_mult) {
-        *left_vol = *right_vol = (int)(master_vol * scale);
-    } else {
-        dot = DotProduct(listener_right, source_vec);
-
-        // Obliczamy proporcje (p) dla obu kanałów: R = 0.5*(1+dot), L = 0.5*(1-dot)
-        float p_right = 0.5f * (1.0f + dot);
-        float p_left  = 0.5f * (1.0f - dot);
-
-        // Optymalizacja SSE: Obliczamy sqrt dla obu kanałów naraz
-        __m128 v_p = _mm_set_ps(0.0f, 0.0f, p_left, p_right);
-        __m128 v_sqrt = _mm_sqrt_ps(v_p);
-        
-        float res[4];
-        _mm_storeu_ps(res, v_sqrt);
-
-        // Aplikujemy floor 10% i master_vol: 0.1 + 0.9 * sqrt(p)
-        float rscale = (0.1f + 0.9f * res[0]);
-        float lscale = (0.1f + 0.9f * res[1]);
-
-        *right_vol = (int)(master_vol * scale * rscale);
-        *left_vol  = (int)(master_vol * scale * lscale);
-    }
-}
-
-
-/// traditional version
-/*
-static void S_SpatializeOrigin (vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol)
 {
     vec_t dot, dist, lscale, rscale, scale;
     vec3_t source_vec;
@@ -702,11 +655,9 @@ static void S_SpatializeOrigin (vec3_t origin, float master_vol, float dist_mult
     VectorSubtract(origin, listener_origin, source_vec);
     dist = VectorNormalize(source_vec);
 
-    // 1. Strefa pełnej głośności (80 jednostek)
     dist -= SOUND_FULLVOLUME;
     if (dist < 0) dist = 0;
 
-    // 2. Właściwa atenuacja
     dist *= dist_mult;
     scale = 1.0f - dist;
 
@@ -719,6 +670,8 @@ static void S_SpatializeOrigin (vec3_t origin, float master_vol, float dist_mult
         lscale = rscale = 1.0f;
     } else {
         dot = DotProduct(listener_right, source_vec);
+        if (s_swapstereo && s_swapstereo->integer)
+            dot = -dot;
         rscale = 0.5f * (1.0f + dot);
         lscale = 0.5f * (1.0f - dot);
     }
@@ -726,120 +679,113 @@ static void S_SpatializeOrigin (vec3_t origin, float master_vol, float dist_mult
     *right_vol = (int)(master_vol * scale * rscale);
     *left_vol  = (int)(master_vol * scale * lscale);
 }
-*/
-/*
-// parabolic version
-static void S_SpatializeOrigin (vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol)
+
+#define SND_INHERIT_WINDOW_MS 250
+#define SND_INHERIT_RADIUS_SQ (72.0f * 72.0f)
+
+static void S_TryInheritItemSound(channel_t *ch)
 {
-    vec_t   dot, dist, scale;
-    vec3_t  source_vec;
+    if (cls.state != ca_active)
+        return;
 
-    if (cls.state != ca_active) {
-        *left_vol = *right_vol = (int)master_vol;
+    if (cls.realtime - ch->start_time > SND_INHERIT_WINDOW_MS) {
+        ch->inherit_checked = true;
         return;
     }
 
-    VectorSubtract(origin, listener_origin, source_vec);
-
-    // 1. Dystans - powrót do czystej liniowości zgodnie z życzeniem
-    dist = VectorNormalize(source_vec);
-    dist -= SOUND_FULLVOLUME;
-    if (dist < 0) dist = 0;
-    
-    scale = 1.0f - (dist * dist_mult);
-    if (scale <= 0) {
-        *left_vol = *right_vol = 0;
-        return;
+    // Dziedziczenie dotyczy tylko dźwięków CHAN_ITEM bez przypisanego gracza,
+    // gdy źródłowa encja przedmiotu zniknęła z mapy (została podniesiona).
+    if (ch->entnum > 0 && ch->entnum < MAX_EDICTS) {
+        if (cl_entities[ch->entnum].serverframe == cl.frame.serverframe)
+            return; // encja przedmiotu nadal istnieje w tej klatce, sprawdź w następnej
     }
 
-    if (dma.channels == 1 || !dist_mult) {
-        *left_vol = *right_vol = (int)(master_vol * scale);
-    } else {
-        dot = DotProduct(listener_right, source_vec);
-        
-        // 2. Panoramowanie "GUST" (Krzywa kwadratowa dopasowana do 10%, 70%, 100%)
-        // Funkcja dla ucha prawego: f(dot) = -0.15*dot^2 + 0.45*dot + 0.7
-        // dot =  1 (prawa): -0.15 + 0.45 + 0.7 = 1.00 (100%)
-        // dot =  0 (środek):  0.00 + 0.00 + 0.7 = 0.70 (70%)
-        // dot = -1 (lewa):   -0.15 - 0.45 + 0.7 = 0.10 (10%)
-        
-        float dot2 = dot * dot;
-        float rscale = -0.15f * dot2 + 0.45f * dot + 0.7f;
-        float lscale = -0.15f * dot2 - 0.45f * dot + 0.7f;
+    int max_players = cl.maxclients;
+    if (max_players < 1) max_players = 1;
+    if (max_players > MAX_CLIENTS) max_players = MAX_CLIENTS;
 
-        *right_vol = (int)(master_vol * scale * rscale);
-        *left_vol  = (int)(master_vol * scale * lscale);
+    int best_ent = 0;
+    float best_dist_sq = SND_INHERIT_RADIUS_SQ;
+
+    for (int p = 1; p <= max_players; p++) {
+        vec3_t p_org, diff;
+
+        if (p == cl.playernum + 1) {
+            VectorCopy(cl.refdef.vieworg, p_org);
+        } else if (cl_entities[p].serverframe == cl.frame.serverframe) {
+            CL_GetEntitySoundOrigin(p, p_org);
+        } else {
+            continue;
+        }
+
+        VectorSubtract(p_org, ch->origin, diff);
+        float d2 = DotProduct(diff, diff);
+        if (d2 <= best_dist_sq) {
+            best_dist_sq = d2;
+            best_ent = p;
+        }
+    }
+
+    if (best_ent > 0) {
+        ch->entnum = best_ent;
+        ch->origin_mode = SND_ORIGIN_TRACK;
+        ch->fixed_origin = false;
+        ch->inherit_checked = true;
     }
 }
-*/
-// quadratic version
-/*
-static void S_SpatializeOrigin (vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol)
+
+qboolean S_GetChannelOrigin(channel_t *ch, vec3_t origin)
 {
-    vec3_t source_vec;
-    float dot, dist, scale;
-
-    if (cls.state != ca_active) {
-        *left_vol = *right_vol = (int)master_vol;
-        return;
+    if (ch->entchannel == CHAN_ITEM && ch->origin_mode == SND_ORIGIN_FIXED && !ch->inherit_checked) {
+        S_TryInheritItemSound(ch);
     }
 
-    VectorSubtract(origin, listener_origin, source_vec);
-    dist = VectorLength(source_vec);
-
-    dist -= SOUND_FULLVOLUME;
-    if (dist < 0) dist = 0;
-    scale = 1.0f - (dist * dist_mult);
-
-    if (scale <= 0) {
-        *left_vol = *right_vol = 0;
-        return;
+    if (ch->entnum == cl.playernum + 1) {
+        VectorCopy(listener_origin, origin);
+        VectorCopy(origin, ch->origin);
+        ch->has_last_origin = true;
+        return true;
     }
 
-    float q_scale = scale * scale;
-
-    if (dma.channels == 1 || !dist_mult) {
-        *left_vol = *right_vol = (int)(master_vol * q_scale);
-    } else {
-        VectorNormalize(source_vec);
-        dot = DotProduct(listener_right, source_vec);
-        
-        // GUST: Constant Power Panning (stała moc w środku)
-        // Przybliżenie: pan_r = 0.5 * (1 + dot), rscale = sqrt(pan_r)
-        // Zamiast sqrt używamy wydajnego przybliżenia wielomianem
-        float pan_r = 0.5f * (1.0f + dot);
-        float pan_l = 1.0f - pan_r;
-        
-        // Bleed 15% + Constant Power Approximation
-        float rscale = 0.15f + 0.85f * (pan_r * (1.5f - 0.5f * pan_r));
-        float lscale = 0.15f + 0.85f * (pan_l * (1.5f - 0.5f * pan_l));
-
-        *right_vol = (int)(master_vol * q_scale * rscale);
-        *left_vol  = (int)(master_vol * q_scale * lscale);
+    if (ch->origin_mode == SND_ORIGIN_ENTITY) {
+        if (ch->entnum > 0 && ch->entnum < MAX_EDICTS) {
+            if (cl_entities[ch->entnum].serverframe == cl.frame.serverframe || !ch->has_last_origin) {
+                CL_GetEntitySoundOrigin(ch->entnum, origin);
+                VectorCopy(origin, ch->origin);
+                ch->has_last_origin = true;
+            } else {
+                VectorCopy(ch->origin, origin);
+            }
+            return true;
+        }
+    } else if (ch->origin_mode == SND_ORIGIN_TRACK) {
+        if (ch->entnum > 0 && ch->entnum < MAX_EDICTS &&
+            cl_entities[ch->entnum].serverframe == cl.frame.serverframe) {
+            CL_GetEntitySoundOrigin(ch->entnum, origin);
+            VectorCopy(origin, ch->origin);
+            ch->has_last_origin = true;
+            return true;
+        }
+        VectorCopy(ch->origin, origin);
+        return true;
     }
+
+    VectorCopy(ch->origin, origin);
+    return false;
 }
-*/
 
 void S_Spatialize(channel_t *ch)
 {
     vec3_t origin;
 
-    // Jeśli dźwięk jest przypisany do gracza...
-    if (ch->entnum == cl.playernum + 1) 
-    {
-        // ...ale nie ma tłumienia (dist_mult == 0), to jest to dźwięk 2D (menu, powerupy)
-        if (ch->dist_mult <= 0) {
-            ch->leftvol = ch->master_vol;
-            ch->rightvol = ch->master_vol;
-            return;
-        }
-        // W przeciwnym razie (np. lot rakiety, kroki) pozwól na normalną spatializację
-    }
+    S_GetChannelOrigin(ch, origin);
 
-    if (ch->fixed_origin) {
-        VectorCopy(ch->origin, origin);
-    } else {
-        CL_GetEntitySoundOrigin(ch->entnum, origin);
+    // Dźwięk pochodzący z encji lokalnego gracza gra bezpośrednio bez zniekształcania odległością
+    if (ch->entnum == cl.playernum + 1)
+    {
+        ch->leftvol = ch->master_vol;
+        ch->rightvol = ch->master_vol;
+        return;
     }
 
     S_SpatializeOrigin(origin, ch->master_vol, ch->dist_mult, &ch->leftvol, &ch->rightvol);
@@ -847,7 +793,14 @@ void S_Spatialize(channel_t *ch)
 
 /// REGISTRATION
 
-void S_BeginRegistration(void) { s_registration_sequence++; s_registering = true; }
+void S_BeginRegistration(void) {
+	int i;
+	s_registration_sequence++;
+	s_registering = true;
+	for (i = 0; i < num_sfx; i++) {
+		known_sfx[i].missing = false;
+	}
+}
 
 sfx_t *S_RegisterSound(const char *name) {
 	if (!sound_started) return NULL;
@@ -915,6 +868,7 @@ static sfx_t *S_FindName (const char *name, qboolean create)
 	sfx_t *sfx = &known_sfx[i];
 	sfx->cache = NULL;
 	sfx->truename = NULL;
+	sfx->missing = false;
 	Q_strncpyz(sfx->name, name, sizeof(sfx->name));
 	sfx->registration_sequence = s_registration_sequence;
 	sfx->hashNext = sfx_hash[hash];
@@ -927,12 +881,55 @@ static sfx_t *S_AliasName (const char *aliasname, const char *truename)
 	sfx_t *sfx = S_FindName(aliasname, true);
 	if (sfx->truename) Z_Free(sfx->truename);
 	sfx->truename = CopyString (truename, TAG_CL_SFX);
+	sfx->missing = false;
 	return sfx;
+}
+
+static struct sfx_s *S_RegisterSexedSoundForModel(const char *model, const char *base)
+{
+	char sexedFilename[MAX_QPATH], maleFilename[MAX_QPATH];
+	sfx_t *sfx;
+
+	if (!sound_started || !model || !model[0] || !base || base[0] != '*')
+		return NULL;
+
+	Com_sprintf(sexedFilename, sizeof(sexedFilename), "#players/%s/%s", model, base + 1);
+	sfx = S_FindName(sexedFilename, false);
+	if (sfx) {
+		if (!s_registering && !sfx->cache && !sfx->missing) {
+			S_LoadSound(sfx);
+		}
+		return sfx;
+	}
+
+	if (s_registering) {
+		if (FS_LoadFile(sexedFilename + 1, NULL) > 0) {
+			sfx = S_RegisterSound(sexedFilename);
+		} else {
+			Com_sprintf(maleFilename, sizeof(maleFilename), "player/%s/%s", "male", base + 1);
+			sfx = S_AliasName(sexedFilename, maleFilename);
+		}
+	} else {
+		sfx = S_FindName(sexedFilename, true);
+		if (!S_LoadSound(sfx)) {
+			sfx->missing = false;
+			Com_sprintf(maleFilename, sizeof(maleFilename), "player/%s/%s", "male", base + 1);
+			if (sfx->truename) Z_Free(sfx->truename);
+			sfx->truename = CopyString(maleFilename, TAG_CL_SFX);
+			S_LoadSound(sfx);
+		}
+	}
+	return sfx;
+}
+
+void S_PrecacheSexedSound(const char *model, const char *base)
+{
+	S_RegisterSexedSoundForModel(model, base);
 }
 
 static struct sfx_s *S_RegisterSexedSound(int entnum, const char *base)
 {
-	char model[MAX_QPATH], sexedFilename[MAX_QPATH], maleFilename[MAX_QPATH];
+	char model[MAX_QPATH];
 	int n = CS_PLAYERSKINS + entnum - 1;
 	model[0] = 0;
 	if (cl.configstrings[n][0]) {
@@ -940,21 +937,12 @@ static struct sfx_s *S_RegisterSexedSound(int entnum, const char *base)
 		if (p) {
 			Q_strncpyz(model, p + 1, sizeof(model));
 			p = strchr(model, '/');
+			if (!p) p = strchr(model, '\\');
 			if (p) *p = 0;
 		}
 	}
 	if (!model[0]) strcpy(model, "male");
-	Com_sprintf(sexedFilename, sizeof(sexedFilename), "#players/%s/%s", model, base+1);
-	sfx_t *sfx = S_FindName (sexedFilename, false);
-	if (!sfx) {
-		if (FS_LoadFile(sexedFilename + 1, NULL) > 0) {
-			sfx = S_RegisterSound(sexedFilename);
-		} else {
-			Com_sprintf(maleFilename, sizeof(maleFilename), "player/%s/%s", "male", base+1);
-			sfx = S_AliasName(sexedFilename, maleFilename);
-		}
-	}
-	return sfx;
+	return S_RegisterSexedSoundForModel(model, base);
 }
 
 /// CONSOLE COMMANDS
@@ -1012,6 +1000,32 @@ void S_IssuePlaysound(playsound_t *ps) {
     ch->sfx = ps->sfx;
     VectorCopy(ps->origin, ch->origin);
     ch->fixed_origin = ps->fixed_origin;
+    ch->start_time = cls.realtime;
+
+    if (!ps->fixed_origin) {
+        ch->origin_mode = SND_ORIGIN_ENTITY;
+        ch->has_last_origin = false;
+        ch->inherit_checked = true;
+    } else {
+        ch->has_last_origin = true;
+        int max_players = (cl.maxclients > 0) ? cl.maxclients : MAX_CLIENTS;
+        if (ch->entnum == cl.playernum + 1 || (ch->entnum >= 1 && ch->entnum <= max_players)) {
+            // Serwery (Q2Pro/R1Q2/mody) wysyłają SND_ENT | SND_POS dla graczy poza PVS —
+            // przełącz na dynamiczne śledzenie jak tylko gracz będzie widoczny.
+            ch->origin_mode = SND_ORIGIN_TRACK;
+            ch->fixed_origin = false;
+            ch->inherit_checked = true;
+        } else if (ch->entnum > 0 && ch->entnum < MAX_EDICTS &&
+                   cl_entities[ch->entnum].serverframe == cl.frame.serverframe &&
+                   cl_entities[ch->entnum].current.solid == 31) {
+            // Ruchome bmodele (drzwi, windy, platformy)
+            ch->origin_mode = SND_ORIGIN_TRACK;
+            ch->inherit_checked = true;
+        } else {
+            ch->origin_mode = SND_ORIGIN_FIXED;
+            ch->inherit_checked = (ch->entchannel != CHAN_ITEM);
+        }
+    }
     
     // MATEMATYKA Q2PRO/SOFTWARE:
     if (ps->attenuation <= 0)

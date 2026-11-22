@@ -195,7 +195,10 @@ void HandleEvents(void) {
     }
 
     if (input_active && mouse_active) {
-        SDL_GetRelativeMouseState(&mx, &my);
+        int dx = 0, dy = 0;
+        SDL_GetRelativeMouseState(&dx, &dy);
+        mx += dx;
+        my += dy;
     }
 }
 
@@ -325,7 +328,27 @@ void GLimp_EndFrame(void) {
     SDL_GL_SwapWindow(window);
 }
 
+void GLimp_SetSwapInterval(int interval) {
+    if (!gl_context)
+        return;
+
+    if (SDL_GL_SetSwapInterval(interval) < 0) {
+        if (interval < 0 && SDL_GL_SetSwapInterval(1) == 0) {
+            Com_Printf("SDL_GL_SetSwapInterval(%d) failed (%s), falling back to 1\n",
+                       interval, SDL_GetError());
+        } else {
+            Com_Printf("SDL_GL_SetSwapInterval(%d) failed: %s\n",
+                       interval, SDL_GetError());
+        }
+    }
+}
+
 void GLimp_AppActivate(qboolean active) {
+    int dx, dy;
+
+    if (input_active == active && mouse_active == active)
+        return;
+
     input_active = active;
     if (active) {
         SDL_SetRelativeMouseMode(SDL_TRUE);
@@ -334,6 +357,9 @@ void GLimp_AppActivate(qboolean active) {
         SDL_SetRelativeMouseMode(SDL_FALSE);
         mouse_active = false;
     }
+
+    SDL_GetRelativeMouseState(&dx, &dy);
+    mx = my = 0;
 }
 
 void GLimp_Shutdown(void) {

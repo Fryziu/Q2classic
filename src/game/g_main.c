@@ -234,15 +234,6 @@ void EndDMLevel (void)
 	char *s, *t, *f;
 	static const char *seps = " ,\n\r";
 
-	// fixme delete debug function
-	gi.dprintf("===== //Mentor Log: EndDMLevel Entered =====\n");
-	    if (level.nextmap[0]) {
-	        gi.dprintf("EndDMLevel: level.nextmap is '%s'\n", level.nextmap);
-	    } else {
-	        gi.dprintf("EndDMLevel: level.nextmap is EMPTY.\n");
-	    }
-	/////
-
 	// stay on same level flag
 	if ((int)dmflags->value & DF_SAME_LEVEL)
 	{
@@ -372,10 +363,6 @@ void ExitLevel (void)
 	int		i;
 	edict_t	*ent;
 	char	command [256];
-
-	// fixme delete debug login function
-	gi.dprintf("===== //Mentor Log: ExitLevel Preparing to change to map '%s' =====\n", level.changemap);
-	//
 
 	Com_sprintf (command, sizeof(command), "gamemap \"%s\"\n", level.changemap);
 	gi.AddCommandString (command);

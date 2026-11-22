@@ -985,7 +985,7 @@ static void CL_FinishHTTPDownload (void)
 		Com_Printf ("HTTP(%s): %lld bytes, %.2fkB/sec [%d remaining files]\n", dl->queueEntry->quakePath, (long long)fileSize, (fileSize / 1024.0) / timeTaken, pendingCount);
 	} while (msgs_in_queue > 0);
 
-	//FS_FlushCache ();
+	FS_FlushCache ();
 
 	if (handleCount == 0)
 	{

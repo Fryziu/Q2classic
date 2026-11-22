@@ -380,6 +380,7 @@ void	GL_InitImages (void);
 void	GL_ShutdownImages (void);
 
 void	GL_FreeUnusedImages (void);
+void	GL_FlushScrap (void);
 
 void	GL_TextureBits(void);
 
@@ -500,7 +501,7 @@ extern glstate_t   gl_state;
 #include "gl_decal.h"
 
 void R_TranslateForEntity (const vec3_t origin);
-void R_RotateForEntity (const vec3_t origin, vec3_t axis[3]);
+void R_RotateForEntity (const vec3_t origin, vec3_t *axis);
 
 qboolean R_GetModeInfo( int *width, int *height, int mode );
 
@@ -513,6 +514,9 @@ extern vec4_t	colorBlack;
 
 void		GLimp_BeginFrame( float camera_separation );
 void		GLimp_EndFrame( void );
+#ifdef USE_SDL
+void		GLimp_SetSwapInterval( int interval );
+#endif
 int 		GLimp_Init( void *hinstance, void *hWnd );
 void		GLimp_Shutdown( void );
 rserr_t    	GLimp_SetMode( int *pwidth, int *pheight, int mode, qboolean fullscreen );

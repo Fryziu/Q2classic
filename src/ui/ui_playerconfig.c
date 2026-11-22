@@ -539,16 +539,16 @@ qboolean PlayerConfig_MenuInit( void )
 	return true;
 }
 
-extern int s_multiplayer_menu;
+extern menuframework_s s_multiplayer_menu;
 
 void M_Menu_PlayerConfig_f (void)
 {
 	if (!PlayerConfig_MenuInit())
 	{
-		Menu_SetStatusBar( (menuframework_s *)&s_multiplayer_menu, "No valid player models found" );
+		Menu_SetStatusBar( &s_multiplayer_menu, "No valid player models found" );
 		return;
 	}
-	Menu_SetStatusBar( (menuframework_s *)&s_multiplayer_menu, NULL );
+	Menu_SetStatusBar( &s_multiplayer_menu, NULL );
 	M_PushMenu( &s_player_config_menu );
 }
 

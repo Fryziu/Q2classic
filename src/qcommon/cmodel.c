@@ -75,7 +75,8 @@ static int			numnodes;
 static cnode_t		map_nodes[MAX_MAP_NODES+6];		// extra for box hull
 
 static int			numleafs = 1;	// allow leaf funcs to be called without a map
-static cleaf_t		map_leafs[MAX_MAP_LEAFS];		 // extra for box hull
+static cleaf_t		map_leafs[MAX_MAP_LEAFS+1];		 // extra for box hull
+static int			emptyleaf;
 
 static int			numleafbrushes;
 static uint16		map_leafbrushes[MAX_MAP_LEAFBRUSHES];
@@ -312,6 +313,18 @@ static void CMod_LoadLeafs (const lump_t *l)
 
 	if (map_leafs[0].contents != CONTENTS_SOLID)
 		Com_Error (ERR_DROP, "Map leaf 0 is not CONTENTS_SOLID");
+
+	emptyleaf = -1;
+	for (i=1 ; i<numleafs ; i++)
+	{
+		if (!map_leafs[i].contents)
+		{
+			emptyleaf = i;
+			break;
+		}
+	}
+	if (emptyleaf == -1)
+		Com_Error (ERR_DROP, "Map does not have an empty leaf");
 }
 
 /*
@@ -725,6 +738,7 @@ static void CM_InitBoxHull (void)
 	box_headnode = numnodes;
 	box_planes = &map_planes[numplanes];
 	if (numnodes+6 > MAX_MAP_NODES
+		|| numleafs+1 > MAX_MAP_LEAFS
 		|| numbrushes+1 > MAX_MAP_BRUSHES
 		|| numleafbrushes+1 > MAX_MAP_LEAFBRUSHES
 		|| numbrushsides+6 > MAX_MAP_BRUSHSIDES
@@ -755,7 +769,7 @@ static void CM_InitBoxHull (void)
 		// nodes
 		c = &map_nodes[box_headnode+i];
 		c->plane = map_planes + (numplanes+i*2);
-		c->children[side] = -1 - numleafs;
+		c->children[side] = -1 - emptyleaf;
 		if (i != 5)
 			c->children[side^1] = box_headnode+i + 1;
 		else

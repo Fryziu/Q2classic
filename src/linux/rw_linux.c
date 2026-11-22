@@ -127,6 +127,8 @@ IN_Move
 */
 void IN_Move (usercmd_t *cmd)
 {
+	float fmx, fmy;
+
 	if (!mouse_avail)
 		return;
 
@@ -138,42 +140,48 @@ void IN_Move (usercmd_t *cmd)
 
 	if (m_filter->integer)
 	{
-		mx = (mx + old_mouse_x) * 0.5f;
-		my = (my + old_mouse_y) * 0.5f;
+		fmx = (mx + old_mouse_x) * 0.5f;
+		fmy = (my + old_mouse_y) * 0.5f;
+	}
+	else
+	{
+		fmx = (float)mx;
+		fmy = (float)my;
 	}
 
 	old_mouse_x = mx;
 	old_mouse_y = my;
+	mx = my = 0;
+
+	if (fmx == 0.0f && fmy == 0.0f)
+		return;
 
 	if (m_accel->value) {
-		float speed = (float)sqrt(mx * mx + my * my);
+		float speed = (float)sqrt(fmx * fmx + fmy * fmy);
 		speed = sensitivity->value + speed * m_accel->value;
-		mx *= speed;
-		my *= speed;
+		fmx *= speed;
+		fmy *= speed;
 	} else {
-		mx *= sensitivity->value;
-		my *= sensitivity->value;
+		fmx *= sensitivity->value;
+		fmy *= sensitivity->value;
 	}
 
 	if (m_autosens->integer)
 	{
-		mx *= cl.refdef.fov_x/90.0;
-		my *= cl.refdef.fov_y/90.0;
+		fmx *= cl.refdef.fov_x / 90.0f;
+		fmy *= cl.refdef.fov_y / 90.0f;
 	}
 
 	// add mouse X/Y movement to cmd
 	if ((in_strafe.state & 1) || (lookstrafe->integer && mlooking))
-		cmd->sidemove += m_side->value * mx;
+		cmd->sidemove += (int16)(m_side->value * fmx);
 	else
-		cl.viewangles[YAW] -= m_yaw->value * mx;
+		cl.viewangles[YAW] -= m_yaw->value * fmx;
 
 	if ((mlooking || freelook->integer) && !(in_strafe.state & 1))
-		cl.viewangles[PITCH] += m_pitch->value * my;
+		cl.viewangles[PITCH] += m_pitch->value * fmy;
 	else
-		cmd->forwardmove -= m_forward->value * my;
-
-	mx = my = 0;
-
+		cmd->forwardmove -= (int16)(m_forward->value * fmy);
 }
 
 void IN_Frame (void)

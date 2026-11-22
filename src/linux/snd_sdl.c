@@ -34,9 +34,6 @@
 static SDL_AudioDeviceID audio_device_id = 0;
 static qboolean snd_inited = false;
 
-cvar_t *sndbits;
-cvar_t *sndspeed;
-cvar_t *sndchannels;
 extern cvar_t *s_khz;
 
 void Snd_Memset (void* dest, const int val, const size_t count)
@@ -92,8 +89,6 @@ qboolean SNDDMA_Init (void)
 
     // Pobieramy s_khz i s_force_mono (już widoczne dzięki snd_loc.h)
     int freq = s_khz ? (int)s_khz->value : 44100;
-    int force_mono = s_force_mono ? s_force_mono->integer : 0;
-	(void)force_mono;
 
     // Restrykcyjna walidacja: tylko 44100 lub 48000
     if (freq != 44100 && freq != 48000) {

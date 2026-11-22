@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <stdlib.h>
 #include <limits.h>
 #include <sys/time.h>
+#include <time.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -42,6 +43,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../linux/rw_linux.h"
 
 cvar_t *nostdout;
+cvar_t *sys_sleep;
 
 unsigned	sys_frame_time;
 
@@ -224,8 +226,8 @@ void *Sys_GetGameAPI (void *parms)
 
 	const char *gamename = "q2game.so";
 
-	setreuid(getuid(), getuid());
-	setegid(getgid());
+	if (setreuid(getuid(), getuid()) != 0 || setegid(getgid()) != 0)
+		Com_DPrintf("Sys_GetGameAPI: failed to drop privileges\n");
 
 	if (game_library)
 		Com_Error (ERR_FATAL, "Sys_GetGameAPI without Sys_UnloadingGame");
@@ -243,9 +245,6 @@ void *Sys_GetGameAPI (void *parms)
 			return NULL;		// couldn't find one anywhere
         }
         
-        // DODAJ TĘ LINIĘ DEBUGUJĄCĄ
-        Com_Printf("Sys_GetGameAPI: Trying path: %s\n", path);
-
 		snprintf (name, MAX_OSPATH, "%s/%s", path, gamename);
 		
 		/* skip it if it just doesn't exist */
@@ -317,31 +316,92 @@ void Sys_SendKeyEvents (void)
 
 int main (int argc, char *argv[])
 {
-	int 	time, oldtime, newtime;
+	int			time;
+	uint64_t	old_us, new_us, delta_us;
+	uint64_t	msec_acc_us = 0;
 
 	// go back to real user for config loads
 	saved_euid = geteuid();
-	seteuid(getuid());
+	if (seteuid(getuid()) != 0)
+		fprintf(stderr, "Warning: seteuid failed\n");
 
 	Qcommon_Init(argc, argv);
 
 	fcntl(0, F_SETFL, fcntl (0, F_GETFL, 0) | FNDELAY);
 
 	nostdout = Cvar_Get("nostdout", "0", 0);
-	if (!nostdout->integer) {
-		fcntl(0, F_SETFL, fcntl (0, F_GETFL, 0) | FNDELAY);
+	sys_sleep = Cvar_Get("sys_sleep", "1", CVAR_ARCHIVE);
+
+	old_us = Sys_Microseconds ();
+	curtime = (unsigned int)(old_us / 1000ULL);
+
+	while (1)
+	{
+		uint64_t wait_us = 0;
+
+#ifndef DEDICATED_ONLY
+		if (!dedicated->integer)
+			wait_us = CL_NextFrameWaitUsec ();
+#endif
+
+		if (wait_us > 0)
+		{
+			if (sys_sleep && sys_sleep->integer > 0)
+			{
+				uint64_t margin_us = (sys_sleep->integer >= 2) ? 250ULL : 1000ULL;
+				if (wait_us > margin_us)
+				{
+					uint64_t sleep_us = wait_us - margin_us;
+					struct timespec req;
+					if (sleep_us > 2000ULL)
+						sleep_us = 2000ULL;
+					req.tv_sec = (time_t)(sleep_us / 1000000ULL);
+					req.tv_nsec = (long)((sleep_us % 1000000ULL) * 1000ULL);
+					nanosleep (&req, NULL);
+				}
+				else
+				{
+#if defined(__x86_64__) || defined(__i386__)
+					__builtin_ia32_pause();
+#endif
+				}
+			}
+			else
+			{
+#if defined(__x86_64__) || defined(__i386__)
+				__builtin_ia32_pause();
+#endif
+			}
+		}
+
+		new_us = Sys_Microseconds ();
+		delta_us = new_us - old_us;
+
+		if (dedicated->integer)
+		{
+			if (delta_us < 1000ULL)
+			{
+				if (sys_sleep && sys_sleep->integer > 0)
+				{
+					struct timespec req = { 0, 500000L };
+					nanosleep (&req, NULL);
+				}
+				continue;
+			}
+		}
+		else if (wait_us > 0 && delta_us < 1000ULL)
+		{
+			continue;
+		}
+
+		old_us = new_us;
+		msec_acc_us += delta_us;
+		time = (int)(msec_acc_us / 1000ULL);
+		msec_acc_us -= (uint64_t)time * 1000ULL;
+		curtime = (unsigned int)(new_us / 1000ULL);
+
+		Qcommon_Frame (time);
 	}
-    oldtime = Sys_Milliseconds ();
-    while (1)
-    {
-// find time spent rendering last frame
-		do {
-			newtime = Sys_Milliseconds ();
-			time = newtime - oldtime;
-		} while (time < 1);
-        Qcommon_Frame (time);
-		oldtime = newtime;
-    }
 }
 
 

@@ -68,7 +68,7 @@ int CL_ParseEntityBits(sizebuf_t *msg, unsigned int *bits) {
   return (int)number;
 }
 
-#define MAX_VISIBLE_ENTITIES 512
+#define MAX_VISIBLE_ENTITIES MAX_EDICTS
 
 
 ///   CL_DeltaEntity_Discard
@@ -150,6 +150,23 @@ static void CL_ParsePacketEntities(sizebuf_t *msg, const frame_t *oldframe,
   newframe->parse_entities = cl.parse_entities;
   newframe->num_entities = 0;
 
+  if (!newframe->valid) {
+    // Consume the packet stream without polluting cl_parse_entities or cl_entities
+    while (1) {
+      newnum = CL_ParseEntityBits(msg, &bits);
+
+      if (msg->readcount > msg->cursize)
+        Com_Error(ERR_DROP, "CL_ParsePacketEntities: end of message");
+
+      if (!newnum)
+        break;
+
+      if (!(bits & U_REMOVE))
+        CL_DeltaEntity_Discard(msg, newnum, NULL, bits);
+    }
+    return;
+  }
+
   // delta from the entities present in oldframe
   if (!oldframe)
     oldnum = 99999;
@@ -195,8 +212,10 @@ static void CL_ParsePacketEntities(sizebuf_t *msg, const frame_t *oldframe,
                            // current frame
       if (cl_shownet->integer == 3)
         Com_Printf("   remove: %i\n", newnum);
-      if (oldnum != newnum)
+      if (oldnum != newnum) {
         Com_DPrintf("U_REMOVE: oldnum != newnum\n");
+        continue;
+      }
 
       oldindex++;
 
@@ -410,16 +429,16 @@ void CL_ParseFrame(sizebuf_t *msg, int extrabits) {
       Com_DPrintf("Delta from current frame (should not happen).\n");
     } else if (!oldframe->valid) { // should never happen
       Com_Printf("Delta from invalid frame (not supposed to happen!).\n");
-    }
-    if (oldframe->serverframe !=
-        cl.frame.deltaframe) { // The frame that the server did the delta from
+    } else if (oldframe->serverframe !=
+               cl.frame.deltaframe) { // The frame that the server did the delta from
       // is too old, so we can't reconstruct it properly.
       Com_DPrintf("Delta frame too old.\n");
     } else if (cl.parse_entities - oldframe->parse_entities >
-               MAX_PARSE_ENTITIES - 128) {
+               MAX_PARSE_ENTITIES - MAX_EDICTS) {
       Com_DPrintf("Delta parse_entities too old.\n");
-    } else
+    } else {
       cl.frame.valid = true; // valid delta parse
+    }
   } else {
     cl.frame.valid = true; // uncompressed frame
     oldframe = NULL;
@@ -1294,119 +1313,7 @@ void CL_AddEntities(void) {
 /// CL_GetEntitySoundOrigin
 /// Called to get the sound spatialization origin
 // Haos to explain
-/*
-void CL_GetEntitySoundOrigin (int ent, vec3_t org)
-{
-    if ((unsigned)ent >= MAX_EDICTS)
-        Com_Error(ERR_DROP, "CL_GetEntityOrigin: ent = %i", ent);
 
-    if (ent == cl.playernum + 1) {
-        VectorCopy (cl.refdef.vieworg, org);
-        return;
-    }
-
-    // Używamy gotowego lerp_origin obliczonego przez silnik dla renderera
-    VectorCopy(cl_entities[ent].lerp_origin, org);
-}
-*/
-
-/// original function
-/*
-        void CL_GetEntitySoundOrigin (int ent, vec3_t org)
-{
-        centity_t	*cent;
-
-        if ((unsigned)ent >= MAX_EDICTS)
-                Com_Error(ERR_DROP, "CL_GetEntityOrigin: ent = %i", ent);
-
-        // Player entity
-        if (ent == cl.playernum + 1)
-        {
-                VectorCopy (cl.refdef.vieworg, org);
-                return;
-        }
-
-        cent = &cl_entities[ent];
-        //VectorCopy(cent->lerp_origin, org);
-
-        if (cent->current.renderfx & (RF_FRAMELERP|RF_BEAM))
-        {
-                // Calculate origin
-                org[0] = cent->current.old_origin[0] + (cent->current.origin[0]
-- cent->current.old_origin[0]) * cl.lerpfrac; org[1] =
-cent->current.old_origin[1] + (cent->current.origin[1] -
-cent->current.old_origin[1]) * cl.lerpfrac; org[2] = cent->current.old_origin[2]
-+ (cent->current.origin[2] - cent->current.old_origin[2]) * cl.lerpfrac;
-        }
-        else
-        {
-                // Calculate origin
-                org[0] = cent->prev.origin[0] + (cent->current.origin[0] -
-cent->prev.origin[0]) * cl.lerpfrac; org[1] = cent->prev.origin[1] +
-(cent->current.origin[1] - cent->prev.origin[1]) * cl.lerpfrac; org[2] =
-cent->prev.origin[2] + (cent->current.origin[2] - cent->prev.origin[2]) *
-cl.lerpfrac;
-        }
-
-        // If a brush model, offset the origin
-        if (cent->current.solid == 31)
-        {
-                vec3_t		midPoint;
-                cmodel_t	*cmodel =
-cl.model_clip[cent->current.modelindex];
-
-                if (!cmodel)
-                        return;
-
-                VectorAvg(cmodel->mins, cmodel->maxs, midPoint);
-                VectorAdd(org, midPoint, org);
-        }
-}
-*/
-
-// optimized
-/*
-void CL_GetEntitySoundOrigin(int ent, vec3_t org)
-{
-    if ((unsigned)ent >= MAX_EDICTS)
-        Com_Error(ERR_DROP, "CL_GetEntityOrigin: ent = %i", ent);
-
-    if (ent == cl.playernum + 1) {
-        VectorCopy(cl.refdef.vieworg, org);
-        return;
-    }
-
-    const centity_t *cent = &cl_entities[ent];
-    const entity_state_t *s = &cent->current;
-
-    // 1. Wybór źródła pochodzenia (redukcja branchingu)
-    // Używamy wskaźnika, aby ujednolicić logikę LERP
-    const float *start = (s->renderfx & (RF_FRAMELERP | RF_BEAM))
-                         ? s->old_origin
-                         : cent->prev.origin;
-
-    // 2. Skonsolidowany LERP (FMA - Fused Multiply-Add friendly)
-    // GCC 13 z -O3 zamieni to na instrukcje wektorowe SSE
-    const float f = cl.lerpfrac;
-    org[0] = start[0] + f * (s->origin[0] - start[0]);
-    org[1] = start[1] + f * (s->origin[1] - start[1]);
-    org[2] = start[2] + f * (s->origin[2] - start[2]);
-
-    // 3. Optymalizacja dla Brush Models
-    // SOLID_BSP = 31. Sprawdzamy tylko, gdy modelindex jest sensowny.
-    if (s->solid == 31 && s->modelindex > 0) {
-        const cmodel_t *cm = cl.model_clip[s->modelindex];
-        if (cm) {
-            // Bezpośrednie wyliczenie środka zamiast wywoływania VectorAvg
-            org[0] += (cm->mins[0] + cm->maxs[0]) * 0.5f;
-            org[1] += (cm->mins[1] + cm->maxs[1]) * 0.5f;
-            org[2] += (cm->mins[2] + cm->maxs[2]) * 0.5f;
-        }
-    }
-}
-*/
-
-// another optimized version
 
 void CL_GetEntitySoundOrigin(int ent, vec3_t org) {
   if ((unsigned)ent >= MAX_EDICTS)

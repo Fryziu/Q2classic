@@ -39,6 +39,7 @@ void S_Activate (qboolean active);
 
 void S_BeginRegistration (void);
 struct sfx_s *S_RegisterSound (const char *sample);
+void S_PrecacheSexedSound (const char *model, const char *base);
 void S_EndRegistration (void);
 
 //struct sfx_s *S_FindName (const char *name, qboolean create);

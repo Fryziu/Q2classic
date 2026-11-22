@@ -296,7 +296,7 @@ static void CopyServerTitle(char *buf, int size, const serverStatus_t *status) {
   }
   buf[host_limit] = 0;
 
-  strncat(buf, map, size - strlen(buf) - 1);
+  Q_strncatz(buf, map, size);
 }
 
 /*

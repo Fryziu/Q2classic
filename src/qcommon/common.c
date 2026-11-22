@@ -1196,19 +1196,28 @@ Qcommon_Frame
 */
 void Qcommon_Frame (int msec)
 {
+	int frame_msec;
 
 	if (setjmp (abortframe) )
 		return;			// an ERR_DROP was thrown
 
+	if (fixedtime->integer)
 	{
-		if (fixedtime->integer)
-			msec = fixedtime->integer;
-
-		msec = (int)(msec * timescale->value);
+		frame_msec = fixedtime->integer;
+	}
+	else if (timescale->value != 1.0f)
+	{
+		frame_msec = (int)(msec * timescale->value);
+		if (msec > 0 && frame_msec < 1)
+			frame_msec = 1;
+	}
+	else
+	{
+		frame_msec = msec;
 	}
 
-	if (msec < 1)
-		msec = 1;
+	if (frame_msec < 0)
+		frame_msec = 0;
 
 	if (showtrace->integer)
 	{
@@ -1235,8 +1244,9 @@ void Qcommon_Frame (int msec)
 
 	if (!host_speeds->integer)
 	{
-		SV_Frame (msec);
-		CL_Frame (msec);
+		if (frame_msec > 0 || dedicated->integer)
+			SV_Frame (frame_msec);
+		CL_Frame (frame_msec);
 	}
 	else
 	{
@@ -1245,11 +1255,12 @@ void Qcommon_Frame (int msec)
 
 		time_before = Sys_Milliseconds ();
 
-		SV_Frame (msec);
+		if (frame_msec > 0 || dedicated->integer)
+			SV_Frame (frame_msec);
 
 		time_between = Sys_Milliseconds ();
 
-		CL_Frame (msec);
+		CL_Frame (frame_msec);
 
 		time_after = Sys_Milliseconds ();
 

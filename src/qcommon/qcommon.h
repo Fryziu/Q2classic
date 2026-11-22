@@ -27,7 +27,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define APPLICATION "Q2classic for Linux"
 
-#define VERSION "2026-03-15_clean_compilation"
+#define VERSION "2026-11-22"
 
 #define BASEDIRNAME "baseq2"
 
@@ -806,6 +806,7 @@ char **FS_ListFiles(const char *findname, int *numfiles, unsigned musthave,
 
 qboolean FS_NeedRestart(void);
 void FS_Restart(void);
+void FS_FlushCache(void);
 char **FS_FindMaps(void);
 
 /// MISC
@@ -952,6 +953,7 @@ void CL_Init(void);
 void CL_Drop(void);
 void CL_Shutdown(void);
 void CL_Frame(int msec);
+uint64_t CL_NextFrameWaitUsec(void);
 void Con_Print(const char *text);
 void SCR_BeginLoadingPlaque(void);
 

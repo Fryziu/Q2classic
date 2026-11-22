@@ -28,6 +28,7 @@ static cvar_t		*cl_testblend;
 
 static cvar_t		*cl_stats;
 static cvar_t		*cl_wsfov;
+static cvar_t		*cl_defermodels;
 
 static int			r_numdlights;
 static dlight_t	r_dlights[MAX_DLIGHTS];
@@ -229,10 +230,17 @@ void CL_PrepRefresh (void)
 	int			i;
 	char		name[MAX_QPATH];
 	float		rotate;
-	vec3_t		axis;
+	vec3_t		axis = {0, 0, 0};
+	qboolean	defer_models;
+	unsigned int last_update_ms;
 
 	if (!cl.configstrings[CS_MODELS+1][0])
 		return;		// no map loaded
+
+	CL_ResetDeferredAssets ();
+	CL_ClearTEnts ();
+
+	defer_models = (cl_defermodels && cl_defermodels->integer && !cl_timedemo->integer) ? true : false;
 
 	SCR_AddDirtyPoint (0, 0);
 	SCR_AddDirtyPoint (viddef.width-1, viddef.height-1);
@@ -242,12 +250,12 @@ void CL_PrepRefresh (void)
 	// register models, pics, and skins
 	Com_Printf ("Map: %s\r", cls.mapname); 
 	SCR_UpdateScreen ();
+	last_update_ms = Sys_Milliseconds ();
 	R_BeginRegistration (cls.mapname);
 	Com_Printf ("                                     \r");
 
 	// precache status bar pics
 	Com_Printf ("pics\r"); 
-	SCR_UpdateScreen ();
 	SCR_TouchPics ();
 	Com_Printf ("                                     \r");
 
@@ -256,38 +264,65 @@ void CL_PrepRefresh (void)
 	num_cl_weaponmodels = 1;
 	strcpy(cl_weaponmodels[0], "weapon.md2");
 
+	cl.model_draw[0] = NULL;
+	cl.model_clip[0] = NULL;
+
+	// Always collect special player weapon models (#...) and register world + inline bmodels (*...) immediately
+	// (inline bmodels are already in RAM from BSP and are required for doors/plats collision & rendering)
 	for (i=1 ; i<MAX_MODELS && cl.configstrings[CS_MODELS+i][0] ; i++)
 	{
-		Q_strncpyz (name, cl.configstrings[CS_MODELS+i], sizeof(name));
-		name[37] = 0;	// never go beyond one line
-		if (name[0] != '*')
-			Com_Printf ("%s\r", name); 
-		SCR_UpdateScreen ();
-		Sys_SendKeyEvents ();	// pump message loop
-		if (name[0] == '#')
+		const char *cs = cl.configstrings[CS_MODELS+i];
+
+		if (cs[0] == '#')
 		{
 			// special player weapon model
 			if (num_cl_weaponmodels < MAX_CLIENTWEAPONMODELS)
 			{
-				Q_strncpyz(cl_weaponmodels[num_cl_weaponmodels], cl.configstrings[CS_MODELS+i]+1,
+				Q_strncpyz(cl_weaponmodels[num_cl_weaponmodels], cs + 1,
 					sizeof(cl_weaponmodels[num_cl_weaponmodels]));
 				num_cl_weaponmodels++;
 			}
-		} 
-		else
+			cl.model_draw[i] = NULL;
+			cl.model_clip[i] = NULL;
+		}
+		else if (i == 1 || cs[0] == '*')
 		{
-			cl.model_draw[i] = R_RegisterModel (cl.configstrings[CS_MODELS+i]);
-			if (name[0] == '*')
-				cl.model_clip[i] = CM_InlineModel (cl.configstrings[CS_MODELS+i]);
+			cl.model_draw[i] = R_RegisterModel (cs);
+			if (cs[0] == '*')
+				cl.model_clip[i] = CM_InlineModel (cs);
 			else
 				cl.model_clip[i] = NULL;
 		}
-		if (name[0] != '*')
+		else if (defer_models)
+		{
+			cl.model_draw[i] = NULL;
+			cl.model_clip[i] = NULL;
+		}
+		else
+		{
+			unsigned int now_ms;
+			Q_strncpyz (name, cs, sizeof(name));
+			name[37] = 0;	// never go beyond one line
+			Com_Printf ("%s\r", name);
+			now_ms = Sys_Milliseconds ();
+			if (now_ms - last_update_ms >= 100) {
+				SCR_UpdateScreen ();
+				last_update_ms = now_ms;
+			}
+			Sys_SendKeyEvents ();	// pump message loop
+			cl.model_draw[i] = R_RegisterModel (cs);
+			cl.model_clip[i] = NULL;
 			Com_Printf ("                                     \r");
+		}
+	}
+
+	for (; i < MAX_MODELS; i++)
+	{
+		cl.model_draw[i] = NULL;
+		cl.model_clip[i] = NULL;
 	}
 
 	Com_Printf ("images\r"); 
-	SCR_UpdateScreen ();
 	for (i=1 ; i<MAX_IMAGES && cl.configstrings[CS_IMAGES+i][0] ; i++)
 	{
 		cl.image_precache[i] = Draw_FindPic (cl.configstrings[CS_IMAGES+i]);
@@ -295,30 +330,45 @@ void CL_PrepRefresh (void)
 	}
 	
 	Com_Printf ("                                     \r");
+	memset (cl.clientinfo, 0, sizeof(cl.clientinfo));
+	CL_LoadClientinfo (&cl.baseclientinfo, "unnamed\\male/grunt");
+
 	for (i=0 ; i<MAX_CLIENTS ; i++)
 	{
 		if (!cl.configstrings[CS_PLAYERSKINS+i][0])
 			continue;
-		Com_Printf ("client %i\r", i); 
-		SCR_UpdateScreen ();
-		Sys_SendKeyEvents ();	// pump message loop
-		CL_ParseClientinfo (i);
-		Com_Printf ("                                     \r");
+		if (defer_models)
+		{
+			CL_QueueClientinfo (i);
+		}
+		else
+		{
+			unsigned int now_ms = Sys_Milliseconds ();
+			Com_Printf ("client %i\r", i); 
+			if (now_ms - last_update_ms >= 100) {
+				SCR_UpdateScreen ();
+				last_update_ms = now_ms;
+			}
+			Sys_SendKeyEvents ();	// pump message loop
+			CL_ParseClientinfo (i);
+			Com_Printf ("                                     \r");
+		}
 	}
-
-	CL_LoadClientinfo (&cl.baseclientinfo, "unnamed\\male/grunt");
 
 	// set sky textures and speed
 	Com_Printf ("sky\r"); 
-	SCR_UpdateScreen ();
 	rotate = (float)atof(cl.configstrings[CS_SKYROTATE]);
-	sscanf (cl.configstrings[CS_SKYAXIS], "%f %f %f", &axis[0], &axis[1], &axis[2]);
+	if (sscanf (cl.configstrings[CS_SKYAXIS], "%f %f %f", &axis[0], &axis[1], &axis[2]) != 3)
+		VectorClear (axis);
 	R_SetSky (cl.configstrings[CS_SKY], rotate, axis);
 	Q_strncpyz(currentSky, cl.configstrings[CS_SKY], sizeof(currentSky));
 	Com_Printf ("                                     \r");
 
-	// the renderer can now free unneeded stuff
-	R_EndRegistration ();
+	// the renderer can now free unneeded stuff, or defer until queued models finish
+	if (defer_models)
+		CL_StartDeferredMapLoad ();
+	else
+		R_EndRegistration ();
 
 	// clear any lines of console text
 	Con_ClearNotify ();
@@ -481,4 +531,5 @@ void V_Init (void)
 
 	cl_wsfov = Cvar_Get("cl_wsfov", "1", 0);
 	cl_stats = Cvar_Get ("cl_stats", "0", 0);
+	cl_defermodels = Cvar_Get ("cl_defermodels", "1", CVAR_ARCHIVE);
 }

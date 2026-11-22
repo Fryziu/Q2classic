@@ -55,9 +55,18 @@ void Create_Savestrings (void)
 		}
 		else
 		{
-			fread(m_savestrings[i], 1, sizeof(m_savestrings[i]), f);
+			size_t nread = fread(m_savestrings[i], 1, sizeof(m_savestrings[i]), f);
 			fclose (f);
-			m_savevalid[i] = true;
+			if (nread < sizeof(m_savestrings[i]))
+			{
+				strcpy (m_savestrings[i], "<EMPTY>");
+				m_savevalid[i] = false;
+			}
+			else
+			{
+				m_savestrings[i][sizeof(m_savestrings[i]) - 1] = '\0';
+				m_savevalid[i] = true;
+			}
 		}
 	}
 }

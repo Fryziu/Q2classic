@@ -192,6 +192,11 @@ void GL_UpdateSwapInterval( void )
 			if ( qwglSwapIntervalEXT )
 				qwglSwapIntervalEXT( gl_swapinterval->integer );
 		}
+#elif defined(USE_SDL)
+		if ( !gl_state.stereo_enabled )
+		{
+			GLimp_SetSwapInterval( gl_swapinterval->integer );
+		}
 #endif
 	}
 }
