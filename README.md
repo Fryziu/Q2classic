@@ -116,3 +116,7 @@ cd ~/.quake2
 ```
 
 [![Q2classic multiplayer](https://youtu.be/zGMsZNT6qTs)](https://youtu.be/zGMsZNT6qTs)
+
+<a href="https://youtu.be/zGMsZNT6qTs">
+  <img src="https://youtu.be/zGMsZNT6qTs" alt="Q2classic multiplayer" width="400">
+</a>
