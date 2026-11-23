@@ -114,3 +114,5 @@ Navigate to your `.quake2` directory and execute the game:
 cd ~/.quake2
 ./q2classic
 ```
+
+[![Q2classic multiplayer](https://youtu.be/zGMsZNT6qTs)](https://youtu.be/zGMsZNT6qTs)
